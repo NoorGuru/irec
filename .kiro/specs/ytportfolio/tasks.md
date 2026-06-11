@@ -6,8 +6,8 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
 
 ## Tasks
 
-- [ ] 1. Set up monorepo structure and configuration
-  - [ ] 1.1 Create monorepo directory structure with backend and frontend directories
+- [x] 1. Set up monorepo structure and configuration
+  - [x] 1.1 Create monorepo directory structure with backend and frontend directories
     - Create `backend/` and `frontend/` directories at the root
     - Add `backend/requirements.txt` with pinned dependencies: fastapi, uvicorn, supabase, anthropic, youtube-transcript-api, google-api-python-client, pydantic, python-jose, httpx
     - Add `backend/.env.example` with keys: SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_JWT_SECRET, ANTHROPIC_API_KEY, YOUTUBE_API_KEY, OWNER_EMAIL, CORS_ORIGINS
@@ -15,7 +15,7 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Create root-level `README.md` with setup instructions for both services
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-  - [ ] 1.2 Initialize Next.js frontend with App Router, Tailwind CSS, and shadcn/ui
+  - [x] 1.2 Initialize Next.js frontend with App Router, Tailwind CSS, and shadcn/ui
     - Run Next.js initialization with TypeScript and App Router
     - Configure Tailwind CSS
     - Install and configure shadcn/ui
@@ -23,33 +23,33 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Set up `frontend/package.json` with all required dependencies
     - _Requirements: 10.3_
 
-  - [ ] 1.3 Create database migration SQL file
+  - [x] 1.3 Create database migration SQL file
     - Create `backend/migrations/001_initial_schema.sql` with the full DDL
     - Include channels, videos, and recommendations tables with all constraints
     - Include indexes on recommendations.ticker and videos.youtube_video_id
     - Enable RLS on all tables with SELECT-only policies (no write policies)
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-- [ ] 2. Implement backend core: schemas and URL parser
-  - [ ] 2.1 Create Pydantic schemas module (`backend/app/schemas.py`)
+- [x] 2. Implement backend core: schemas and URL parser
+  - [x] 2.1 Create Pydantic schemas module (`backend/app/schemas.py`)
     - Define ExtractionRequest, Recommendation, LLMResponse, ExtractionResponse, ParsedURL, VideoMetadata models
     - Implement `normalize_ticker` field_validator on Recommendation (uppercase, strip whitespace, replace periods with hyphens)
     - Add Field constraints: sentiment [-2, 2], conviction_level [1, 10], catalyst_notes [1, 500] chars, ticker [1, 5] chars
     - _Requirements: 2.3, 2.4, 2.5, 2.6, 2.7_
 
-  - [ ]* 2.2 Write property test for ticker normalization idempotence
+  - [x] 2.2 Write property test for ticker normalization idempotence
     - **Property 2: Ticker Normalization Idempotence**
     - Use Hypothesis to generate random ticker-like strings and verify f(f(x)) == f(x)
     - Verify strings differing only in case/whitespace/separators normalize identically
     - **Validates: Requirements 2.6**
 
-  - [ ]* 2.3 Write property test for recommendation schema validation
+  - [x] 2.3 Write property test for recommendation schema validation
     - **Property 3: Recommendation Schema Validation**
     - Use Hypothesis to generate random integers and verify acceptance boundaries for sentiment [-2, 2] and conviction [1, 10]
     - Generate random strings and verify catalyst_notes length constraints [1, 500]
     - **Validates: Requirements 2.3, 2.4, 2.5**
 
-  - [ ] 2.4 Implement URL parser (`backend/app/url_parser.py`)
+  - [x] 2.4 Implement URL parser (`backend/app/url_parser.py`)
     - Support youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/embed/ formats
     - Extract 11-character Video_ID via regex
     - Strip extra query parameters (&t=, &list=, etc.)
@@ -57,27 +57,27 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Raise appropriate error for invalid URLs (HTTP 400)
     - _Requirements: 1.1, 1.2_
 
-  - [ ]* 2.5 Write property test for URL parsing roundtrip
+  - [x] 2.5 Write property test for URL parsing roundtrip
     - **Property 1: URL Parsing Roundtrip**
     - Use Hypothesis to generate random 11-char alphanumeric video IDs, embed in random supported URL formats
     - Verify parsing extracts the correct video_id and re-parsing the canonical URL yields the same ID
     - **Validates: Requirements 1.1**
 
-- [ ] 3. Implement backend services: metadata, transcript, and LLM parser
-  - [ ] 3.1 Implement metadata fetcher (`backend/app/metadata.py`)
+- [x] 3. Implement backend services: metadata, transcript, and LLM parser
+  - [x] 3.1 Implement metadata fetcher (`backend/app/metadata.py`)
     - Call YouTube Data API v3 `videos.list` with `snippet` part
     - Extract channelTitle and publishedAt
     - Handle 404 (video not found on YouTube) with appropriate error
     - Set connect timeout 10s, read timeout 10s
     - _Requirements: 1.5, 1.6, 11.5_
 
-  - [ ] 3.2 Implement transcript fetcher (`backend/app/transcript.py`)
+  - [x] 3.2 Implement transcript fetcher (`backend/app/transcript.py`)
     - Use YouTubeTranscriptApi.get_transcript(video_id) for English transcripts
     - Concatenate all segment text fields with single space separator
     - Handle TranscriptsDisabled and NoTranscriptFound exceptions → HTTP 422
     - _Requirements: 1.7, 1.8_
 
-  - [ ] 3.3 Implement LLM parser (`backend/app/llm_parser.py`)
+  - [x] 3.3 Implement LLM parser (`backend/app/llm_parser.py`)
     - Use anthropic Python SDK with claude-sonnet model
     - Send system prompt with JSON schema definition for recommendations
     - Include channel name and publish date in user message context
@@ -88,14 +88,14 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Return empty list with HTTP 200 when no recommendations found
     - _Requirements: 2.1, 2.2, 2.8, 2.9, 11.1, 11.2, 11.3_
 
-  - [ ]* 3.4 Write property test for exponential backoff timing
+  - [x] 3.4 Write property test for exponential backoff timing
     - **Property 8: Exponential Backoff Timing**
     - Use Hypothesis to generate sequences of retry counts and verify delays follow 1s, 2s, 4s pattern
     - Verify maximum of 3 retries before returning 429
     - **Validates: Requirements 11.1**
 
-- [ ] 4. Implement backend database service
-  - [ ] 4.1 Implement database service (`backend/app/database.py`)
+- [x] 4. Implement backend database service
+  - [x] 4.1 Implement database service (`backend/app/database.py`)
     - Use supabase-py with SUPABASE_SERVICE_KEY (bypasses RLS)
     - Implement channel upsert with `ON CONFLICT (channel_name) DO UPDATE SET channel_name = EXCLUDED.channel_name RETURNING channel_id`
     - Implement video insert with youtube_video_id, video_url, channel_id FK, published_at
@@ -106,14 +106,14 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Set connect timeout 5s, read timeout 10s
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 11.4_
 
-  - [ ]* 4.2 Write property test for channel upsert always returns UUID
+  - [x] 4.2 Write property test for channel upsert always returns UUID
     - **Property 4: Channel Upsert Always Returns UUID**
     - Use Hypothesis to generate random channel names
     - Mock database responses and verify upsert always returns a valid UUID, never empty
     - **Validates: Requirements 3.1**
 
-- [ ] 5. Implement backend auth middleware and extraction endpoint
-  - [ ] 5.1 Implement auth middleware (`backend/app/auth.py`)
+- [x] 5. Implement backend auth middleware and extraction endpoint
+  - [x] 5.1 Implement auth middleware (`backend/app/auth.py`)
     - Extract Authorization: Bearer <token> header
     - Validate JWT using python-jose with SUPABASE_JWT_SECRET
     - Case-insensitive comparison of email claim against OWNER_EMAIL
@@ -121,7 +121,7 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Return 403 for valid token but non-matching email
     - _Requirements: 4.1, 4.4, 4.5, 5.6, 5.7_
 
-  - [ ] 5.2 Implement extraction endpoint and FastAPI app (`backend/app/main.py`)
+  - [x] 5.2 Implement extraction endpoint and FastAPI app (`backend/app/main.py`)
     - Create FastAPI app with CORS configuration
     - Define POST /api/v1/extract endpoint with auth dependency
     - Orchestrate pipeline: URL parse → duplicate check → metadata → transcript → LLM → database
@@ -131,17 +131,17 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Ensure no timeout shorter than 120 seconds for request processing
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 11.6_
 
-- [ ] 6. Checkpoint - Backend complete
+- [x] 6. Checkpoint - Backend complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement frontend authentication
-  - [ ] 7.1 Implement Next.js middleware for admin route protection (`frontend/src/middleware.ts`)
+- [x] 7. Implement frontend authentication
+  - [x] 7.1 Implement Next.js middleware for admin route protection (`frontend/src/middleware.ts`)
     - Use @supabase/ssr for server-side session validation
     - Protect all /admin/* routes
     - Redirect unauthenticated users to /admin/login
     - _Requirements: 4.2, 4.3, 4.8_
 
-  - [ ] 7.2 Implement admin login page and OAuth callback (`frontend/src/app/admin/login/page.tsx` and `frontend/src/app/auth/callback/route.ts`)
+  - [x] 7.2 Implement admin login page and OAuth callback (`frontend/src/app/admin/login/page.tsx` and `frontend/src/app/auth/callback/route.ts`)
     - Create login page with Google OAuth button using Supabase Auth
     - Implement OAuth callback route for code exchange
     - Verify authenticated email matches NEXT_PUBLIC_OWNER_EMAIL (case-insensitive)
@@ -149,8 +149,8 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Handle OAuth failure/cancellation with redirect and error message
     - _Requirements: 4.1, 4.4, 4.5, 4.9_
 
-- [ ] 8. Implement frontend admin zone
-  - [ ] 8.1 Implement Ingestion Hub page (`frontend/src/app/admin/ingest/page.tsx`)
+- [x] 8. Implement frontend admin zone
+  - [x] 8.1 Implement Ingestion Hub page (`frontend/src/app/admin/ingest/page.tsx`)
     - Create text input field (max 2048 chars) for YouTube URL with submit button
     - Implement client-side URL pattern validation (youtube.com/watch?v=, youtu.be/, youtube.com/shorts/)
     - Show inline validation message for invalid format or empty input
@@ -160,8 +160,8 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - On error: show error toast with backend error message (auto-dismiss 5s)
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7_
 
-- [ ] 9. Implement frontend public dashboard
-  - [ ] 9.1 Implement Aggregation Dashboard (`frontend/src/app/page.tsx`)
+- [x] 9. Implement frontend public dashboard
+  - [x] 9.1 Implement Aggregation Dashboard (`frontend/src/app/page.tsx`)
     - Query Supabase directly using anon key with RLS (read-only)
     - Execute aggregation query: weighted consensus sentiment, avg target price (exclude nulls), mention count
     - Display data table with one row per ticker, sorted by mention count descending
@@ -171,7 +171,7 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Show empty state message when no recommendations exist
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8_
 
-  - [ ] 9.2 Implement Ticker Detail View (`frontend/src/app/ticker/[symbol]/page.tsx`)
+  - [x] 9.2 Implement Ticker Detail View (`frontend/src/app/ticker/[symbol]/page.tsx`)
     - Query Supabase with case-insensitive ticker match (ILIKE)
     - Display recommendation timeline ordered by video publish date descending
     - Show channel name, publish date, sentiment, conviction, target price (or "N/A"), catalyst notes for each
@@ -180,7 +180,7 @@ This plan implements the YTPortfolio system as a monorepo with a Python/FastAPI 
     - Validate ticker: reject if >5 chars or contains non-letter characters
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7_
 
-- [ ] 10. Final checkpoint - Ensure all tests pass
+- [x] 10. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
