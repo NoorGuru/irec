@@ -348,6 +348,10 @@ export default function Home() {
                 <span className="text-[#8B95A8]">{aggregated.length}</span> tickers
                 <span className="mx-2 text-[#1E293B]">·</span>
                 <span className="text-[#8B95A8]">{totalMentions}</span> mentions
+                <span className="mx-2 text-[#1E293B]">·</span>
+                <Link href="/channels" className="text-[#8B95A8] hover:text-[#00D4AA] transition-colors duration-200">
+                  analysts ↗
+                </Link>
               </p>
             </div>
           )}
