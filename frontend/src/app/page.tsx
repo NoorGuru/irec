@@ -87,6 +87,32 @@ function getSentimentLabel(value: number): string {
   return "Strong Sell"
 }
 
+function getSentimentBadgeClass(value: number): string {
+  if (value >= 1.5) return "sentiment-badge sentiment-badge-strong-buy"
+  if (value >= 0.5) return "sentiment-badge sentiment-badge-buy"
+  if (value > -0.5) return "sentiment-badge sentiment-badge-neutral"
+  if (value > -1.5) return "sentiment-badge sentiment-badge-sell"
+  return "sentiment-badge sentiment-badge-strong-sell"
+}
+
+function SentimentArrow({ value }: { value: number }) {
+  if (value >= 1.5) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="inline-block">
+        <path d="M7 2L7 12M7 2L3 6M7 2L11 6" stroke="#00FFD0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+  if (value <= -1.5) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="inline-block">
+        <path d="M7 12L7 2M7 12L3 8M7 12L11 8" stroke="#FF1744" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+  return null
+}
+
 /** Convert sentiment from [-2, 2] to a percentage [0, 100] for the pulse bar */
 function sentimentToPercent(value: number): number {
   return ((value + 2) / 4) * 100
@@ -94,16 +120,17 @@ function sentimentToPercent(value: number): number {
 
 function PulseBar({ value, isTop }: { value: number; isTop: boolean }) {
   const percent = sentimentToPercent(value)
+  const isStrong = Math.abs(value) >= 1.5
 
   // Gradient goes from bear (red) on the left to bull (teal) on the right
   // The "fill" represents where the sentiment sits
   return (
-    <div className="relative w-full h-2 rounded-full bg-[#1E293B] overflow-hidden">
+    <div className={`relative w-full h-2 rounded-full bg-[#1E293B] overflow-hidden ${isStrong ? 'h-2.5' : ''}`}>
       <div
         className="pulse-bar-fill absolute inset-y-0 left-0 rounded-full"
         style={{
           width: `${percent}%`,
-          background: `linear-gradient(90deg, var(--aura-bear) 0%, #F59E0B 50%, var(--aura-bull) 100%)`,
+          background: `linear-gradient(90deg, var(--aura-bear-strong) 0%, var(--aura-bear) 20%, #F59E0B 50%, var(--aura-bull) 80%, var(--aura-bull-strong) 100%)`,
           opacity: isTop ? 1 : 0.8,
         }}
       />
@@ -151,11 +178,8 @@ function TickerRow({
         <div className="flex flex-col gap-1.5">
           <PulseBar value={row.consensus_sentiment} isTop={isTop} />
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-medium ${
-              row.consensus_sentiment >= 0.5 ? 'text-[#00D4AA]' :
-              row.consensus_sentiment <= -0.5 ? 'text-[#FF4D6A]' :
-              'text-[#8B95A8]'
-            }`}>
+            <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
+              <SentimentArrow value={row.consensus_sentiment} />
               {getSentimentLabel(row.consensus_sentiment)}
             </span>
             <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B]">
@@ -199,13 +223,10 @@ function TickerRow({
         <PulseBar value={row.consensus_sentiment} isTop={isTop} />
 
         <div className="flex items-center justify-between">
-          <span className={`text-sm font-medium ${
-            row.consensus_sentiment >= 0.5 ? 'text-[#00D4AA]' :
-            row.consensus_sentiment <= -0.5 ? 'text-[#FF4D6A]' :
-            'text-[#8B95A8]'
-          }`}>
+          <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
+            <SentimentArrow value={row.consensus_sentiment} />
             {getSentimentLabel(row.consensus_sentiment)}
-            <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B] ml-2">
+            <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B] ml-1">
               {row.consensus_sentiment.toFixed(2)}
             </span>
           </span>

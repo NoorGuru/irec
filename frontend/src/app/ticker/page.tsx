@@ -13,7 +13,9 @@ interface Recommendation {
   catalyst_notes: string
   videos: {
     video_url: string
+    youtube_video_id: string
     published_at: string
+    channel_id: string
     channels: {
       channel_name: string
     }
@@ -37,9 +39,37 @@ function getSentimentLabel(sentiment: number): string {
 }
 
 function getSentimentColor(sentiment: number): string {
+  if (sentiment >= 2) return 'text-[#00FFD0]'
   if (sentiment >= 1) return 'text-[#00D4AA]'
+  if (sentiment <= -2) return 'text-[#FF1744]'
   if (sentiment <= -1) return 'text-[#FF4D6A]'
   return 'text-[#8B95A8]'
+}
+
+function getSentimentBadgeClass(sentiment: number): string {
+  if (sentiment >= 2) return "sentiment-badge sentiment-badge-strong-buy"
+  if (sentiment >= 1) return "sentiment-badge sentiment-badge-buy"
+  if (sentiment <= -2) return "sentiment-badge sentiment-badge-strong-sell"
+  if (sentiment <= -1) return "sentiment-badge sentiment-badge-sell"
+  return "sentiment-badge sentiment-badge-neutral"
+}
+
+function SentimentArrow({ value }: { value: number }) {
+  if (value >= 2) {
+    return (
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="inline-block shrink-0">
+        <path d="M7 2L7 12M7 2L3 6M7 2L11 6" stroke="#00FFD0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+  if (value <= -2) {
+    return (
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="inline-block shrink-0">
+        <path d="M7 12L7 2M7 12L3 8M7 12L11 8" stroke="#FF1744" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+  return null
 }
 
 function ConvictionDots({ level }: { level: number }) {
@@ -53,6 +83,55 @@ function ConvictionDots({ level }: { level: number }) {
           }`}
         />
       ))}
+    </div>
+  )
+}
+
+function LazyYouTubeEmbed({ youtubeVideoId }: { youtubeVideoId: string }) {
+  const [playing, setPlaying] = useState(false)
+
+  if (playing) {
+    return (
+      <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0A0F1A]">
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
+          title="YouTube video player"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={() => setPlaying(true)}
+        className="group/play relative shrink-0 rounded-md overflow-hidden w-24 h-14 bg-[#0A0F1A] border border-[#1E293B] hover:border-[#2D3A4F] transition-all duration-200 cursor-pointer"
+        aria-label="Play video inline"
+      >
+        <img
+          src={`https://i.ytimg.com/vi/${youtubeVideoId}/mqdefault.jpg`}
+          alt=""
+          className="w-full h-full object-cover opacity-70 group-hover/play:opacity-100 transition-opacity duration-200"
+        />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center group-hover/play:scale-110 transition-all duration-200">
+            <svg width="10" height="10" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#F1F5F9] group-hover/play:text-[#00D4AA] transition-colors" aria-hidden="true">
+              <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </button>
+      <a
+        href={`https://www.youtube.com/watch?v=${youtubeVideoId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs text-[#64748B] hover:text-[#00D4AA] transition-colors"
+      >
+        YouTube ↗
+      </a>
     </div>
   )
 }
@@ -83,7 +162,9 @@ function TickerContent() {
           catalyst_notes,
           videos!inner(
             video_url,
+            youtube_video_id,
             published_at,
+            channel_id,
             channels!inner(channel_name)
           )
         `)
@@ -177,15 +258,18 @@ function TickerContent() {
           <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
             <p className="text-xs text-[#64748B] mb-1">Avg Sentiment</p>
             <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold ${
+              avgSentiment >= 1.5 ? 'sentiment-strong-buy' :
               avgSentiment >= 0.5 ? 'text-[#00D4AA]' :
+              avgSentiment <= -1.5 ? 'sentiment-strong-sell' :
               avgSentiment <= -0.5 ? 'text-[#FF4D6A]' :
               'text-[#F1F5F9]'
             }`}>
               {avgSentiment.toFixed(1)}
             </p>
-            <p className={`text-xs font-medium mt-0.5 ${getSentimentColor(avgSentiment)}`}>
+            <span className={getSentimentBadgeClass(Math.round(avgSentiment))}>
+              <SentimentArrow value={avgSentiment} />
               {avgSentiment >= 1.5 ? 'Strong Buy' : avgSentiment >= 0.5 ? 'Buy' : avgSentiment > -0.5 ? 'Neutral' : avgSentiment > -1.5 ? 'Sell' : 'Strong Sell'}
-            </p>
+            </span>
           </div>
 
           <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
@@ -221,27 +305,36 @@ function TickerContent() {
                 animate-fade-up stagger-${Math.min(index + 3, 10)}
               `}
             >
-              {/* Top row: channel + date + video link */}
+              {/* Top row: channel + date */}
               <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mb-4">
-                <span className="text-sm font-medium text-[#F1F5F9]">
-                  {rec.videos.channels.channel_name}
-                </span>
+                <Link
+                  href={`/channel?id=${rec.videos.channel_id}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#F1F5F9] hover:text-[#00D4AA] transition-colors duration-200 group/channel"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569] group-hover/channel:text-[#00D4AA] transition-colors shrink-0" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="group-hover/channel:underline decoration-[#00D4AA]/30 underline-offset-2">
+                    {rec.videos.channels.channel_name}
+                  </span>
+                </Link>
                 <span className="text-xs text-[#64748B]">
                   {formatDate(rec.videos.published_at)}
                 </span>
-                <a
-                  href={rec.videos.video_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto text-xs text-[#8B95A8] hover:text-[#00D4AA] transition-colors"
-                >
-                  Watch ↗
-                </a>
+              </div>
+
+              {/* Lazy YouTube embed */}
+              <div className="mb-4">
+                <LazyYouTubeEmbed youtubeVideoId={rec.videos.youtube_video_id} />
               </div>
 
               {/* Stats row */}
               <div className="flex items-center flex-wrap gap-3 mb-3">
-                <span className={`font-[family-name:var(--font-geist-mono)] text-sm font-bold ${getSentimentColor(rec.sentiment)}`}>
+                <span className={getSentimentBadgeClass(rec.sentiment)}>
+                  <SentimentArrow value={rec.sentiment} />
                   {getSentimentLabel(rec.sentiment)}
                 </span>
                 <span className="text-xs text-[#64748B]">

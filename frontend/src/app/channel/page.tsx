@@ -59,15 +59,45 @@ function getSentimentWord(s: number): string {
 }
 
 function getSentimentColor(s: number): string {
+  if (s >= 1.5) return 'text-[#00FFD0]'
   if (s >= 0.5) return 'text-[#00D4AA]'
+  if (s <= -1.5) return 'text-[#FF1744]'
   if (s <= -0.5) return 'text-[#FF4D6A]'
   return 'text-[#8B95A8]'
 }
 
 function getSentimentBg(s: number): string {
+  if (s >= 1.5) return 'bg-[#00FFD0]'
   if (s >= 0.5) return 'bg-[#00D4AA]'
+  if (s <= -1.5) return 'bg-[#FF1744]'
   if (s <= -0.5) return 'bg-[#FF4D6A]'
   return 'bg-[#475569]'
+}
+
+function getSentimentBadgeClass(s: number): string {
+  if (s >= 1.5) return "sentiment-badge sentiment-badge-strong-buy"
+  if (s >= 0.5) return "sentiment-badge sentiment-badge-buy"
+  if (s > -0.5) return "sentiment-badge sentiment-badge-neutral"
+  if (s > -1.5) return "sentiment-badge sentiment-badge-sell"
+  return "sentiment-badge sentiment-badge-strong-sell"
+}
+
+function SentimentArrow({ value }: { value: number }) {
+  if (value >= 1.5) {
+    return (
+      <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className="inline-block shrink-0">
+        <path d="M7 2L7 12M7 2L3 6M7 2L11 6" stroke="#00FFD0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+  if (value <= -1.5) {
+    return (
+      <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className="inline-block shrink-0">
+        <path d="M7 12L7 2M7 12L3 8M7 12L11 8" stroke="#FF1744" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  }
+  return null
 }
 
 function formatDate(d: string): string {
@@ -120,7 +150,8 @@ function TickerHeatCell({ breakdown }: { breakdown: TickerBreakdown }) {
 
       {/* Stats */}
       <div className="flex items-center justify-between">
-        <span className={`text-sm font-medium ${getSentimentColor(breakdown.avg_sentiment)}`}>
+        <span className={getSentimentBadgeClass(breakdown.avg_sentiment)}>
+          <SentimentArrow value={breakdown.avg_sentiment} />
           {getSentimentWord(breakdown.avg_sentiment)}
         </span>
         {breakdown.avg_target !== null && (
@@ -136,6 +167,7 @@ function TickerHeatCell({ breakdown }: { breakdown: TickerBreakdown }) {
 function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
   const staggerClass = `stagger-${Math.min(index + 1, 10)}`
   const [expanded, setExpanded] = useState(false)
+  const [playing, setPlaying] = useState(false)
 
   return (
     <div className={`rounded-xl border border-[#1E293B] bg-[#141B2D]/40 overflow-hidden transition-all duration-300 animate-fade-up ${staggerClass} ${expanded ? 'bg-[#141B2D]' : ''}`}>
@@ -192,7 +224,49 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
 
       {/* Expanded detail panel */}
       {expanded && (
-        <div className="px-4 pb-5 md:px-5 md:pb-6 pt-1 border-t border-[#1E293B]/60 space-y-3">
+        <div className="px-4 pb-5 md:px-5 md:pb-6 pt-3 border-t border-[#1E293B]/60 space-y-3">
+          {/* Lazy-loaded YouTube embed */}
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0A0F1A]">
+            {playing ? (
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${video.youtube_video_id}?autoplay=1&rel=0`}
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full"
+              />
+            ) : (
+              <button
+                onClick={() => setPlaying(true)}
+                className="group/play absolute inset-0 w-full h-full cursor-pointer"
+                aria-label="Play video"
+              >
+                <img
+                  src={`https://i.ytimg.com/vi/${video.youtube_video_id}/hqdefault.jpg`}
+                  alt=""
+                  className="w-full h-full object-cover opacity-80 group-hover/play:opacity-100 transition-opacity duration-200"
+                />
+                {/* Play button overlay */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#0A0F1A]/80 border border-[#1E293B] flex items-center justify-center group-hover/play:bg-[#0A0F1A]/90 group-hover/play:border-[#00D4AA]/40 group-hover/play:scale-110 transition-all duration-200">
+                    <svg width="20" height="20" viewBox="0 0 16 18" fill="none" className="ml-1 text-[#F1F5F9] group-hover/play:text-[#00D4AA] transition-colors" aria-hidden="true">
+                      <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>
+          {/* External YouTube link */}
+          <a
+            href={video.video_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-[#475569] hover:text-[#00D4AA] transition-colors"
+          >
+            Open on YouTube ↗
+          </a>
+
           {video.recommendations.map((rec) => (
             <div
               key={rec.id}
@@ -210,7 +284,8 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
                   >
                     {rec.ticker}
                   </Link>
-                  <span className={`text-xs font-medium ${getSentimentColor(rec.sentiment)}`}>
+                  <span className={getSentimentBadgeClass(rec.sentiment)}>
+                    <SentimentArrow value={rec.sentiment} />
                     {getSentimentWord(rec.sentiment)}
                   </span>
                   {rec.target_price !== null && (
@@ -232,19 +307,6 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
               </div>
             </div>
           ))}
-
-          {/* Link to video */}
-          <a
-            href={video.video_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[#475569] hover:text-[#00D4AA] transition-colors mt-2"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 14" fill="none" aria-hidden="true">
-              <path d="M1 1.5L11 7L1 12.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
-            </svg>
-            Watch on YouTube
-          </a>
         </div>
       )}
     </div>

@@ -114,11 +114,11 @@ function buildProfiles(
   }).sort((a, b) => b.total_recommendations - a.total_recommendations)
 }
 
-function getBiasLabel(avgSentiment: number, bullishPct: number): string {
-  if (bullishPct >= 80) return 'Very Bullish'
-  if (avgSentiment >= 0.5 || bullishPct >= 60) return 'Mostly Bullish'
-  if (avgSentiment <= -0.5 || bullishPct <= 20) return 'Mostly Bearish'
-  return 'Mixed'
+function getBiasLabel(avgSentiment: number, bullishPct: number): { label: string; isStrong: boolean } {
+  if (bullishPct >= 80) return { label: 'Very Bullish', isStrong: true }
+  if (avgSentiment >= 0.5 || bullishPct >= 60) return { label: 'Mostly Bullish', isStrong: false }
+  if (avgSentiment <= -0.5 || bullishPct <= 20) return { label: 'Mostly Bearish', isStrong: avgSentiment <= -1 }
+  return { label: 'Mixed', isStrong: false }
 }
 
 function TrustMeter({ weight }: { weight: number }) {
@@ -192,9 +192,20 @@ function ChannelCard({ profile, index }: { profile: ChannelProfile; index: numbe
         <div className="flex-1 min-w-0">
           <Link
             href={`/channel?id=${profile.channel_id}`}
-            className="font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold text-[#F1F5F9] tracking-tight truncate group-hover:text-[#00D4AA] transition-colors duration-300 hover:underline decoration-[#00D4AA]/30 underline-offset-4"
+            className="inline-flex items-center gap-2 font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold text-[#F1F5F9] tracking-tight group-hover:text-[#00D4AA] transition-colors duration-300 group/channel"
           >
-            {profile.channel_name}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#475569] group-hover:text-[#00D4AA] transition-colors shrink-0" aria-hidden="true">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="group-hover:underline decoration-[#00D4AA]/30 underline-offset-4 truncate">
+              {profile.channel_name}
+            </span>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[#475569] group-hover:text-[#00D4AA] transition-all group-hover:translate-x-0.5 shrink-0 opacity-0 group-hover:opacity-100" aria-hidden="true">
+              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </Link>
           <div className="mt-1.5 flex items-center flex-wrap gap-x-3 gap-y-1">
             <span className="text-xs text-[#64748B]">
@@ -226,13 +237,20 @@ function ChannelCard({ profile, index }: { profile: ChannelProfile; index: numbe
       <div className="flex items-end justify-between gap-4 mb-6">
         <div>
           <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block mb-1">Lean</span>
-          <span className={`text-2xl md:text-3xl font-semibold tracking-tight ${
-            profile.avg_sentiment >= 0.5 ? 'text-[#00D4AA]' :
-            profile.avg_sentiment <= -0.5 ? 'text-[#FF4D6A]' :
-            'text-[#8B95A8]'
-          }`}>
-            {getBiasLabel(profile.avg_sentiment, profile.bullish_pct)}
-          </span>
+          {(() => {
+            const bias = getBiasLabel(profile.avg_sentiment, profile.bullish_pct)
+            return (
+              <span className={`text-2xl md:text-3xl font-semibold tracking-tight ${
+                profile.avg_sentiment >= 0.5
+                  ? (bias.isStrong ? 'sentiment-strong-buy' : 'text-[#00D4AA]')
+                  : profile.avg_sentiment <= -0.5
+                    ? (bias.isStrong ? 'sentiment-strong-sell' : 'text-[#FF4D6A]')
+                    : 'text-[#8B95A8]'
+              }`}>
+                {bias.label}
+              </span>
+            )
+          })()}
           <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#475569] ml-2">
             {Math.round(profile.bullish_pct)}% of calls are bullish
           </span>

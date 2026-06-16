@@ -8,7 +8,9 @@
   --aura-surface: #141B2D;
   --aura-border: #1E293B;
   --aura-bull: #00D4AA;
+  --aura-bull-strong: #00FFD0;
   --aura-bear: #FF4D6A;
+  --aura-bear-strong: #FF1744;
   --aura-muted: #8B95A8;
   --aura-text: #F1F5F9;
   --aura-text-dim: #64748B;
@@ -292,6 +294,59 @@
 .pulse-bar-fill {
   animation: pulse-fill 0.8s ease-out both;
   animation-delay: inherit;
+}
+
+/* ─── Strong Sentiment Badges ─── */
+
+.sentiment-strong-buy {
+  color: var(--aura-bull-strong);
+  text-shadow: 0 0 8px rgba(0, 255, 208, 0.4);
+}
+
+.sentiment-strong-sell {
+  color: var(--aura-bear-strong);
+  text-shadow: 0 0 8px rgba(255, 23, 68, 0.4);
+}
+
+.sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sentiment-badge-strong-buy {
+  background: rgba(0, 255, 208, 0.1);
+  border: 1px solid rgba(0, 255, 208, 0.3);
+  color: var(--aura-bull-strong);
+}
+
+.sentiment-badge-buy {
+  background: rgba(0, 212, 170, 0.08);
+  border: 1px solid rgba(0, 212, 170, 0.15);
+  color: var(--aura-bull);
+}
+
+.sentiment-badge-neutral {
+  background: rgba(139, 149, 168, 0.08);
+  border: 1px solid rgba(139, 149, 168, 0.15);
+  color: var(--aura-muted);
+}
+
+.sentiment-badge-sell {
+  background: rgba(255, 77, 106, 0.08);
+  border: 1px solid rgba(255, 77, 106, 0.15);
+  color: var(--aura-bear);
+}
+
+.sentiment-badge-strong-sell {
+  background: rgba(255, 23, 68, 0.1);
+  border: 1px solid rgba(255, 23, 68, 0.3);
+  color: var(--aura-bear-strong);
 }
 
 /* Reduced motion */
