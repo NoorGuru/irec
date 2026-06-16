@@ -160,7 +160,7 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-8">
-          YTPortfolio - Stock Recommendations
+          Aura — Stock Recommendations
         </h1>
 
         {aggregated.length === 0 ? (

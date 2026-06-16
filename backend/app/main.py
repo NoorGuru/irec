@@ -17,7 +17,7 @@ from app.url_parser import parse_url
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="YTPortfolio API")
+app = FastAPI(title="Aura API")
 
 # CORS configuration from environment variable (comma-separated list of origins)
 _cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
