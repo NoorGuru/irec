@@ -222,6 +222,7 @@ function TickerRow({
 export default function Home() {
   const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     async function fetchData() {
@@ -293,6 +294,12 @@ export default function Home() {
 
   const totalMentions = aggregated.reduce((sum, t) => sum + t.mention_count, 0)
 
+  const filtered = search
+    ? aggregated.filter((t) =>
+        t.ticker.toLowerCase().includes(search.toLowerCase())
+      )
+    : aggregated
+
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-4xl mx-auto">
@@ -363,6 +370,48 @@ export default function Home() {
           </div>
         </header>
 
+        {/* Search / Filter */}
+        {aggregated.length > 0 && (
+          <div className="mb-6 animate-fade-up stagger-1">
+            <div className="relative">
+              <svg
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] pointer-events-none"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Filter by ticker..."
+                className="w-full rounded-lg border border-[#1E293B] bg-[#141B2D]/60 pl-10 pr-4 py-2.5 text-sm text-[#F1F5F9] placeholder:text-[#64748B] focus:outline-none focus:border-[#00D4AA]/50 focus:ring-1 focus:ring-[#00D4AA]/20 transition-colors font-[family-name:var(--font-geist-mono)]"
+                aria-label="Filter stocks by ticker symbol"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#F1F5F9] transition-colors"
+                  aria-label="Clear search"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Ticker list */}
         {aggregated.length === 0 ? (
           <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center animate-fade-up">
@@ -373,14 +422,22 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-3">
-            {aggregated.map((row, index) => (
-              <TickerRow
-                key={row.ticker}
-                row={row}
-                index={index}
-                isTop={row.ticker === topTicker}
-              />
-            ))}
+            {filtered.length === 0 ? (
+              <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 p-8 text-center">
+                <p className="text-sm text-[#8B95A8]">
+                  No tickers matching &ldquo;{search}&rdquo;
+                </p>
+              </div>
+            ) : (
+              filtered.map((row, index) => (
+                <TickerRow
+                  key={row.ticker}
+                  row={row}
+                  index={index}
+                  isTop={row.ticker === topTicker}
+                />
+              ))
+            )}
           </div>
         )}
 
