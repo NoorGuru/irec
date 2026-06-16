@@ -1,0 +1,33 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy irec-backend \
+            --source ./backend \
+            --region us-central1 \
+            --allow-unauthenticated \
+            --set-env-vars="SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }},SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }},ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }},YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }},OWNER_EMAIL=${{ vars.NEXT_PUBLIC_OWNER_EMAIL }},CORS_ORIGINS=https://aura.bynoor.io,WEBSHARE_PROXY_USER=${{ secrets.WEBSHARE_PROXY_USER }},WEBSHARE_PROXY_PASS=${{ secrets.WEBSHARE_PROXY_PASS }}"
