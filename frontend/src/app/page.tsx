@@ -56,13 +56,8 @@ function aggregateRecommendations(
       (sum, s) => sum + s.weight,
       0
     )
-    const rawSentiment =
-      totalWeight > 0
-        ? weightedSum / totalWeight
-        : 0
+    const rawSentiment = totalWeight > 0 ? weightedSum / totalWeight : 0
 
-    // Apply confidence dampening: score regresses toward 0 with fewer mentions.
-    // At 1 mention, confidence = 0.33; at 2 = 0.5; at 3+ = full confidence.
     const confidence = Math.min(group.count / 3, 1)
     const consensus_sentiment =
       Math.round(rawSentiment * confidence * 100) / 100
@@ -80,43 +75,147 @@ function aggregateRecommendations(
     })
   }
 
-  // Sort by mention count descending
   results.sort((a, b) => b.mention_count - a.mention_count)
-
   return results
 }
 
-function SentimentBadge({ value, mentions }: { value: number; mentions: number }) {
-  let label: string
-  let colorClass: string
+function getSentimentLabel(value: number): string {
+  if (value >= 1.5) return "Strong Buy"
+  if (value >= 0.5) return "Buy"
+  if (value > -0.5) return "Neutral"
+  if (value > -1.5) return "Sell"
+  return "Strong Sell"
+}
 
-  if (value >= 1.5) {
-    label = "Strong Buy"
-    colorClass = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-  } else if (value >= 0.5) {
-    label = "Buy"
-    colorClass = "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300"
-  } else if (value > -0.5) {
-    label = "Neutral"
-    colorClass = "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-  } else if (value > -1.5) {
-    label = "Sell"
-    colorClass = "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300"
-  } else {
-    label = "Strong Sell"
-    colorClass = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-  }
+/** Convert sentiment from [-2, 2] to a percentage [0, 100] for the pulse bar */
+function sentimentToPercent(value: number): number {
+  return ((value + 2) / 4) * 100
+}
 
-  // Low confidence indicator for single mentions
-  if (mentions < 3) {
-    label += " *"
-  }
+function PulseBar({ value, isTop }: { value: number; isTop: boolean }) {
+  const percent = sentimentToPercent(value)
+
+  // Gradient goes from bear (red) on the left to bull (teal) on the right
+  // The "fill" represents where the sentiment sits
+  return (
+    <div className="relative w-full h-2 rounded-full bg-[#1E293B] overflow-hidden">
+      <div
+        className="pulse-bar-fill absolute inset-y-0 left-0 rounded-full"
+        style={{
+          width: `${percent}%`,
+          background: `linear-gradient(90deg, var(--aura-bear) 0%, #F59E0B 50%, var(--aura-bull) 100%)`,
+          opacity: isTop ? 1 : 0.8,
+        }}
+      />
+    </div>
+  )
+}
+
+function TickerRow({
+  row,
+  index,
+  isTop,
+}: {
+  row: AggregatedTicker
+  index: number
+  isTop: boolean
+}) {
+  const staggerClass = `stagger-${Math.min(index + 1, 10)}`
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${colorClass}`}>
-      {label}
-      <span className="text-[10px] opacity-70">({value.toFixed(2)})</span>
-    </span>
+    <Link
+      href={`/ticker?s=${row.ticker}`}
+      className={`
+        group block rounded-xl border p-5 md:p-6 transition-all duration-200
+        ${isTop
+          ? 'border-[#00D4AA]/30 bg-[#141B2D] animate-glow'
+          : 'border-[#1E293B] bg-[#141B2D]/60 hover:border-[#2D3A4F] hover:bg-[#141B2D]'
+        }
+        animate-fade-up ${staggerClass}
+      `}
+    >
+      {/* Desktop layout */}
+      <div className="hidden md:grid md:grid-cols-[1fr_2fr_auto_auto] md:items-center md:gap-6">
+        {/* Ticker + label */}
+        <div className="flex items-baseline gap-3">
+          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
+            {row.ticker}
+          </span>
+          <span className="text-xs text-[#8B95A8] font-medium">
+            {row.mention_count} mention{row.mention_count !== 1 ? 's' : ''}
+            {row.mention_count < 3 && ' *'}
+          </span>
+        </div>
+
+        {/* Pulse bar + sentiment label */}
+        <div className="flex flex-col gap-1.5">
+          <PulseBar value={row.consensus_sentiment} isTop={isTop} />
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-medium ${
+              row.consensus_sentiment >= 0.5 ? 'text-[#00D4AA]' :
+              row.consensus_sentiment <= -0.5 ? 'text-[#FF4D6A]' :
+              'text-[#8B95A8]'
+            }`}>
+              {getSentimentLabel(row.consensus_sentiment)}
+            </span>
+            <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B]">
+              {row.consensus_sentiment.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Target price */}
+        <div className="text-right">
+          {row.avg_target_price !== null ? (
+            <span className="font-[family-name:var(--font-geist-mono)] text-lg font-semibold text-[#F1F5F9]">
+              ${row.avg_target_price.toFixed(0)}
+            </span>
+          ) : (
+            <span className="text-sm text-[#64748B]">—</span>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transform group-hover:translate-x-0.5 transition-transform">
+            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      {/* Mobile layout */}
+      <div className="md:hidden space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="font-[family-name:var(--font-geist-mono)] text-3xl font-bold tracking-wide text-[#F1F5F9]">
+            {row.ticker}
+          </span>
+          {row.avg_target_price !== null && (
+            <span className="font-[family-name:var(--font-geist-mono)] text-xl font-semibold text-[#F1F5F9]">
+              ${row.avg_target_price.toFixed(0)}
+            </span>
+          )}
+        </div>
+
+        <PulseBar value={row.consensus_sentiment} isTop={isTop} />
+
+        <div className="flex items-center justify-between">
+          <span className={`text-sm font-medium ${
+            row.consensus_sentiment >= 0.5 ? 'text-[#00D4AA]' :
+            row.consensus_sentiment <= -0.5 ? 'text-[#FF4D6A]' :
+            'text-[#8B95A8]'
+          }`}>
+            {getSentimentLabel(row.consensus_sentiment)}
+            <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B] ml-2">
+              {row.consensus_sentiment.toFixed(2)}
+            </span>
+          </span>
+          <span className="text-xs text-[#8B95A8]">
+            {row.mention_count} mention{row.mention_count !== 1 ? 's' : ''}
+            {row.mention_count < 3 && ' *'}
+          </span>
+        </div>
+      </div>
+    </Link>
   )
 }
 
@@ -148,106 +247,148 @@ export default function Home() {
     fetchData()
   }, [])
 
+  // Find top ticker (highest sentiment with 3+ mentions)
+  const topTicker = aggregated.find(
+    (t) => t.mention_count >= 3 && t.consensus_sentiment > 0
+  )?.ticker
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8 flex items-center justify-center">
-        <p className="text-zinc-500">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="relative flex items-center justify-center">
+          {/* The aura glow */}
+          <div
+            className="absolute glow-emerge"
+            style={{ width: '320px', height: '320px', animationDelay: '600ms' }}
+          >
+            <div className="aura-glow" />
+            <div className="aura-glow-inner" />
+          </div>
+          <div className="relative text-center">
+            <div className="text-8xl md:text-9xl font-extralight tracking-[0.25em] logo-sweep">
+              {'Aura'.split('').map((letter, i) => (
+                <span
+                  key={i}
+                  className="logo-letter letter-materialize"
+                  style={{ animationDelay: `${i * 120}ms` }}
+                >
+                  {letter}
+                </span>
+              ))}
+            </div>
+            <a
+              href="https://bynoor.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="byline-appear inline-block mt-4 text-sm font-light text-[#64748B] hover:text-[#00D4AA] transition-colors duration-300 tracking-[0.15em]"
+              style={{ animationDelay: '700ms' }}
+            >
+              by noor
+            </a>
+          </div>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mb-8">
-          Aura — Stock Recommendations
-        </h1>
+  const totalMentions = aggregated.reduce((sum, t) => sum + t.mention_count, 0)
 
+  return (
+    <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
+      <div className="max-w-4xl mx-auto">
+        {/* Hero Section */}
+        <header className="mb-16 md:mb-24 pt-8 md:pt-16">
+          {/* AURA logo with radiating glow + letter animation — centered */}
+          <div className="relative flex flex-col items-center mb-8 md:mb-10">
+            {/* Glow layers — emerge after letters form */}
+            <div
+              className="absolute w-[320px] h-[240px] md:w-[500px] md:h-[320px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glow-emerge"
+              style={{ animationDelay: '600ms' }}
+            >
+              <div className="aura-glow" />
+              <div className="aura-glow-inner" />
+            </div>
+
+            {/* The wordmark — each letter materializes from blur */}
+            <h1 className="relative text-8xl md:text-9xl lg:text-[11rem] font-extralight tracking-[0.2em] md:tracking-[0.25em] logo-sweep leading-none">
+              {'Aura'.split('').map((letter, i) => (
+                <span
+                  key={i}
+                  className="logo-letter letter-materialize"
+                  style={{ animationDelay: `${i * 120}ms` }}
+                >
+                  {letter}
+                </span>
+              ))}
+            </h1>
+
+            {/* by noor — fades in after the logo forms */}
+            <a
+              href="https://bynoor.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative mt-3 md:mt-4 text-sm font-light text-[#64748B] hover:text-[#00D4AA] transition-colors duration-300 tracking-[0.15em] byline-appear"
+              style={{ animationDelay: '800ms' }}
+            >
+              by noor
+            </a>
+          </div>
+
+          {/* Subtitle — centered */}
+          <div className="text-center animate-hero-rise" style={{ animationDelay: '900ms' }}>
+            <p className="text-xl md:text-2xl text-[#8B95A8] font-light leading-relaxed">
+              Every analyst. One signal.
+            </p>
+          </div>
+
+          {/* Live stats — centered */}
+          {aggregated.length > 0 && (
+            <div className="mt-4 text-center animate-hero-rise" style={{ animationDelay: '1050ms' }}>
+              <p className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B] tracking-wide">
+                <span className="text-[#8B95A8]">{aggregated.length}</span> tickers
+                <span className="mx-2 text-[#1E293B]">·</span>
+                <span className="text-[#8B95A8]">{totalMentions}</span> mentions
+              </p>
+            </div>
+          )}
+
+          {/* Pulse line separator */}
+          <div className="mt-10 md:mt-12 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
+            <div className="absolute inset-0 bg-[#1E293B]" />
+            <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
+          </div>
+        </header>
+
+        {/* Ticker list */}
         {aggregated.length === 0 ? (
-          <p className="text-zinc-600 dark:text-zinc-400 text-lg">
-            No stock recommendations are available yet.
-          </p>
+          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center animate-fade-up">
+            <p className="text-lg text-[#8B95A8]">No signals yet.</p>
+            <p className="mt-2 text-sm text-[#64748B]">
+              Recommendations will appear here once videos are ingested.
+            </p>
+          </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-left">
-              <thead className="bg-zinc-100 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-6 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                    Ticker
-                  </th>
-                  <th className="px-6 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                    <span title="Weighted average sentiment across all mentions. Scale: -2 (Strong Sell) to +2 (Strong Buy), weighted by channel trust.">
-                      Consensus Sentiment
-                    </span>
-                  </th>
-                  <th className="px-6 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                    Avg Target Price
-                  </th>
-                  <th className="px-6 py-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                    Mentions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                {aggregated.map((row) => (
-                  <tr
-                    key={row.ticker}
-                    className="bg-white dark:bg-zinc-950 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/ticker?s=${row.ticker}`}
-                        className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {row.ticker}
-                      </Link>
-                      <a
-                        href={`https://finance.yahoo.com/quote/${row.ticker}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-                        title="View on Yahoo Finance"
-                      >
-                        Yahoo ↗
-                      </a>
-                    </td>
-                    <td className="px-6 py-4">
-                      <SentimentBadge value={row.consensus_sentiment} mentions={row.mention_count} />
-                    </td>
-                    <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100">
-                      {row.avg_target_price !== null
-                        ? `$${row.avg_target_price.toFixed(2)}`
-                        : "N/A"}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100">
-                      {row.mention_count}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {aggregated.map((row, index) => (
+              <TickerRow
+                key={row.ticker}
+                row={row}
+                index={index}
+                isTop={row.ticker === topTicker}
+              />
+            ))}
           </div>
         )}
 
-        <footer className="mt-12 border-t border-zinc-200 dark:border-zinc-800 pt-6">
-          <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-            How Consensus Sentiment Works
-          </h2>
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1.5">
-            <p>
-              <strong>What it means:</strong> Consensus Sentiment reflects the overall market opinion on a stock, aggregated from YouTube analysts. The scale ranges from −2 (Strong Sell) to +2 (Strong Buy).
+        {/* Footer disclaimer */}
+        {aggregated.length > 0 && (
+          <footer className="mt-12 pt-6 border-t border-[#1E293B] animate-fade-up stagger-10">
+            <p className="text-xs text-[#64748B] leading-relaxed">
+              Sentiment weighted by channel trust · Dampened until 3+ mentions · Updated on ingest ·{' '}
+              <span className="text-[#8B95A8]">*</span> Low confidence (fewer than 3 mentions)
             </p>
-            <p>
-              <strong>How we calculate it:</strong> We average the sentiment score (−2 to +2) across all analyst mentions, then apply a confidence factor based on the number of mentions. With 1 mention the score is dampened to ⅓ of its value, at 2 mentions to ½, and at 3+ mentions the full average is shown.
-            </p>
-            <p>
-              <strong>When it updates:</strong> Scores are recalculated on every page load using all stored recommendations. New data is added each time a video is ingested through the admin panel.
-            </p>
-            <p>
-              <strong>*</strong> Ratings marked with an asterisk are based on fewer than 3 mentions and may not represent a true consensus.
-            </p>
-          </div>
-        </footer>
+          </footer>
+        )}
       </div>
     </div>
   )
