@@ -12,7 +12,7 @@ from .schemas import LLMResponse, Recommendation, VideoMetadata
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-4-6"
 
 SYSTEM_PROMPT = """You are a financial analyst assistant. Your task is to extract stock recommendations \
 from YouTube video transcripts. For each stock mentioned with a clear recommendation, \
@@ -42,6 +42,22 @@ Respond with a JSON object matching this schema:
 If no recommendations are found, return: {"recommendations": []}"""
 
 
+import re
+
+
+def _extract_json(text: str) -> str:
+    """Extract JSON from LLM response, handling markdown code fences."""
+    # Try to extract from ```json ... ``` blocks
+    match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    # Try to find raw JSON object
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        return match.group(0)
+    return text
+
+
 def calculate_backoff_delay(retry_count: int) -> float:
     """Calculate exponential backoff delay.
 
@@ -52,8 +68,11 @@ def calculate_backoff_delay(retry_count: int) -> float:
 
 def _build_client() -> anthropic.AsyncAnthropic:
     """Build an Anthropic async client with configured timeouts."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=502, detail="Anthropic API key not configured")
     return anthropic.AsyncAnthropic(
-        api_key=ANTHROPIC_API_KEY,
+        api_key=api_key,
         timeout=httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=10.0),
     )
 
@@ -121,7 +140,8 @@ async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> lis
 
     # Schema validation with single retry
     try:
-        parsed = LLMResponse.model_validate_json(response_text)
+        cleaned = _extract_json(response_text)
+        parsed = LLMResponse.model_validate_json(cleaned)
     except ValidationError:
         # Retry once on validation failure
         try:
@@ -143,11 +163,12 @@ async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> lis
                         detail="Service temporarily unavailable",
                     )
 
-            parsed = LLMResponse.model_validate_json(response_text)
-        except ValidationError:
+            cleaned = _extract_json(response_text)
+            parsed = LLMResponse.model_validate_json(cleaned)
+        except ValidationError as e:
             raise HTTPException(
                 status_code=502,
-                detail="Could not parse recommendations",
+                detail=f"Could not parse recommendations: {e.errors()[0]['msg'] if e.errors() else str(e)}",
             )
 
     return parsed.recommendations

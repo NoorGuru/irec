@@ -51,6 +51,14 @@ def _log_pipeline_error(
     )
 
 
+@app.get("/api/v1/debug-auth")
+async def debug_auth(
+    _owner: str = Depends(verify_owner),
+):
+    """Temporary debug endpoint to test auth in isolation."""
+    return {"status": "ok", "email": _owner}
+
+
 @app.post(
     "/api/v1/extract",
     response_model=ExtractionResponse,
@@ -127,7 +135,7 @@ async def extract(
         raise
     except Exception as e:
         _log_pipeline_error(youtube_url, "llm_parse", e)
-        raise HTTPException(status_code=502, detail="Could not parse recommendations")
+        raise HTTPException(status_code=502, detail=f"Could not parse recommendations: {type(e).__name__}: {e}")
 
     # Step 6: Persist to database → channel upsert, video insert, recommendations insert
     try:

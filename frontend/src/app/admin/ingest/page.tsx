@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
@@ -14,10 +15,32 @@ interface Toast {
 }
 
 export default function IngestPage() {
+  const router = useRouter()
   const [url, setUrl] = useState('')
   const [validationError, setValidationError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [authChecked, setAuthChecked] = useState(false)
+
+  // Client-side auth protection
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.replace('/admin/login')
+        return
+      }
+      const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || ''
+      if (session.user.email?.toLowerCase() !== ownerEmail.toLowerCase()) {
+        await supabase.auth.signOut()
+        router.replace('/admin/login?error=not_owner')
+        return
+      }
+      setAuthChecked(true)
+    }
+    checkAuth()
+  }, [router])
 
   const addToast = useCallback((message: string, type: 'success' | 'error') => {
     const id = Date.now()
@@ -100,6 +123,14 @@ export default function IngestPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-zinc-500">Checking auth...</p>
+      </div>
+    )
   }
 
   return (

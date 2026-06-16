@@ -14,10 +14,6 @@ from app.schemas import Recommendation
 logger = logging.getLogger(__name__)
 
 # Initialize Supabase client with service key (bypasses RLS)
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
-
-# Connect timeout 5s, read timeout 10s
 _client: Client | None = None
 
 
@@ -25,14 +21,18 @@ def _get_client() -> Client:
     """Lazily initialize and return the Supabase client."""
     global _client
     if _client is None:
-        if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_service_key = os.environ.get("SUPABASE_SERVICE_KEY")
+        if not supabase_url or not supabase_service_key:
             raise HTTPException(
                 status_code=500,
                 detail="Internal error, please try again",
             )
+        # Ensure URL doesn't include /rest/v1/ suffix
+        base_url = supabase_url.rstrip("/").replace("/rest/v1", "")
         _client = create_client(
-            SUPABASE_URL,
-            SUPABASE_SERVICE_KEY,
+            base_url,
+            supabase_service_key,
         )
     return _client
 
@@ -55,10 +55,10 @@ async def check_duplicate(youtube_video_id: str) -> bool:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Database timeout/error during duplicate check: {e}")
+        logger.error(f"Database timeout/error during duplicate check: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=503,
-            detail="Database service temporarily unavailable",
+            detail=f"Database service temporarily unavailable: {type(e).__name__}: {e}",
         )
 
 

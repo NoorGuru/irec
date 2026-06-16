@@ -7,7 +7,6 @@ from fastapi import HTTPException
 
 from app.schemas import VideoMetadata
 
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/videos"
 
 
@@ -24,10 +23,14 @@ async def fetch_metadata(video_id: str) -> VideoMetadata:
         HTTPException(404): If the video is not found on YouTube.
         HTTPException(502): If the YouTube API returns an error or times out.
     """
+    api_key = os.environ.get("YOUTUBE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=502, detail="YouTube API key not configured")
+
     params = {
         "part": "snippet",
         "id": video_id,
-        "key": YOUTUBE_API_KEY,
+        "key": api_key,
     }
 
     timeout = httpx.Timeout(10.0, connect=10.0)
