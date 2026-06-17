@@ -186,9 +186,11 @@ async function fetchTranscriptFromTrack(track) {
   return segments.join(' ');
 }
 
+// Public innertube API key (same for all users, rarely changes)
+const INNERTUBE_API_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+
 async function getTranscript(videoId) {
-  const apiKey = await getApiKey(videoId);
-  const { tracks } = await getCaptionTracks(videoId, apiKey);
+  const { tracks } = await getCaptionTracks(videoId, INNERTUBE_API_KEY);
 
   // Find best English track
   const track = tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr')
@@ -220,8 +222,7 @@ export default {
         });
       }
       try {
-        const apiKey = await getApiKey(videoId);
-        const { tracks, data } = await getCaptionTracks(videoId, apiKey);
+        const { tracks, data } = await getCaptionTracks(videoId, INNERTUBE_API_KEY);
         const track = tracks[0];
         let cleanUrl = (track.baseUrl || '').replace(/&amp;/g, '&').replace(/&variant=[^&]+/g, '').replace(/&exp=[^&]+/g, '');
 
@@ -232,7 +233,6 @@ export default {
         const testText = await testResp.text();
 
         return new Response(JSON.stringify({
-          apiKey,
           tracksCount: tracks.length,
           track: { lang: track.languageCode, kind: track.kind, baseUrlLength: track.baseUrl.length },
           cleanUrl,
