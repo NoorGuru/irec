@@ -129,14 +129,19 @@ function getMarketLeanLabel(avg: number): { label: string; color: string } {
 }
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  if (hours < 1) return 'just now'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return '—'
+  const diff = Date.now() - date.getTime()
+  if (diff < 0) return '—'
+  const minutes = Math.floor(diff / (1000 * 60))
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
   if (days === 1) return '1d ago'
   if (days < 7) return `${days}d ago`
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function SentimentArrow({ value }: { value: number }) {
