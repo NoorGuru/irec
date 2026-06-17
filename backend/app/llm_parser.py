@@ -99,7 +99,7 @@ def _build_client() -> anthropic.AsyncAnthropic:
         raise HTTPException(status_code=502, detail="Anthropic API key not configured")
     return anthropic.AsyncAnthropic(
         api_key=api_key,
-        timeout=httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=10.0),
+        timeout=httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0),
     )
 
 
