@@ -31,8 +31,10 @@
 - **Supabase project ref**: `deasjnsdrhnsxqssfbrn`
 - **Supabase region**: ap-northeast-2
 - **Backend hosting**: Google Cloud Run
+- **Backend URL**: `https://irec-backend-f5xyrqhyjq-uc.a.run.app`
+- **Transcript Worker**: Cloudflare Worker (`https://yt-transcript-proxy.abukhleif94.workers.dev`)
 - **Frontend hosting**: Static (GitHub Pages via CNAME)
-- **CI/CD**: GitHub Actions (deploy-backend.yml, deploy-frontend.yml)
+- **CI/CD**: GitHub Actions (deploy-backend.yml, deploy-frontend.yml, deploy-worker.yml)
 
 ## Common Commands
 
