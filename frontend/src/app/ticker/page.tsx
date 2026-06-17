@@ -179,14 +179,6 @@ function TickerContent() {
     return (
       <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
         <div className="max-w-4xl mx-auto">
-          {/* Mini aura logo — nav home */}
-          <Link
-            href="/"
-            className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity"
-          >
-            <span className="logo-letter">aura</span>
-          </Link>
-
           <h1 className="mt-8 font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
             {symbol?.toUpperCase() || '?'}
           </h1>
@@ -212,14 +204,6 @@ function TickerContent() {
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-4xl mx-auto">
-        {/* Mini aura logo — nav home */}
-        <Link
-          href="/"
-          className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity animate-fade-up"
-        >
-          <span className="logo-letter">aura</span>
-        </Link>
-
         {/* Ticker header */}
         <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
           <div className="flex items-start justify-between flex-wrap gap-4">

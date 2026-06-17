@@ -25,6 +25,7 @@ function CommandPalette({
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [allTickers, setAllTickers] = useState<TickerResult[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [closing, setClosing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Fetch tickers once opened
@@ -74,19 +75,32 @@ function CommandPalette({
 
   // Autofocus
   useEffect(() => {
-    if (open) {
+    if (open && !closing) {
       setQuery('')
       setTimeout(() => inputRef.current?.focus(), 50)
     }
+  }, [open, closing])
+
+  // Reset closing state when opened
+  useEffect(() => {
+    if (open) setClosing(false)
   }, [open])
+
+  const handleClose = useCallback(() => {
+    setClosing(true)
+    setTimeout(() => {
+      onClose()
+      setClosing(false)
+    }, 250)
+  }, [onClose])
 
   const navigate = useCallback(
     (ticker: string) => {
       router.push(`/ticker?s=${ticker}`)
-      onClose()
+      handleClose()
       setQuery('')
     },
-    [router, onClose]
+    [router, handleClose]
   )
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -104,7 +118,7 @@ function CommandPalette({
         navigate(query.trim().toUpperCase())
       }
     } else if (e.key === 'Escape') {
-      onClose()
+      handleClose()
     }
   }
 
@@ -112,20 +126,33 @@ function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] md:pt-[20vh] px-4"
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-16 md:pt-[20vh] px-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) handleClose()
       }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#0A0F1A]/90 backdrop-blur-md animate-[fadeIn_150ms_ease-out]" />
+      <div className={`absolute inset-0 bg-[#0A0F1A]/90 backdrop-blur-md ${closing ? 'cmd-backdrop-out' : 'cmd-backdrop'}`} />
 
       {/* Panel */}
-      <div className="relative w-full max-w-lg animate-[slideDown_200ms_cubic-bezier(0.16,1,0.3,1)]">
+      <div className={`relative w-full max-w-lg ${closing ? 'cmd-panel-out' : 'cmd-panel'}`}>
+        {/* Mobile: logo + cancel */}
+        <div className="md:hidden flex items-center justify-between mb-4">
+          <span className="font-[family-name:var(--font-geist-mono)] text-base font-extralight tracking-[0.3em] logo-sweep">
+            <span className="logo-letter">aura</span>
+          </span>
+          <button
+            onClick={handleClose}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#00D4AA] border border-[#00D4AA]/20 bg-[#00D4AA]/5 active:bg-[#00D4AA]/10 active:scale-95 transition-all duration-150"
+          >
+            Cancel
+          </button>
+        </div>
+
         {/* Search input — large, bold */}
         <div className="relative">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#00D4AA]/20 via-[#00D4AA]/5 to-[#00D4AA]/20 blur-xl pointer-events-none" />
-          <div className="relative flex items-center rounded-2xl border border-[#00D4AA]/20 bg-[#141B2D] shadow-2xl shadow-[#00D4AA]/5 overflow-hidden">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[#00D4AA]/20 via-[#00D4AA]/5 to-[#00D4AA]/20 blur-xl pointer-events-none cmd-glow" />
+          <div className="relative flex items-center rounded-2xl border border-[#00D4AA]/20 bg-[#141B2D] shadow-2xl shadow-[#00D4AA]/5 overflow-hidden cmd-input-ring">
             <svg
               width="20"
               height="20"
@@ -175,7 +202,7 @@ function CommandPalette({
                 onClick={() => navigate(result.ticker)}
                 onMouseEnter={() => setSelectedIndex(i)}
                 className={`
-                  flex items-center justify-between px-5 py-3.5 cursor-pointer transition-all duration-75
+                  cmd-result-item flex items-center justify-between px-5 py-3.5 cursor-pointer transition-all duration-100
                   ${
                     i === selectedIndex
                       ? 'bg-[#00D4AA]/8 border-l-2 border-l-[#00D4AA]'
@@ -185,7 +212,7 @@ function CommandPalette({
               >
                 <div className="flex items-center gap-4">
                   <span
-                    className={`font-[family-name:var(--font-geist-mono)] text-base font-bold tracking-wider ${
+                    className={`font-[family-name:var(--font-geist-mono)] text-base font-bold tracking-wider transition-colors duration-100 ${
                       i === selectedIndex ? 'text-[#00D4AA]' : 'text-[#F1F5F9]'
                     }`}
                   >
@@ -202,10 +229,10 @@ function CommandPalette({
                   height="14"
                   viewBox="0 0 16 16"
                   fill="none"
-                  className={`shrink-0 transition-all ${
+                  className={`shrink-0 transition-all duration-150 ${
                     i === selectedIndex
                       ? 'opacity-100 text-[#00D4AA] translate-x-0'
-                      : 'opacity-0 -translate-x-1'
+                      : 'opacity-0 -translate-x-2'
                   }`}
                 >
                   <path d="M2 8h12M10 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -217,7 +244,7 @@ function CommandPalette({
 
         {/* Empty state */}
         {query.trim() && results.length === 0 && loaded && (
-          <div className="mt-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/95 p-6 text-center">
+          <div className="mt-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/95 p-6 text-center cmd-result-item">
             <p className="font-[family-name:var(--font-geist-mono)] text-sm text-[#64748B]">
               No match — Enter to look up{' '}
               <span className="text-[#F1F5F9] font-bold">{query.toUpperCase()}</span>
@@ -226,8 +253,11 @@ function CommandPalette({
         )}
 
         {/* Hint */}
-        <p className="mt-4 text-center text-[11px] text-[#374151] font-[family-name:var(--font-geist-mono)] tracking-wide">
+        <p className="hidden md:block mt-4 text-center text-[11px] text-[#374151] font-[family-name:var(--font-geist-mono)] tracking-wide">
           ↑↓ navigate · ↵ select · esc close
+        </p>
+        <p className="md:hidden mt-4 text-center text-[11px] text-[#374151]">
+          Tap a result or press Cancel to close
         </p>
       </div>
     </div>
@@ -273,9 +303,10 @@ export function Navbar() {
 
   return (
     <>
+      {/* Desktop top nav — hidden on mobile */}
       <nav
         className={`
-          sticky top-0 z-50 w-full transition-all duration-300
+          hidden md:block sticky top-0 z-50 w-full transition-all duration-300
           ${scrolled
             ? 'bg-[#0A0F1A]/95 backdrop-blur-xl border-b border-[#1E293B]/50 shadow-lg shadow-black/20'
             : 'bg-transparent border-b border-transparent'
@@ -284,17 +315,17 @@ export function Navbar() {
         role="navigation"
         aria-label="Main navigation"
       >
-        <div className="max-w-6xl mx-auto px-4 md:px-8">
-          <div className="flex items-center justify-between h-16 md:h-[72px]">
+        <div className="max-w-6xl mx-auto px-8">
+          <div className="flex items-center justify-between h-[72px]">
             {/* Logo */}
             <Link href="/" className="group shrink-0">
-              <span className="font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-extralight tracking-[0.3em] logo-sweep">
+              <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-extralight tracking-[0.3em] logo-sweep">
                 <span className="logo-letter">aura</span>
               </span>
             </Link>
 
-            {/* Desktop: center nav */}
-            <div className="hidden md:flex items-center gap-0.5 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/50 px-1.5 py-1.5">
+            {/* Center nav pill */}
+            <div className="flex items-center gap-0.5 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/50 px-1.5 py-1.5">
               {links.map((link) => {
                 const isActive =
                   link.href === '/'
@@ -321,7 +352,7 @@ export function Navbar() {
               })}
             </div>
 
-            {/* Right: search trigger */}
+            {/* Search trigger */}
             <button
               onClick={() => setSearchOpen(true)}
               className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
@@ -337,55 +368,64 @@ export function Navbar() {
                 <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
-              <span className="hidden sm:inline text-sm text-[#64748B] group-hover:text-[#8B95A8] transition-colors">
+              <span className="text-sm text-[#64748B] group-hover:text-[#8B95A8] transition-colors">
                 Search
               </span>
-              <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#374151]">
+              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#374151]">
                 ⌘K
               </kbd>
             </button>
           </div>
         </div>
-
-        {/* Mobile bottom tab bar */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-[#1E293B]/60 bg-[#0A0F1A]/95 backdrop-blur-xl safe-area-bottom">
-          <div className="flex items-center justify-around h-14 px-2">
-            {links.map((link) => {
-              const isActive =
-                link.href === '/'
-                  ? pathname === '/'
-                  : pathname?.startsWith(link.href)
-              const Icon = link.icon
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`
-                    flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors
-                    ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B]'}
-                  `}
-                >
-                  <Icon active={!!isActive} />
-                  <span className="text-[10px] font-medium tracking-wide">
-                    {link.label}
-                  </span>
-                </Link>
-              )
-            })}
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-[#64748B]"
-              aria-label="Search"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
-                <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <span className="text-[10px] font-medium tracking-wide">Search</span>
-            </button>
-          </div>
-        </div>
       </nav>
+
+      {/* Mobile top bar — logo only, thin */}
+      <div className="md:hidden sticky top-0 z-50 w-full h-8 flex items-center justify-center border-b border-[#1E293B]/30 bg-[#0A0F1A]/90 backdrop-blur-lg">
+        <Link href="/">
+          <span className="font-[family-name:var(--font-geist-mono)] text-base font-extralight tracking-[0.3em] logo-sweep">
+            <span className="logo-letter">aura</span>
+          </span>
+        </Link>
+      </div>
+
+      {/* Mobile bottom tab bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-[#1E293B]/60 bg-[#0A0F1A]/95 backdrop-blur-xl safe-area-bottom" role="navigation" aria-label="Mobile navigation">
+        <div className="flex items-center justify-around h-14 px-2">
+          {links.map((link) => {
+            const isActive =
+              link.href === '/'
+                ? pathname === '/'
+                : pathname?.startsWith(link.href)
+            const Icon = link.icon
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`
+                  flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors
+                  ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B]'}
+                `}
+              >
+                <Icon active={!!isActive} />
+                <span className="text-[10px] font-medium tracking-wide">
+                  {link.label}
+                </span>
+              </Link>
+            )
+          })}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-[#64748B]"
+            aria-label="Search"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
+              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span className="text-[10px] font-medium tracking-wide">Search</span>
+          </button>
+        </div>
+      </div>
 
       {/* Command palette overlay */}
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />

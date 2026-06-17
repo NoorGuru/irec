@@ -177,9 +177,10 @@ function ChannelCard({ profile, index }: { profile: ChannelProfile; index: numbe
   const isTopChannel = index === 0 && profile.total_recommendations >= 3
 
   return (
-    <div
+    <Link
+      href={`/channel?id=${profile.channel_id}`}
       className={`
-        group relative rounded-2xl border p-6 md:p-8 transition-all duration-300
+        group block relative rounded-2xl border p-6 md:p-8 transition-all duration-300
         ${isTopChannel
           ? 'border-[#00D4AA]/20 bg-[#141B2D] animate-glow'
           : 'border-[#1E293B] bg-[#141B2D]/50 hover:border-[#2D3A4F] hover:bg-[#141B2D]'
@@ -190,23 +191,20 @@ function ChannelCard({ profile, index }: { profile: ChannelProfile; index: numbe
       {/* Top: Channel identity */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex-1 min-w-0">
-          <Link
-            href={`/channel?id=${profile.channel_id}`}
-            className="inline-flex items-center gap-2 font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold text-[#F1F5F9] tracking-tight group-hover:text-[#00D4AA] transition-colors duration-300 group/channel"
-          >
+          <div className="inline-flex items-center gap-2 font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold text-[#F1F5F9] tracking-tight group-hover:text-[#00D4AA] transition-colors duration-300">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#475569] group-hover:text-[#00D4AA] transition-colors shrink-0" aria-hidden="true">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span className="group-hover:underline decoration-[#00D4AA]/30 underline-offset-4 truncate">
+            <span className="truncate">
               {profile.channel_name}
             </span>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[#475569] group-hover:text-[#00D4AA] transition-all group-hover:translate-x-0.5 shrink-0 opacity-0 group-hover:opacity-100" aria-hidden="true">
               <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </Link>
+          </div>
           <div className="mt-1.5 flex items-center flex-wrap gap-x-3 gap-y-1">
             <span className="text-xs text-[#64748B]">
               {profile.total_videos} video{profile.total_videos !== 1 ? 's' : ''}
@@ -270,13 +268,17 @@ function ChannelCard({ profile, index }: { profile: ChannelProfile; index: numbe
       {profile.top_tickers.length > 0 && (
         <div className="flex items-center flex-wrap gap-2 pt-4 border-t border-[#1E293B]/60">
           {profile.top_tickers.map((ticker) => (
-            <Link
+            <span
               key={ticker}
-              href={`/ticker?s=${ticker}`}
-              className="font-[family-name:var(--font-geist-mono)] text-xs font-medium px-2.5 py-1 rounded-md bg-[#0A0F1A] border border-[#1E293B] text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 transition-all duration-200"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                window.location.href = `/ticker?s=${ticker}`
+              }}
+              className="font-[family-name:var(--font-geist-mono)] text-xs font-medium px-2.5 py-1 rounded-md bg-[#0A0F1A] border border-[#1E293B] text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 transition-all duration-200 cursor-pointer relative z-10"
             >
               {ticker}
-            </Link>
+            </span>
           ))}
         </div>
       )}
@@ -291,7 +293,7 @@ function ChannelCard({ profile, index }: { profile: ChannelProfile; index: numbe
           aria-hidden="true"
         />
       )}
-    </div>
+    </Link>
   )
 }
 

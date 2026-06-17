@@ -309,9 +309,6 @@ function VideoContent() {
     return (
       <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
         <div className="max-w-4xl mx-auto">
-          <Link href="/" className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity">
-            <span className="logo-letter">aura</span>
-          </Link>
           <h1 className="mt-12 text-4xl font-bold text-[#F1F5F9]">Video not found</h1>
           <p className="mt-3 text-[#8B95A8]">This video hasn&apos;t been analyzed yet, or the link is incorrect.</p>
           <Link href="/" className="mt-6 inline-block text-sm text-[#00D4AA] hover:underline">
@@ -333,10 +330,10 @@ function VideoContent() {
       <div className="max-w-4xl mx-auto">
         {/* ─── Nav ─── */}
         <nav className="flex items-center gap-2 text-sm animate-fade-up">
-          <Link href="/" className="text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity">
-            <span className="logo-letter">aura</span>
+          <Link href="/videos" className="text-[#64748B] hover:text-[#8B95A8] transition-colors">
+            Videos
           </Link>
-          <span className="text-[#1E293B] mx-2">/</span>
+          <span className="text-[#1E293B]">/</span>
           <Link href={`/channel?id=${video.channel_id}`} className="text-[#64748B] hover:text-[#8B95A8] transition-colors truncate max-w-[200px]">
             {video.channels.channel_name}
           </Link>
