@@ -62,12 +62,52 @@ async def get_version():
     }
 
 
-@app.get("/api/v1/debug-auth")
-async def debug_auth(
+@app.get("/api/v1/debug-transcript/{video_id}")
+async def debug_transcript(
+    video_id: str,
     _owner: str = Depends(verify_owner),
 ):
-    """Temporary debug endpoint to test auth in isolation."""
-    return {"status": "ok", "email": _owner}
+    """Debug endpoint to test transcript fetch methods in isolation."""
+    import traceback
+    from app.transcript import _fetch_transcript_ytdlp
+
+    results = {}
+
+    # Test yt-dlp
+    try:
+        import asyncio
+        ytdlp_result = await asyncio.to_thread(_fetch_transcript_ytdlp, video_id)
+        results["ytdlp"] = {
+            "success": ytdlp_result is not None,
+            "length": len(ytdlp_result) if ytdlp_result else 0,
+            "preview": ytdlp_result[:200] if ytdlp_result else None,
+        }
+    except Exception as e:
+        results["ytdlp"] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    # Test youtube-transcript-api (no proxy)
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+        api = YouTubeTranscriptApi()
+        import asyncio
+        result = await asyncio.to_thread(api.fetch, video_id, languages=["en", "en-US", "en-GB"])
+        text = " ".join(s.text for s in result.snippets)
+        results["yt_api_no_proxy"] = {"success": True, "length": len(text), "preview": text[:200]}
+    except Exception as e:
+        results["yt_api_no_proxy"] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    # Test youtube-transcript-api (with proxy)
+    try:
+        from app.transcript import _build_api
+        api = _build_api()
+        import asyncio
+        result = await asyncio.to_thread(api.fetch, video_id, languages=["en", "en-US", "en-GB"])
+        text = " ".join(s.text for s in result.snippets)
+        results["yt_api_proxy"] = {"success": True, "length": len(text), "preview": text[:200]}
+    except Exception as e:
+        results["yt_api_proxy"] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+
+    return results
 
 
 @app.post(
