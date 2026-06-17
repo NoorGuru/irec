@@ -684,8 +684,8 @@ export default function ChannelsPage() {
           <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
         </div>
 
-        {/* Sort/Filter bar — sticky */}
-        <div className="sticky top-[72px] z-10 bg-[#0A0F1A]/95 backdrop-blur-xl py-3 -mx-4 px-4 mb-6 animate-fade-up stagger-3">
+        {/* Sort/Filter bar */}
+        <div className="py-3 mb-6 animate-fade-up stagger-3">
           <SortFilterBar
             sort={sort}
             setSort={setSort}
