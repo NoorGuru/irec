@@ -13,6 +13,7 @@ interface ChannelRow {
   trust_weight: number
   created_at: string
   youtube_channel_id: string | null
+  channel_thumbnail_url: string | null
 }
 
 interface VideoRow {
@@ -174,51 +175,67 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
       {/* Collapsed row — always visible */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-4 p-4 md:p-5 text-left hover:bg-[#141B2D]/60 transition-colors duration-200 group/row"
+        className="w-full p-4 md:p-5 text-left hover:bg-[#141B2D]/60 transition-colors duration-200 group/row"
       >
-        {/* Thumbnail */}
-        <div className="shrink-0 relative rounded-lg overflow-hidden w-20 h-12 md:w-28 md:h-16 bg-[#0A0F1A]">
-          <img
-            src={getYoutubeThumbnail(video.youtube_video_id)}
-            alt=""
-            className="w-full h-full object-cover opacity-70 group-hover/row:opacity-100 transition-opacity duration-200"
-            loading="lazy"
-          />
-        </div>
+        <div className="flex items-center gap-4">
+          {/* Thumbnail */}
+          <div className="shrink-0 relative rounded-lg overflow-hidden w-20 h-12 md:w-28 md:h-16 bg-[#0A0F1A]">
+            <img
+              src={getYoutubeThumbnail(video.youtube_video_id)}
+              alt=""
+              className="w-full h-full object-cover opacity-70 group-hover/row:opacity-100 transition-opacity duration-200"
+              loading="lazy"
+            />
+          </div>
 
-        {/* Middle: date + ticker list */}
-        <div className="flex-1 min-w-0">
-          <span className="text-xs text-[#64748B] block mb-1">{formatDate(video.published_at)}</span>
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
-            {video.recommendations.map((rec) => (
-              <span key={rec.id} className="font-[family-name:var(--font-geist-mono)] text-sm text-[#8B95A8]">
-                {rec.ticker}
-              </span>
-            ))}
+          {/* Middle: date + tickers (desktop: inline, mobile: stacked) */}
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-[#64748B] block mb-1">{formatDate(video.published_at)}</span>
+            <div className="hidden md:flex items-center flex-wrap gap-x-2 gap-y-0.5">
+              {video.recommendations.map((rec) => (
+                <span key={rec.id} className="font-[family-name:var(--font-geist-mono)] text-sm text-[#8B95A8]">
+                  {rec.ticker}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Sentiment dots + chevron */}
+          <div className="shrink-0 flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              {video.recommendations.slice(0, 6).map((rec) => (
+                <div
+                  key={rec.id}
+                  className={`w-2 h-2 rounded-full ${getSentimentBg(rec.sentiment)}`}
+                  title={`${rec.ticker}: ${getSentimentWord(rec.sentiment)}`}
+                />
+              ))}
+              {video.recommendations.length > 6 && (
+                <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#475569] ml-0.5">
+                  +{video.recommendations.length - 6}
+                </span>
+              )}
+            </div>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+              className={`text-[#475569] transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+            >
+              <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
         </div>
 
-        {/* Right: sentiment dots + chevron */}
-        <div className="shrink-0 flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            {video.recommendations.map((rec) => (
-              <div
-                key={rec.id}
-                className={`w-2 h-2 rounded-full ${getSentimentBg(rec.sentiment)}`}
-                title={`${rec.ticker}: ${getSentimentWord(rec.sentiment)}`}
-              />
-            ))}
-          </div>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-            className={`text-[#475569] transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
-          >
-            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+        {/* Tickers on second line — mobile only */}
+        <div className="md:hidden flex items-center flex-wrap gap-x-2 gap-y-1 mt-2">
+          {video.recommendations.map((rec) => (
+            <span key={rec.id} className="font-[family-name:var(--font-geist-mono)] text-sm text-[#8B95A8]">
+              {rec.ticker}
+            </span>
+          ))}
         </div>
       </button>
 
@@ -263,9 +280,10 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
           </div>
 
           {video.recommendations.map((rec) => (
-            <div
+            <Link
               key={rec.id}
-              className="flex items-start gap-3 rounded-lg bg-[#0A0F1A]/60 p-3 md:p-4"
+              href={`/ticker?s=${rec.ticker}`}
+              className="group/rec flex items-start gap-3 rounded-lg bg-[#0A0F1A]/60 p-3 md:p-4 hover:bg-[#0A0F1A] hover:border-[#2D3A4F] border border-transparent transition-all duration-200"
             >
               {/* Sentiment indicator bar */}
               <div className={`w-1 self-stretch rounded-full shrink-0 ${getSentimentBg(rec.sentiment)}`} />
@@ -273,12 +291,9 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
               <div className="flex-1 min-w-0">
                 {/* Ticker + sentiment + target */}
                 <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-1.5">
-                  <Link
-                    href={`/ticker?s=${rec.ticker}`}
-                    className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#F1F5F9] hover:text-[#00D4AA] transition-colors"
-                  >
+                  <span className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#F1F5F9] group-hover/rec:text-[#00D4AA] transition-colors">
                     {rec.ticker}
-                  </Link>
+                  </span>
                   <span className={getSentimentBadgeClass(rec.sentiment)}>
                     <SentimentArrow value={rec.sentiment} />
                     {getSentimentWord(rec.sentiment)}
@@ -300,7 +315,12 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
                   </p>
                 )}
               </div>
-            </div>
+
+              {/* Arrow hint */}
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover/rec:text-[#00D4AA] transition-colors opacity-0 group-hover/rec:opacity-100">
+                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
           ))}
         </div>
       )}
@@ -401,6 +421,10 @@ function ChannelContent() {
     ? allRecs.reduce((s, r) => s + r.conviction_level, 0) / allRecs.length
     : 0
 
+  // Timeline: first and latest video dates
+  const firstVideoDate = videos.length > 0 ? videos[videos.length - 1].published_at : null
+  const latestVideoDate = videos.length > 0 ? videos[0].published_at : null
+
   // Ticker breakdown
   const tickerMap = new Map<string, { sentiments: number[]; convictions: number[]; prices: number[] }>()
   for (const rec of allRecs) {
@@ -430,10 +454,6 @@ function ChannelContent() {
     recommendations: allRecs.filter(r => r.video_id === v.video_id),
   }))
 
-  // Timeline: first and latest video dates
-  const firstVideoDate = videos.length > 0 ? videos[videos.length - 1].published_at : null
-  const latestVideoDate = videos.length > 0 ? videos[0].published_at : null
-
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-5xl mx-auto">
@@ -448,41 +468,74 @@ function ChannelContent() {
 
         {/* ─── Hero: Channel Identity ─── */}
         <header className="mt-10 mb-12 animate-fade-up stagger-1">
-          <h1 className="font-[family-name:var(--font-geist-mono)] text-4xl md:text-6xl font-bold tracking-tight text-[#F1F5F9]">
-            {channel.channel_name}
-          </h1>
-          <div className="mt-3 flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-[#64748B]">
-            <span>Tracking since {formatDate(channel.created_at)}</span>
-            {firstVideoDate && latestVideoDate && firstVideoDate !== latestVideoDate && (
-              <>
-                <span className="text-[#1E293B]">·</span>
-                <span>{formatShortDate(firstVideoDate)} → {formatShortDate(latestVideoDate)}</span>
-              </>
+          {/* Background glow from channel thumbnail */}
+          <div className="relative rounded-2xl border border-[#1E293B] bg-[#141B2D] overflow-hidden p-6 md:p-8">
+            {/* Blurred background atmosphere */}
+            {channel.channel_thumbnail_url && (
+              <div className="absolute inset-0 z-0">
+                <img
+                  src={channel.channel_thumbnail_url}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover blur-sm opacity-15"
+                  aria-hidden="true"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#141B2D] via-[#141B2D]/80 to-[#141B2D]/60" />
+              </div>
             )}
-            <span className="text-[#1E293B]">·</span>
-            <span className="flex items-center gap-1.5">
-              Trust
-              <span className="font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">{channel.trust_weight.toFixed(1)}×</span>
-            </span>
-            {channel.youtube_channel_id && (
-              <>
-                <span className="text-[#1E293B]">·</span>
-                <a
-                  href={`https://www.youtube.com/channel/${channel.youtube_channel_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group/yt inline-flex items-center gap-1.5 text-[#64748B] hover:text-[#FF0000] transition-colors duration-200"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-[#FF0000]/60 group-hover/yt:text-[#FF0000] transition-colors">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                  </svg>
-                  <span className="font-[family-name:var(--font-geist-mono)] text-xs tracking-wide">YouTube</span>
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="opacity-0 group-hover/yt:opacity-100 transition-opacity text-[#FF0000]">
-                    <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </a>
-              </>
-            )}
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
+              {/* Channel avatar */}
+              {channel.channel_thumbnail_url ? (
+                <img
+                  src={channel.channel_thumbnail_url}
+                  alt={channel.channel_name}
+                  className="w-20 h-20 md:w-28 md:h-28 rounded-full object-cover ring-3 ring-[#1E293B] shadow-xl shadow-[#00D4AA]/5 shrink-0"
+                />
+              ) : (
+                <div className="w-20 h-20 md:w-28 md:h-28 rounded-full bg-[#00D4AA]/10 flex items-center justify-center ring-3 ring-[#1E293B] shrink-0">
+                  <span className="font-[family-name:var(--font-geist-mono)] text-3xl md:text-4xl font-bold text-[#00D4AA]">
+                    {channel.channel_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+
+              {/* Channel info */}
+              <div className="flex-1 min-w-0">
+                <h1 className="font-[family-name:var(--font-geist-mono)] text-3xl md:text-5xl font-bold tracking-tight text-[#F1F5F9] break-words">
+                  {channel.channel_name}
+                </h1>
+                <div className="mt-3 flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-[#64748B]">
+                  <span>{videos.length} video{videos.length !== 1 ? 's' : ''} analyzed</span>
+                  <span className="text-[#1E293B]">·</span>
+                  <span>{allRecs.length} stock pick{allRecs.length !== 1 ? 's' : ''}</span>
+                  <span className="text-[#1E293B]">·</span>
+                  <span className="flex items-center gap-1.5">
+                    Trust
+                    <span className="font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">{channel.trust_weight.toFixed(1)}×</span>
+                  </span>
+                </div>
+
+                {/* YouTube link */}
+                {channel.youtube_channel_id && (
+                  <a
+                    href={`https://www.youtube.com/channel/${channel.youtube_channel_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/yt inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-[#0A0F1A]/60 border border-[#1E293B] hover:border-[#FF0000]/30 hover:bg-[#FF0000]/5 transition-all duration-200"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-[#FF0000]/70 group-hover/yt:text-[#FF0000] transition-colors">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#8B95A8] group-hover/yt:text-[#F1F5F9] transition-colors tracking-wide">
+                      Watch on YouTube
+                    </span>
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-[#475569] group-hover/yt:text-[#FF0000] transition-colors">
+                      <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </a>
+                )}
+              </div>
+            </div>
           </div>
         </header>
 
@@ -533,7 +586,41 @@ function ChannelContent() {
           </div>
         </div>
 
-        {/* ─── Ticker Coverage Grid ─── */}
+        {/* ─── Picks per Video + Sentiment Pulse ─── */}
+        <div className="mb-12 animate-fade-up stagger-2">
+          <div className="flex items-center gap-6 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569]">Picks/Video</span>
+              <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
+                {videos.length > 0 ? (allRecs.length / videos.length).toFixed(1) : '0'}
+              </span>
+            </div>
+            {latestVideoDate && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569]">Latest</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-sm text-[#8B95A8]">
+                  {formatShortDate(latestVideoDate)}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Full-width sentiment pulse bar */}
+          <div className="relative w-full h-2.5 rounded-full bg-[#1E293B] overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full pulse-bar-fill"
+              style={{
+                width: `${((avgSentiment + 2) / 4) * 100}%`,
+                background: 'linear-gradient(90deg, #FF1744 0%, #FF4D6A 20%, #F59E0B 50%, #00D4AA 80%, #00FFD0 100%)',
+              }}
+            />
+          </div>
+          <div className="flex justify-between mt-1.5 font-[family-name:var(--font-geist-mono)] text-[10px] text-[#475569]">
+            <span>Bearish</span>
+            <span>Avg: {avgSentiment.toFixed(2)}</span>
+            <span>Bullish</span>
+          </div>
+        </div>
+
         {tickerBreakdowns.length > 0 && (
           <section className="mb-14 animate-fade-up stagger-3">
             <div className="flex items-baseline justify-between mb-5">
