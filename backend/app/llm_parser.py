@@ -19,6 +19,14 @@ from YouTube video transcripts. For each stock mentioned with a clear recommenda
 extract the ticker symbol, sentiment, target price (if mentioned), conviction level, \
 and catalyst notes.
 
+CRITICAL TICKER RULES:
+- Use ONLY official NYSE/NASDAQ/AMEX ticker symbols that are actively traded on US exchanges.
+- If a company is NOT publicly traded (e.g., Stripe, OpenAI), do NOT include it.
+- Double-check ticker accuracy: SPCE = Virgin Galactic (NOT SpaceX), META = Meta Platforms, \
+GOOG/GOOGL = Alphabet, MSFT = Microsoft, TSLA = Tesla, AMZN = Amazon.
+- If you are unsure about a ticker symbol, omit that recommendation entirely.
+- Do NOT invent or guess ticker symbols.
+
 Sentiment scale: -2 (strong sell), -1 (sell/bearish), 0 (neutral/hold), \
 1 (buy/bullish), 2 (strong buy)
 
