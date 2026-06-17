@@ -1002,8 +1002,7 @@ export default function Home() {
         {aggregated.length > 0 && (
           <footer className="mt-12 pt-6 border-t border-[#1E293B] animate-fade-up stagger-10">
             <p className="text-xs text-[#64748B] leading-relaxed">
-              Sentiment weighted by channel trust · Dampened until 3+ mentions · Updated on ingest ·{' '}
-              <span className="text-[#8B95A8]">*</span> Low confidence (fewer than 3 mentions)
+              Trust-weighted consensus · <span className="text-[#8B95A8]">*</span> fewer than 3 mentions
             </p>
           </footer>
         )}

@@ -17,6 +17,7 @@ async def test_fetch_metadata_success():
                 {
                     "snippet": {
                         "channelTitle": "Financial Education",
+                        "channelId": "UC_test_channel_id",
                         "publishedAt": "2024-01-15T10:30:00Z",
                     }
                 }
@@ -35,6 +36,7 @@ async def test_fetch_metadata_success():
         result = await fetch_metadata("abc123xyz99")
 
     assert result.channel_name == "Financial Education"
+    assert result.youtube_channel_id == "UC_test_channel_id"
     assert result.published_at == "2024-01-15T10:30:00Z"
 
 
@@ -119,6 +121,7 @@ async def test_fetch_metadata_uses_correct_params():
                 {
                     "snippet": {
                         "channelTitle": "Test Channel",
+                        "channelId": "UC_test_params_id",
                         "publishedAt": "2024-06-01T00:00:00Z",
                     }
                 }

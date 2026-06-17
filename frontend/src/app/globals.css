@@ -349,6 +349,162 @@
   color: var(--aura-bear-strong);
 }
 
+/* ─── Admin Greeting Animations ─── */
+
+@keyframes greeting-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: translateX(0) scale(1);
+  }
+  33% {
+    opacity: 0.7;
+    transform: translateX(10px) scale(1.1);
+  }
+  66% {
+    opacity: 0.5;
+    transform: translateX(-5px) scale(1.05);
+  }
+}
+
+@keyframes greeting-emoji-bob {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-3px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(1px) rotate(3deg);
+  }
+}
+
+@keyframes greeting-wave-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px) skewX(-3deg);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) skewX(0deg);
+    filter: blur(0px);
+  }
+}
+
+@keyframes greeting-name-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes greeting-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes greeting-line-sweep {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  60% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+  100% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+@keyframes greeting-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Greeting emoji — subtle idle bob */
+.greeting-emoji {
+  display: inline-block;
+  animation: greeting-emoji-bob 3s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+/* Greeting word — slides in with personality */
+.greeting-wave {
+  color: var(--aura-text);
+  animation: greeting-wave-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 200ms;
+}
+
+/* The name gets the gradient treatment — the signature */
+.greeting-name-gradient {
+  background: linear-gradient(
+    90deg,
+    #00D4AA 0%,
+    #00FFD0 25%,
+    #4FFFDB 50%,
+    #00D4AA 75%,
+    #00FFD0 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: greeting-name-shimmer 4s linear infinite;
+  animation-delay: 1s;
+}
+
+/* Blinking cursor after sub-greeting */
+.greeting-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--aura-bull);
+  margin-left: 4px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  animation: greeting-cursor-blink 1.2s step-end infinite;
+  animation-delay: 2s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+/* Decorative line fills in from left */
+.greeting-line-fill {
+  background: linear-gradient(90deg, var(--aura-bull), var(--aura-bull-strong), transparent);
+  animation: greeting-line-sweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 1.4s;
+}
+
+/* Staggered entrance for greeting elements */
+.greeting-stagger-1 {
+  animation: greeting-stagger-in 0.6s ease-out both;
+  animation-delay: 0ms;
+}
+
+.greeting-stagger-2 {
+  animation: greeting-stagger-in 0.6s ease-out both;
+  animation-delay: 600ms;
+}
+
+.greeting-stagger-3 {
+  animation: greeting-stagger-in 0.6s ease-out both;
+  animation-delay: 1000ms;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
@@ -362,10 +518,21 @@
   .byline-appear,
   .glow-emerge,
   .aura-glow,
-  .aura-glow-inner {
-    animation: none;
+  .aura-glow-inner,
+  .greeting-emoji,
+  .greeting-wave,
+  .greeting-name-gradient,
+  .greeting-cursor,
+  .greeting-line-fill,
+  .greeting-stagger-1,
+  .greeting-stagger-2,
+  .greeting-stagger-3 {
+    animation: none !important;
     opacity: 1;
     transform: none;
     filter: none;
+  }
+  .greeting-cursor {
+    display: none;
   }
 }

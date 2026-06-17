@@ -47,4 +47,5 @@ class ParsedURL(BaseModel):
 
 class VideoMetadata(BaseModel):
     channel_name: str
+    youtube_channel_id: str = ""
     published_at: str  # ISO 8601

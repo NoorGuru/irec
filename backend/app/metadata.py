@@ -57,5 +57,6 @@ async def fetch_metadata(video_id: str) -> VideoMetadata:
     snippet = items[0]["snippet"]
     return VideoMetadata(
         channel_name=snippet["channelTitle"],
+        youtube_channel_id=snippet["channelId"],
         published_at=snippet["publishedAt"],
     )
