@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from collections.abc import Callable
 
 import anthropic
 import httpx
@@ -13,6 +14,9 @@ from .schemas import LLMResponse, Recommendation, VideoMetadata
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 MODEL = "claude-sonnet-4-6"
+
+# Type for an optional async retry callback: (attempt, max_retries, reason, delay) -> None
+AsyncRetryCallback = Callable[[int, int, str, float], None] | None
 
 SYSTEM_PROMPT = """You are a financial analyst assistant. Your task is to extract stock recommendations \
 from YouTube video transcripts. For each stock mentioned with a clear recommendation, \
@@ -111,12 +115,15 @@ async def _call_anthropic(client: anthropic.AsyncAnthropic, transcript: str, met
     return message.content[0].text
 
 
-async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> list[Recommendation]:
+async def parse_recommendations(
+    transcript: str, metadata: VideoMetadata, on_retry: AsyncRetryCallback = None
+) -> list[Recommendation]:
     """Parse stock recommendations from a transcript using Claude.
 
     Args:
         transcript: The concatenated video transcript text.
         metadata: Video metadata containing channel name and publish date.
+        on_retry: Optional callback invoked before each retry sleep.
 
     Returns:
         A list of Recommendation objects extracted from the transcript.
@@ -140,6 +147,8 @@ async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> lis
                     detail="AI service busy, try again later",
                 )
             delay = calculate_backoff_delay(attempt)
+            if on_retry:
+                on_retry(attempt + 1, 3, "Rate limited", delay)
             await asyncio.sleep(delay)
         except anthropic.APITimeoutError:
             raise HTTPException(
@@ -159,6 +168,8 @@ async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> lis
         parsed = LLMResponse.model_validate_json(cleaned)
     except ValidationError:
         # Retry once on validation failure
+        if on_retry:
+            on_retry(1, 2, "Invalid response format, retrying", 0)
         try:
             for attempt in range(3):
                 try:
@@ -171,6 +182,8 @@ async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> lis
                             detail="AI service busy, try again later",
                         )
                     delay = calculate_backoff_delay(attempt)
+                    if on_retry:
+                        on_retry(attempt + 1, 3, "Rate limited", delay)
                     await asyncio.sleep(delay)
                 except anthropic.APITimeoutError:
                     raise HTTPException(

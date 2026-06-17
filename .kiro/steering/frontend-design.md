@@ -1,5 +1,6 @@
 ---
 inclusion: auto
+description: Frontend design system guidance — dark-first palette, big typography, terminal-meets-Bloomberg aesthetic, and component patterns for the public dashboard and admin views.
 ---
 
 # Frontend Design — Activate Power First

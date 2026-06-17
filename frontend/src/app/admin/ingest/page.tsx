@@ -4,12 +4,12 @@ import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw } from 'lucide-react'
 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
 
-type StepStatus = 'pending' | 'running' | 'done' | 'error'
+type StepStatus = 'pending' | 'running' | 'done' | 'error' | 'retrying'
 
 interface PipelineStep {
   id: string
@@ -229,6 +229,8 @@ function IngestContent() {
         return <XCircle className="h-5 w-5 text-[#FF4D6A]" />
       case 'running':
         return <Loader2 className="h-5 w-5 animate-spin text-[#00D4AA]" />
+      case 'retrying':
+        return <RefreshCw className="h-5 w-5 animate-spin text-[#F59E0B]" />
       default:
         return <Circle className="h-5 w-5 text-[#8B95A8]/40" />
     }
@@ -321,7 +323,9 @@ function IngestContent() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className={`text-sm font-medium ${
-                      step.status === 'error' ? 'text-[#FF4D6A]' : 'text-[#F1F5F9]'
+                      step.status === 'error' ? 'text-[#FF4D6A]'
+                        : step.status === 'retrying' ? 'text-[#F59E0B]'
+                        : 'text-[#F1F5F9]'
                     }`}>
                       {step.label}
                     </p>
@@ -329,6 +333,8 @@ function IngestContent() {
                       <p className={`mt-0.5 text-xs select-text ${
                         step.status === 'error'
                           ? 'text-[#FF4D6A]/80 whitespace-pre-wrap break-all'
+                          : step.status === 'retrying'
+                          ? 'text-[#F59E0B]/80'
                           : 'truncate text-[#8B95A8]'
                       }`}>
                         {step.detail}

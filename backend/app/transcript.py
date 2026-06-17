@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+from collections.abc import Callable
 
 from fastapi import HTTPException
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -16,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 5
 BASE_DELAY_SECONDS = 3
+
+# Type for an optional retry callback: (attempt, max_retries, error, delay) -> None
+RetryCallback = Callable[[int, int, str, int], None] | None
 
 
 def _build_api() -> YouTubeTranscriptApi:
@@ -39,11 +43,15 @@ def _build_api() -> YouTubeTranscriptApi:
     return YouTubeTranscriptApi()
 
 
-def _fetch_with_retry(video_id: str) -> object:
+def _fetch_with_retry(video_id: str, on_retry: RetryCallback = None) -> object:
     """Attempt transcript fetch with exponential backoff on rate-limit errors.
 
     Returns the raw transcript result object on success.
     Raises the last exception if all retries are exhausted.
+
+    Args:
+        video_id: YouTube video ID.
+        on_retry: Optional callback invoked before each retry sleep.
     """
     api = _build_api()
     last_exception: Exception | None = None
@@ -76,6 +84,8 @@ def _fetch_with_retry(video_id: str) -> object:
                     type(e).__name__,
                     delay,
                 )
+                if on_retry:
+                    on_retry(attempt + 1, MAX_RETRIES, type(e).__name__, delay)
                 time.sleep(delay)
             else:
                 # Non-retryable error — don't retry
@@ -84,7 +94,7 @@ def _fetch_with_retry(video_id: str) -> object:
     raise last_exception  # type: ignore[misc]
 
 
-def fetch_transcript(video_id: str) -> str:
+def fetch_transcript(video_id: str, on_retry: RetryCallback = None) -> str:
     """Fetch the transcript for a YouTube video and concatenate segments.
 
     Tries English first, then falls back to any available language.
@@ -93,6 +103,7 @@ def fetch_transcript(video_id: str) -> str:
 
     Args:
         video_id: The 11-character YouTube video ID.
+        on_retry: Optional callback invoked before each retry sleep.
 
     Returns:
         A single string with all transcript snippet texts joined by spaces.
@@ -101,7 +112,7 @@ def fetch_transcript(video_id: str) -> str:
         HTTPException(422): If the transcript is disabled or unavailable.
     """
     try:
-        result = _fetch_with_retry(video_id)
+        result = _fetch_with_retry(video_id, on_retry=on_retry)
     except (TranscriptsDisabled, NoTranscriptFound):
         # Fallback: try any available transcript
         api = _build_api()

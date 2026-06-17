@@ -144,6 +144,15 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+/** Client-only time display to avoid hydration mismatch with static export */
+function TimeAgo({ dateStr }: { dateStr: string }) {
+  const [text, setText] = useState('')
+  useEffect(() => {
+    setText(timeAgo(dateStr))
+  }, [dateStr])
+  return <>{text}</>
+}
+
 function SentimentArrow({ value }: { value: number }) {
   if (value >= 1.5) {
     return (
@@ -338,7 +347,7 @@ function RecentSignalsFeed({ signals }: { signals: RecentSignal[] }) {
           <span className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">Latest Signals</span>
         </div>
         <span className="text-[10px] text-[#475569]">
-          Last ingested {timeAgo(signals[0].videos.extracted_at)}
+          Last ingested <TimeAgo dateStr={signals[0].videos.extracted_at} />
         </span>
       </div>
 
@@ -359,7 +368,7 @@ function RecentSignalsFeed({ signals }: { signals: RecentSignal[] }) {
               {signal.videos.channels.channel_name}
             </span>
             <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569] shrink-0">
-              {timeAgo(signal.videos.extracted_at)}
+              <TimeAgo dateStr={signal.videos.extracted_at} />
             </span>
           </Link>
         ))}

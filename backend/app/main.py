@@ -233,12 +233,30 @@ async def extract_stream(
         # Step 4: Fetch transcript
         yield sse({"step": "transcript", "status": "running", "detail": "Fetching transcript..."})
         try:
-            transcript = fetch_transcript(parsed.video_id)
+            retry_events: list[dict] = []
+
+            def on_transcript_retry(attempt: int, max_retries: int, error: str, delay: int):
+                retry_events.append({
+                    "step": "transcript",
+                    "status": "retrying",
+                    "detail": f"Retry {attempt}/{max_retries} — {error}, waiting {delay}s...",
+                })
+
+            transcript = fetch_transcript(parsed.video_id, on_retry=on_transcript_retry)
+
+            # Emit any retry events that accumulated during the sync call
+            for evt in retry_events:
+                yield sse(evt)
         except HTTPException as e:
+            # Emit any accumulated retries before the final error
+            for evt in retry_events:
+                yield sse(evt)
             _log_pipeline_error(youtube_url, "transcript_fetch", e)
             yield sse({"step": "transcript", "status": "error", "detail": e.detail})
             return
         except Exception as e:
+            for evt in retry_events:
+                yield sse(evt)
             _log_pipeline_error(youtube_url, "transcript_fetch", e)
             yield sse({"step": "transcript", "status": "error", "detail": "Transcript unavailable for this video"})
             return
@@ -248,12 +266,29 @@ async def extract_stream(
         # Step 5: LLM extraction
         yield sse({"step": "llm_parse", "status": "running", "detail": "Extracting recommendations via AI..."})
         try:
-            recommendations = await parse_recommendations(transcript, metadata)
+            llm_retry_events: list[dict] = []
+
+            def on_llm_retry(attempt: int, max_retries: int, reason: str, delay: float):
+                llm_retry_events.append({
+                    "step": "llm_parse",
+                    "status": "retrying",
+                    "detail": f"Retry {attempt}/{max_retries} — {reason}" + (f", waiting {delay:.0f}s..." if delay > 0 else ""),
+                })
+
+            recommendations = await parse_recommendations(transcript, metadata, on_retry=on_llm_retry)
+
+            # Emit any retry events that accumulated
+            for evt in llm_retry_events:
+                yield sse(evt)
         except HTTPException as e:
+            for evt in llm_retry_events:
+                yield sse(evt)
             _log_pipeline_error(youtube_url, "llm_parse", e)
             yield sse({"step": "llm_parse", "status": "error", "detail": e.detail})
             return
         except Exception as e:
+            for evt in llm_retry_events:
+                yield sse(evt)
             _log_pipeline_error(youtube_url, "llm_parse", e)
             yield sse({"step": "llm_parse", "status": "error", "detail": f"LLM parsing failed: {type(e).__name__}"})
             return
