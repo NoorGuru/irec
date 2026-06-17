@@ -215,15 +215,19 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
       <div className="flex items-center gap-2 mb-4">
         <div className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
         <span className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">Market Pulse</span>
-        <span className="group relative ml-auto cursor-help">
+        <button
+          type="button"
+          className="group relative ml-auto cursor-help focus:outline-none"
+          aria-label="Market pulse info"
+        >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569] hover:text-[#64748B] transition-colors">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          <span className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[11px] text-[#8B95A8] leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+          <span className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[11px] text-[#8B95A8] leading-relaxed opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
             Weighted average of all ticker consensus scores, weighted by mention count. Each ticker&apos;s consensus is trust-weighted and dampened until 3+ mentions.
           </span>
-        </span>
+        </button>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
