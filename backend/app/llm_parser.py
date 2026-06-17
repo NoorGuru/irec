@@ -35,12 +35,16 @@ Conviction level: 1 (passing mention) to 10 (highest conviction, portfolio corne
 Only include stocks where the speaker expresses a clear directional opinion.
 Do not include stocks merely mentioned in passing without a recommendation.
 
+STOCK NAME RULES:
+- You MUST always provide the full company name in the "stock_name" field.
+- Never leave stock_name empty or null. Example: ticker "NVDA" → stock_name "NVIDIA".
+
 Respond with a JSON object matching this schema:
 {
   "recommendations": [
     {
       "ticker": "SYMBOL",
-      "stock_name": "Company Name",
+      "stock_name": "Company Name (REQUIRED - never leave empty)",
       "sentiment": <int -2 to 2>,
       "target_price": <float or null>,
       "conviction_level": <int 1 to 10>,
@@ -52,6 +56,8 @@ If no recommendations are found, return: {"recommendations": []}"""
 
 
 import re
+
+from .ticker_names import lookup_stock_name
 
 
 def _extract_json(text: str) -> str:
@@ -179,5 +185,10 @@ async def parse_recommendations(transcript: str, metadata: VideoMetadata) -> lis
                 status_code=502,
                 detail=f"Could not parse recommendations: {e.errors()[0]['msg'] if e.errors() else str(e)}",
             )
+
+    # Post-process: ensure stock_name is populated
+    for rec in parsed.recommendations:
+        if not rec.stock_name:
+            rec.stock_name = lookup_stock_name(rec.ticker)
 
     return parsed.recommendations
