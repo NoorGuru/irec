@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aura — Stock Sentiment from YouTube Analysts",
+  title: "aura — Stock Sentiment from YouTube Analysts",
   description: "Aggregated stock recommendations extracted from YouTube financial analysts.",
 };
 

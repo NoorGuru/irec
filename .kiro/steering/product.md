@@ -1,6 +1,6 @@
 # Product Overview
 
-**YTPortfolio (Aura)** is a monorepo application that extracts stock recommendations from YouTube video transcripts using AI (Claude) and presents aggregated sentiment data on a public dashboard.
+**YTPortfolio (aura)** is a monorepo application that extracts stock recommendations from YouTube video transcripts using AI (Claude) and presents aggregated sentiment data on a public dashboard.
 
 ## Core Workflow
 

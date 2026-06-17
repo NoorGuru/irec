@@ -40,6 +40,7 @@ Respond with a JSON object matching this schema:
   "recommendations": [
     {
       "ticker": "SYMBOL",
+      "stock_name": "Company Name",
       "sentiment": <int -2 to 2>,
       "target_price": <float or null>,
       "conviction_level": <int 1 to 10>,

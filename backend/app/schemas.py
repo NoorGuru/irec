@@ -8,6 +8,7 @@ class ExtractionRequest(BaseModel):
 
 class Recommendation(BaseModel):
     ticker: str = Field(..., min_length=1, max_length=5)
+    stock_name: str = Field("", max_length=100)
     sentiment: int = Field(..., ge=-2, le=2)
     target_price: float | None = None
     conviction_level: int = Field(..., ge=1, le=10)

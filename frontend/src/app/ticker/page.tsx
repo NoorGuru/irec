@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 
 interface Recommendation {
   ticker: string
+  stock_name: string
   sentiment: number
   target_price: number | null
   conviction_level: number
@@ -156,6 +157,7 @@ function TickerContent() {
         .from("recommendations")
         .select(`
           ticker,
+          stock_name,
           sentiment,
           target_price,
           conviction_level,
@@ -197,12 +199,12 @@ function TickerContent() {
     return (
       <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
         <div className="max-w-4xl mx-auto">
-          {/* Mini Aura logo — nav home */}
+          {/* Mini aura logo — nav home */}
           <Link
             href="/"
             className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity"
           >
-            <span className="logo-letter">Aura</span>
+            <span className="logo-letter">aura</span>
           </Link>
 
           <h1 className="mt-8 font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
@@ -223,12 +225,12 @@ function TickerContent() {
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-4xl mx-auto">
-        {/* Mini Aura logo — nav home */}
+        {/* Mini aura logo — nav home */}
         <Link
           href="/"
           className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity animate-fade-up"
         >
-          <span className="logo-letter">Aura</span>
+          <span className="logo-letter">aura</span>
         </Link>
 
         {/* Ticker header */}
@@ -238,7 +240,10 @@ function TickerContent() {
               <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
                 {symbol.toUpperCase()}
               </h1>
-              <p className="mt-2 text-sm text-[#8B95A8]">
+              {recommendations[0]?.stock_name && (
+                <p className="mt-1 text-lg text-[#8B95A8]">{recommendations[0].stock_name}</p>
+              )}
+              <p className="mt-2 text-sm text-[#64748B]">
                 {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} from YouTube analysts
               </p>
             </div>
@@ -246,9 +251,16 @@ function TickerContent() {
               href={`https://finance.yahoo.com/quote/${symbol.toUpperCase()}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#64748B] hover:text-[#00D4AA] border border-[#1E293B] rounded-lg px-3 py-1.5 transition-colors"
+              className="group/yf inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#F1F5F9] border border-[#1E293B] hover:border-[#2D3A4F] bg-[#141B2D]/60 hover:bg-[#141B2D] rounded-lg px-4 py-2 transition-all duration-200"
             >
-              Yahoo Finance ↗
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#475569] group-hover/yf:text-[#00D4AA] transition-colors">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+              <span className="font-[family-name:var(--font-geist-mono)] text-xs tracking-wide">Yahoo Finance</span>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="opacity-0 group-hover/yf:opacity-100 transition-opacity duration-200 text-[#00D4AA]">
+                <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </a>
           </div>
         </header>

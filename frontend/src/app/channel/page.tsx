@@ -383,7 +383,7 @@ function ChannelContent() {
       <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
         <div className="max-w-4xl mx-auto">
           <Link href="/channels" className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity">
-            <span className="logo-letter">Aura</span>
+            <span className="logo-letter">aura</span>
           </Link>
           <h1 className="mt-12 text-4xl font-bold text-[#F1F5F9]">Channel not found</h1>
           <p className="mt-3 text-[#8B95A8]">This channel doesn&apos;t exist or has been removed.</p>
@@ -448,7 +448,7 @@ function ChannelContent() {
         {/* Nav breadcrumb */}
         <nav className="flex items-center gap-2 text-sm animate-fade-up">
           <Link href="/" className="text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity">
-            <span className="logo-letter">Aura</span>
+            <span className="logo-letter">aura</span>
           </Link>
           <span className="text-[#1E293B] mx-2">/</span>
           <Link href="/channels" className="text-[#64748B] hover:text-[#8B95A8] transition-colors">

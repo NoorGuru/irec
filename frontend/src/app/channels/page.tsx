@@ -358,7 +358,7 @@ export default function ChannelsPage() {
           href="/"
           className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity animate-fade-up"
         >
-          <span className="logo-letter">Aura</span>
+          <span className="logo-letter">aura</span>
         </Link>
 
         {/* Page header */}
@@ -367,7 +367,7 @@ export default function ChannelsPage() {
             The Analysts
           </h1>
           <p className="mt-3 text-lg text-[#8B95A8] font-light max-w-lg">
-            Every channel tracked by Aura. Their signal, their conviction, their coverage.
+            Every channel tracked by aura. Their signal, their conviction, their coverage.
           </p>
         </header>
 

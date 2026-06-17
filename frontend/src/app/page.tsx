@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 
 interface RecommendationRow {
   ticker: string
+  stock_name: string
   sentiment: number
   target_price: number | null
   conviction_level: number
@@ -21,6 +22,7 @@ interface RecommendationRow {
 
 interface RecentSignal {
   ticker: string
+  stock_name: string
   sentiment: number
   conviction_level: number
   target_price: number | null
@@ -37,6 +39,7 @@ interface RecentSignal {
 
 interface AggregatedTicker {
   ticker: string
+  stock_name: string
   consensus_sentiment: number
   avg_target_price: number | null
   avg_conviction: number
@@ -53,13 +56,13 @@ function aggregateRecommendations(
 ): AggregatedTicker[] {
   const grouped = new Map<
     string,
-    { sentiments: { value: number; weight: number }[]; prices: number[]; convictions: number[]; count: number; channels: Set<string> }
+    { sentiments: { value: number; weight: number }[]; prices: number[]; convictions: number[]; count: number; channels: Set<string>; stock_name: string }
   >()
 
   for (const rec of recommendations) {
     const ticker = rec.ticker
     if (!grouped.has(ticker)) {
-      grouped.set(ticker, { sentiments: [], prices: [], convictions: [], count: 0, channels: new Set() })
+      grouped.set(ticker, { sentiments: [], prices: [], convictions: [], count: 0, channels: new Set(), stock_name: rec.stock_name || '' })
     }
     const group = grouped.get(ticker)!
     const trustWeight = rec.videos.channels.trust_weight
@@ -70,6 +73,10 @@ function aggregateRecommendations(
     group.convictions.push(rec.conviction_level)
     group.channels.add(rec.videos.channel_id)
     group.count++
+    // Keep the most recent non-empty stock_name
+    if (rec.stock_name && !group.stock_name) {
+      group.stock_name = rec.stock_name
+    }
   }
 
   const results: AggregatedTicker[] = []
@@ -88,7 +95,7 @@ function aggregateRecommendations(
 
     const avg_conviction = group.convictions.reduce((s, c) => s + c, 0) / group.convictions.length
 
-    results.push({ ticker, consensus_sentiment, avg_target_price, avg_conviction, mention_count: group.count, analyst_count: group.channels.size })
+    results.push({ ticker, stock_name: group.stock_name, consensus_sentiment, avg_target_price, avg_conviction, mention_count: group.count, analyst_count: group.channels.size })
   }
 
   results.sort((a, b) => b.mention_count - a.mention_count)
@@ -520,6 +527,9 @@ function TickerRow({
           <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
             {row.ticker}
           </span>
+          {row.stock_name && (
+            <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
+          )}
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[11px] text-[#64748B]">
               {row.mention_count} mention{row.mention_count !== 1 ? 's' : ''}
@@ -582,6 +592,9 @@ function TickerRow({
             <span className="font-[family-name:var(--font-geist-mono)] text-3xl font-bold tracking-wide text-[#F1F5F9]">
               {row.ticker}
             </span>
+            {row.stock_name && (
+              <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
+            )}
             {isLowConfidence && (
               <span className="ml-2 inline-flex items-center gap-0.5 text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1 py-0.5 align-middle">
                 low data
@@ -637,6 +650,7 @@ export default function Home() {
           .from("recommendations")
           .select(`
             ticker,
+            stock_name,
             sentiment,
             target_price,
             conviction_level,
@@ -649,6 +663,7 @@ export default function Home() {
           .from("recommendations")
           .select(`
             ticker,
+            stock_name,
             sentiment,
             conviction_level,
             target_price,
@@ -716,7 +731,8 @@ export default function Home() {
 
     // Apply search
     if (search) {
-      list = list.filter(t => t.ticker.toLowerCase().includes(search.toLowerCase()))
+      const q = search.toLowerCase()
+      list = list.filter(t => t.ticker.toLowerCase().includes(q) || t.stock_name.toLowerCase().includes(q))
     }
 
     // Apply sort
@@ -751,7 +767,7 @@ export default function Home() {
           </div>
           <div className="relative text-center">
             <div className="text-8xl md:text-9xl font-extralight tracking-[0.25em] logo-sweep">
-              {'Aura'.split('').map((letter, i) => (
+              {'aura'.split('').map((letter, i) => (
                 <span
                   key={i}
                   className="logo-letter letter-materialize"
@@ -793,7 +809,7 @@ export default function Home() {
             </div>
 
             <h1 className="relative text-8xl md:text-9xl lg:text-[11rem] font-extralight tracking-[0.2em] md:tracking-[0.25em] logo-sweep leading-none">
-              {'Aura'.split('').map((letter, i) => (
+              {'aura'.split('').map((letter, i) => (
                 <span
                   key={i}
                   className="logo-letter letter-materialize"
@@ -892,9 +908,9 @@ export default function Home() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter by ticker..."
+                placeholder="Search ticker or company..."
                 className="w-full rounded-lg border border-[#1E293B] bg-[#141B2D]/60 pl-10 pr-4 py-2.5 text-sm text-[#F1F5F9] placeholder:text-[#64748B] focus:outline-none focus:border-[#00D4AA]/50 focus:ring-1 focus:ring-[#00D4AA]/20 transition-colors font-[family-name:var(--font-geist-mono)]"
-                aria-label="Filter stocks by ticker symbol"
+                aria-label="Filter stocks by ticker symbol or company name"
               />
               {search && (
                 <button

@@ -156,6 +156,7 @@ async def insert_recommendations(
             {
                 "video_id": video_id,
                 "ticker": rec.ticker,
+                "stock_name": rec.stock_name,
                 "sentiment": rec.sentiment,
                 "target_price": rec.target_price,
                 "conviction_level": rec.conviction_level,
