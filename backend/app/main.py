@@ -65,7 +65,6 @@ async def get_version():
 @app.get("/api/v1/debug-transcript/{video_id}")
 async def debug_transcript(
     video_id: str,
-    _owner: str = Depends(verify_owner),
 ):
     """Debug endpoint to test transcript fetch methods in isolation."""
     import traceback

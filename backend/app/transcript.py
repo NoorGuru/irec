@@ -50,12 +50,20 @@ def _fetch_transcript_ytdlp(video_id: str) -> str | None:
 
     Uses the 'ios' or 'android' innertube client which YouTube rate-limits less
     aggressively than web clients from datacenter IPs.
+    Routes through Webshare proxy if configured, to avoid datacenter IP blocks.
 
     Returns the transcript text or None if unavailable.
     """
     import yt_dlp
 
     url = f"https://www.youtube.com/watch?v={video_id}"
+
+    # Build proxy URL if Webshare credentials are available
+    proxy_url = None
+    proxy_user = os.environ.get("WEBSHARE_PROXY_USER")
+    proxy_pass = os.environ.get("WEBSHARE_PROXY_PASS")
+    if proxy_user and proxy_pass:
+        proxy_url = f"http://{proxy_user}:{proxy_pass}@p.webshare.io:80"
 
     # Try multiple client strategies in order of reliability from datacenter IPs
     client_strategies = [
@@ -65,110 +73,120 @@ def _fetch_transcript_ytdlp(video_id: str) -> str | None:
     ]
 
     for strategy in client_strategies:
-        ydl_opts = {
-            "skip_download": True,
-            "writeautomaticsub": True,
-            "writesubtitles": True,
-            "subtitleslangs": ["en", "en-US", "en-GB"],
-            "subtitlesformat": "json3",
-            "quiet": True,
-            "no_warnings": True,
-            "ignore_no_formats_error": True,
-            "extractor_args": {"youtube": strategy},
-            "http_headers": {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9",
-            },
-        }
+        # Try with proxy first (if available), then without
+        proxy_options = [proxy_url, None] if proxy_url else [None]
 
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
+        for proxy in proxy_options:
+            ydl_opts = {
+                "skip_download": True,
+                "writeautomaticsub": True,
+                "writesubtitles": True,
+                "subtitleslangs": ["en", "en-US", "en-GB"],
+                "subtitlesformat": "json3",
+                "quiet": True,
+                "no_warnings": True,
+                "ignore_no_formats_error": True,
+                "extractor_args": {"youtube": strategy},
+                "http_headers": {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+                "socket_timeout": 15,
+            }
+            if proxy:
+                ydl_opts["proxy"] = proxy
 
-                # Try manual subs first, then auto-generated
-                subs = info.get("subtitles", {}) or {}
-                auto_subs = info.get("automatic_captions", {}) or {}
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=False)
 
-                # Find English subtitle track
-                sub_data = None
-                for lang in ["en", "en-US", "en-GB"]:
-                    if lang in subs:
-                        sub_data = subs[lang]
-                        break
-                    if lang in auto_subs:
-                        sub_data = auto_subs[lang]
-                        break
+                    # Try manual subs first, then auto-generated
+                    subs = info.get("subtitles", {}) or {}
+                    auto_subs = info.get("automatic_captions", {}) or {}
 
-                if not sub_data:
-                    # Try any English variant
-                    for key in list(subs.keys()) + list(auto_subs.keys()):
-                        if key.startswith("en"):
-                            sub_data = subs.get(key) or auto_subs.get(key)
+                    # Find English subtitle track
+                    sub_data = None
+                    for lang in ["en", "en-US", "en-GB"]:
+                        if lang in subs:
+                            sub_data = subs[lang]
+                            break
+                        if lang in auto_subs:
+                            sub_data = auto_subs[lang]
                             break
 
-                if not sub_data:
-                    logger.info("yt-dlp: no English subtitles with strategy %s for %s", strategy, video_id)
-                    continue
+                    if not sub_data:
+                        # Try any English variant
+                        for key in list(subs.keys()) + list(auto_subs.keys()):
+                            if key.startswith("en"):
+                                sub_data = subs.get(key) or auto_subs.get(key)
+                                break
 
-                # Find json3 format, or fall back to first available
-                sub_url = None
-                for fmt in sub_data:
-                    if fmt.get("ext") == "json3":
-                        sub_url = fmt.get("url")
-                        break
-                if not sub_url:
+                    if not sub_data:
+                        logger.info(
+                            "yt-dlp: no English subs with strategy=%s proxy=%s for %s",
+                            strategy, bool(proxy), video_id,
+                        )
+                        continue
+
+                    # Find json3 format, or fall back to first available
+                    sub_url = None
                     for fmt in sub_data:
-                        if fmt.get("ext") in ("vtt", "srv1", "srv2", "srv3"):
+                        if fmt.get("ext") == "json3":
                             sub_url = fmt.get("url")
                             break
+                    if not sub_url:
+                        for fmt in sub_data:
+                            if fmt.get("ext") in ("vtt", "srv1", "srv2", "srv3"):
+                                sub_url = fmt.get("url")
+                                break
 
-                if not sub_url:
-                    logger.info("yt-dlp: no downloadable subtitle format for %s", video_id)
-                    continue
+                    if not sub_url:
+                        logger.info("yt-dlp: no downloadable subtitle format for %s", video_id)
+                        continue
 
-                # Download the subtitle content
-                import httpx
+                    # Download the subtitle content
+                    import httpx
 
-                resp = httpx.get(sub_url, timeout=30.0)
-                resp.raise_for_status()
+                    resp = httpx.get(sub_url, timeout=30.0)
+                    resp.raise_for_status()
 
-                content_type = resp.headers.get("content-type", "")
-                text = resp.text
+                    content_type = resp.headers.get("content-type", "")
+                    text = resp.text
 
-                # Parse json3 format
-                if "json" in content_type or text.strip().startswith("{"):
-                    data = json.loads(text)
-                    events = data.get("events", [])
-                    segments = []
-                    for event in events:
-                        segs = event.get("segs", [])
-                        for seg in segs:
-                            t = seg.get("utf8", "").strip()
-                            if t and t != "\n":
-                                segments.append(t)
-                    if segments:
-                        return " ".join(segments)
-                else:
-                    # VTT or other text format
-                    import re
+                    # Parse json3 format
+                    if "json" in content_type or text.strip().startswith("{"):
+                        data = json.loads(text)
+                        events = data.get("events", [])
+                        segments = []
+                        for event in events:
+                            segs = event.get("segs", [])
+                            for seg in segs:
+                                t = seg.get("utf8", "").strip()
+                                if t and t != "\n":
+                                    segments.append(t)
+                        if segments:
+                            return " ".join(segments)
+                    else:
+                        # VTT or other text format
+                        import re
 
-                    lines = []
-                    for line in text.split("\n"):
-                        line = line.strip()
-                        if not line or "-->" in line or line.startswith("WEBVTT") or line.isdigit():
-                            continue
-                        clean = re.sub(r"<[^>]+>", "", line)
-                        if clean:
-                            lines.append(clean)
-                    if lines:
-                        return " ".join(lines)
+                        lines = []
+                        for line in text.split("\n"):
+                            line = line.strip()
+                            if not line or "-->" in line or line.startswith("WEBVTT") or line.isdigit():
+                                continue
+                            clean = re.sub(r"<[^>]+>", "", line)
+                            if clean:
+                                lines.append(clean)
+                        if lines:
+                            return " ".join(lines)
 
-        except Exception as e:
-            logger.warning(
-                "yt-dlp strategy %s failed for %s: %s: %s",
-                strategy, video_id, type(e).__name__, e,
-            )
-            continue
+            except Exception as e:
+                logger.warning(
+                    "yt-dlp strategy=%s proxy=%s failed for %s: %s: %s",
+                    strategy, bool(proxy), video_id, type(e).__name__, e,
+                )
+                continue
 
     return None
 
