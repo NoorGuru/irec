@@ -10,9 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.auth import verify_owner
-from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache
+from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, _get_client
 from app.llm_parser import parse_recommendations
-from app.metadata import fetch_metadata
+from app.metadata import fetch_metadata, fetch_channel_thumbnail
 from app.schemas import ExtractionRequest, ExtractionResponse
 from app.transcript import fetch_transcript
 from app.url_parser import parse_url
@@ -198,7 +198,10 @@ async def extract(
         _log_pipeline_error(youtube_url, "llm_parse", e)
         raise HTTPException(status_code=502, detail=f"Could not parse recommendations: {type(e).__name__}: {e}")
 
-    # Step 6: Persist to database → channel upsert, video insert, recommendations insert
+    # Step 6: Fetch channel thumbnail (non-blocking, fails silently)
+    channel_thumbnail_url = await fetch_channel_thumbnail(metadata.youtube_channel_id)
+
+    # Step 7: Persist to database → channel upsert, video insert, recommendations insert
     try:
         await persist_extraction(
             channel_name=metadata.channel_name,
@@ -211,6 +214,7 @@ async def extract(
             youtube_channel_id=metadata.youtube_channel_id,
             title=metadata.title,
             duration=metadata.duration,
+            channel_thumbnail_url=channel_thumbnail_url,
         )
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "database_insert", e)
@@ -398,7 +402,9 @@ async def extract_stream(
         tickers = [rec.ticker for rec in recommendations]
         yield sse({"step": "llm_parse", "status": "done", "detail": f"Found {len(tickers)} ticker(s): {', '.join(tickers) or 'none'}"})
 
-        # Step 6: Persist to database
+        # Step 6: Fetch channel thumbnail + persist to database
+        channel_thumbnail_url = await fetch_channel_thumbnail(metadata.youtube_channel_id)
+
         yield sse({"step": "database", "status": "running", "detail": "Saving to database..."})
         try:
             await persist_extraction(
@@ -412,6 +418,7 @@ async def extract_stream(
                 youtube_channel_id=metadata.youtube_channel_id,
                 title=metadata.title,
                 duration=metadata.duration,
+                channel_thumbnail_url=channel_thumbnail_url,
             )
         except HTTPException as e:
             _log_pipeline_error(youtube_url, "database_insert", e)
@@ -445,3 +452,63 @@ async def extract_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post("/api/v1/admin/backfill-thumbnails")
+async def backfill_thumbnails(
+    _owner: str = Depends(verify_owner),
+):
+    """Backfill channel_thumbnail_url for all channels missing one.
+
+    Fetches thumbnails from YouTube Channels API in batches of 5 with
+    0.5s delay between batches to respect rate limits.
+    Owner-auth protected.
+    """
+    import asyncio
+
+    client = _get_client()
+
+    # Find channels with youtube_channel_id but no thumbnail
+    response = (
+        client.table("channels")
+        .select("channel_id, channel_name, youtube_channel_id")
+        .not_.is_("youtube_channel_id", "null")
+        .is_("channel_thumbnail_url", "null")
+        .execute()
+    )
+
+    channels = response.data or []
+    if not channels:
+        return {"status": "complete", "updated": 0, "total": 0}
+
+    updated = 0
+    errors = 0
+    batch_size = 5
+
+    for i in range(0, len(channels), batch_size):
+        batch = channels[i : i + batch_size]
+
+        for ch in batch:
+            try:
+                thumbnail_url = await fetch_channel_thumbnail(ch["youtube_channel_id"])
+                if thumbnail_url:
+                    client.table("channels").update(
+                        {"channel_thumbnail_url": thumbnail_url}
+                    ).eq("channel_id", ch["channel_id"]).execute()
+                    updated += 1
+            except Exception as e:
+                logger.warning(
+                    f"Backfill thumbnail failed for {ch['channel_name']}: {e}"
+                )
+                errors += 1
+
+        # Rate limit: 0.5s between batches
+        if i + batch_size < len(channels):
+            await asyncio.sleep(0.5)
+
+    return {
+        "status": "complete",
+        "updated": updated,
+        "errors": errors,
+        "total": len(channels),
+    }

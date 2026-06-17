@@ -129,7 +129,11 @@ async def save_transcript_cache(
         logger.warning(f"Failed to cache transcript for {youtube_video_id}: {e}")
 
 
-async def upsert_channel(channel_name: str, youtube_channel_id: str | None = None) -> str:
+async def upsert_channel(
+    channel_name: str,
+    youtube_channel_id: str | None = None,
+    channel_thumbnail_url: str | None = None,
+) -> str:
     """Upsert a channel and return the channel_id UUID.
 
     Uses supabase-py's upsert which handles ON CONFLICT (channel_name)
@@ -143,6 +147,8 @@ async def upsert_channel(channel_name: str, youtube_channel_id: str | None = Non
         record: dict = {"channel_name": channel_name}
         if youtube_channel_id:
             record["youtube_channel_id"] = youtube_channel_id
+        if channel_thumbnail_url:
+            record["channel_thumbnail_url"] = channel_thumbnail_url
         response = (
             client.table("channels")
             .upsert(
@@ -276,6 +282,7 @@ async def persist_extraction(
     youtube_channel_id: str | None = None,
     title: str | None = None,
     duration: str | None = None,
+    channel_thumbnail_url: str | None = None,
 ) -> dict:
     """Orchestrate the full database persistence for an extraction.
 
@@ -287,7 +294,7 @@ async def persist_extraction(
     Handles empty recommendations: still inserts channel and video records.
     """
     # Step 1: Upsert channel (idempotent, not rolled back on failure)
-    channel_id = await upsert_channel(channel_name, youtube_channel_id)
+    channel_id = await upsert_channel(channel_name, youtube_channel_id, channel_thumbnail_url)
 
     # Step 2: Upsert video (may already exist from transcript cache)
     video_id: str | None = None
