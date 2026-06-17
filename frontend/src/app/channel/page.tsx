@@ -12,6 +12,7 @@ interface ChannelRow {
   channel_name: string
   trust_weight: number
   created_at: string
+  youtube_channel_id: string | null
 }
 
 interface VideoRow {
@@ -468,6 +469,25 @@ function ChannelContent() {
               Trust
               <span className="font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">{channel.trust_weight.toFixed(1)}×</span>
             </span>
+            {channel.youtube_channel_id && (
+              <>
+                <span className="text-[#1E293B]">·</span>
+                <a
+                  href={`https://www.youtube.com/channel/${channel.youtube_channel_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group/yt inline-flex items-center gap-1.5 text-[#64748B] hover:text-[#FF0000] transition-colors duration-200"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-[#FF0000]/60 group-hover/yt:text-[#FF0000] transition-colors">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  <span className="font-[family-name:var(--font-geist-mono)] text-xs tracking-wide">YouTube</span>
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="opacity-0 group-hover/yt:opacity-100 transition-opacity text-[#FF0000]">
+                    <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </a>
+              </>
+            )}
           </div>
         </header>
 

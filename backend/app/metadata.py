@@ -28,7 +28,7 @@ async def fetch_metadata(video_id: str) -> VideoMetadata:
         raise HTTPException(status_code=502, detail="YouTube API key not configured")
 
     params = {
-        "part": "snippet",
+        "part": "snippet,contentDetails",
         "id": video_id,
         "key": api_key,
     }
@@ -55,8 +55,11 @@ async def fetch_metadata(video_id: str) -> VideoMetadata:
         )
 
     snippet = items[0]["snippet"]
+    content_details = items[0].get("contentDetails", {})
     return VideoMetadata(
         channel_name=snippet["channelTitle"],
         youtube_channel_id=snippet["channelId"],
         published_at=snippet["publishedAt"],
+        title=snippet.get("title", ""),
+        duration=content_details.get("duration", ""),
     )

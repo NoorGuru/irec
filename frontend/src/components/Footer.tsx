@@ -57,6 +57,12 @@ export function Footer() {
             >
               channels
             </Link>
+            <Link
+              href="/videos"
+              className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
+            >
+              videos
+            </Link>
           </nav>
         </div>
 

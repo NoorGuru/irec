@@ -505,6 +505,36 @@
   animation-delay: 1000ms;
 }
 
+/* ─── Command Palette Animations ─── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile bottom nav safe area */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Account for mobile bottom nav on pages */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: 3.5rem;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
@@ -526,7 +556,9 @@
   .greeting-line-fill,
   .greeting-stagger-1,
   .greeting-stagger-2,
-  .greeting-stagger-3 {
+  .greeting-stagger-3,
+  [class*="animate-[fadeIn"],
+  [class*="animate-[slideDown"] {
     animation: none !important;
     opacity: 1;
     transform: none;

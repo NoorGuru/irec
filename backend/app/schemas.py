@@ -49,3 +49,5 @@ class VideoMetadata(BaseModel):
     channel_name: str
     youtube_channel_id: str = ""
     published_at: str  # ISO 8601
+    title: str = ""
+    duration: str = ""  # ISO 8601 duration, e.g. "PT15M33S"

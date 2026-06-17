@@ -678,6 +678,7 @@ export default function Home() {
   const [sort, setSort] = useState<SortKey>('mentions')
   const [filter, setFilter] = useState('')
   const [hasTargetOnly, setHasTargetOnly] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(15)
 
   useEffect(() => {
     async function fetchData() {
@@ -792,6 +793,12 @@ export default function Home() {
     return list
   }, [aggregated, sort, filter, hasTargetOnly, search])
 
+  // Reset visible count when filters change
+  const visibleCountKey = `${search}|${sort}|${filter}|${hasTargetOnly}`
+  useEffect(() => {
+    setVisibleCount(15)
+  }, [visibleCountKey])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -829,8 +836,6 @@ export default function Home() {
       </div>
     )
   }
-
-  const totalMentions = aggregated.reduce((sum, t) => sum + t.mention_count, 0)
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
@@ -876,23 +881,11 @@ export default function Home() {
           </div>
 
           {aggregated.length > 0 && (
-            <div className="mt-4 text-center animate-hero-rise" style={{ animationDelay: '1050ms' }}>
-              <p className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B] tracking-wide">
-                <span className="text-[#8B95A8]">{aggregated.length}</span> tickers
-                <span className="mx-2 text-[#1E293B]">·</span>
-                <span className="text-[#8B95A8]">{totalMentions}</span> mentions
-                <span className="mx-2 text-[#1E293B]">·</span>
-                <Link href="/channels" className="text-[#8B95A8] hover:text-[#00D4AA] transition-colors duration-200">
-                  analysts ↗
-                </Link>
-              </p>
+            <div className="mt-10 md:mt-12 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
+              <div className="absolute inset-0 bg-[#1E293B]" />
+              <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
             </div>
           )}
-
-          <div className="mt-10 md:mt-12 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
-            <div className="absolute inset-0 bg-[#1E293B]" />
-            <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
-          </div>
         </header>
 
         {/* Market Pulse */}
@@ -986,14 +979,29 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              processed.map((row, index) => (
-                <TickerRow
-                  key={row.ticker}
-                  row={row}
-                  index={index}
-                  isTop={row.ticker === topTicker}
-                />
-              ))
+              <>
+                {processed.slice(0, visibleCount).map((row, index) => (
+                  <TickerRow
+                    key={row.ticker}
+                    row={row}
+                    index={index}
+                    isTop={row.ticker === topTicker}
+                  />
+                ))}
+                {visibleCount < processed.length && (
+                  <div className="pt-4 text-center">
+                    <button
+                      onClick={() => setVisibleCount((c) => c + 15)}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/60 text-sm font-medium text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+                    >
+                      <span>Load more</span>
+                      <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569]">
+                        {processed.length - visibleCount} remaining
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -1001,9 +1009,14 @@ export default function Home() {
         {/* Footer disclaimer */}
         {aggregated.length > 0 && (
           <footer className="mt-12 pt-6 border-t border-[#1E293B] animate-fade-up stagger-10">
-            <p className="text-xs text-[#64748B] leading-relaxed">
-              Trust-weighted consensus · <span className="text-[#8B95A8]">*</span> fewer than 3 mentions
-            </p>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-xs text-[#64748B] leading-relaxed">
+                Trust-weighted consensus · <span className="text-[#8B95A8]">*</span> fewer than 3 mentions
+              </p>
+              <p className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569] tracking-wide">
+                <span className="text-[#64748B]">{aggregated.length}</span> tickers · <span className="text-[#64748B]">{aggregated.reduce((s, t) => s + t.mention_count, 0)}</span> mentions
+              </p>
+            </div>
           </footer>
         )}
       </div>

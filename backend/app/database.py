@@ -174,6 +174,8 @@ async def insert_video(
     published_at: str,
     transcript: str | None = None,
     video_summary: str | None = None,
+    title: str | None = None,
+    duration: str | None = None,
 ) -> str:
     """Insert a video record and return the video_id UUID.
 
@@ -192,6 +194,10 @@ async def insert_video(
             record["transcript"] = transcript
         if video_summary:
             record["video_summary"] = video_summary
+        if title:
+            record["title"] = title
+        if duration:
+            record["duration"] = duration
         response = (
             client.table("videos")
             .insert(record)
@@ -268,6 +274,8 @@ async def persist_extraction(
     transcript: str | None = None,
     video_summary: str | None = None,
     youtube_channel_id: str | None = None,
+    title: str | None = None,
+    duration: str | None = None,
 ) -> dict:
     """Orchestrate the full database persistence for an extraction.
 
@@ -302,6 +310,10 @@ async def persist_extraction(
             record["transcript"] = transcript
         if video_summary:
             record["video_summary"] = video_summary
+        if title:
+            record["title"] = title
+        if duration:
+            record["duration"] = duration
 
         if existing.data:
             # Video exists (from transcript cache) — update it

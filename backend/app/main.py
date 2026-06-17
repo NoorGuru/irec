@@ -209,6 +209,8 @@ async def extract(
             transcript=transcript,
             video_summary=video_summary,
             youtube_channel_id=metadata.youtube_channel_id,
+            title=metadata.title,
+            duration=metadata.duration,
         )
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "database_insert", e)
@@ -408,6 +410,8 @@ async def extract_stream(
                 transcript=transcript,
                 video_summary=video_summary,
                 youtube_channel_id=metadata.youtube_channel_id,
+                title=metadata.title,
+                duration=metadata.duration,
             )
         except HTTPException as e:
             _log_pipeline_error(youtube_url, "database_insert", e)

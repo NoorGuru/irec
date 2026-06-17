@@ -353,14 +353,6 @@ export default function ChannelsPage() {
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-4xl mx-auto">
-        {/* Nav */}
-        <Link
-          href="/"
-          className="inline-block text-xl font-extralight tracking-[0.2em] logo-sweep hover:opacity-80 transition-opacity animate-fade-up"
-        >
-          <span className="logo-letter">aura</span>
-        </Link>
-
         {/* Page header */}
         <header className="mt-12 mb-4 animate-fade-up stagger-1">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
