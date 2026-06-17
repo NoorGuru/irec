@@ -1,4 +1,4 @@
-# YTPortfolio
+# Aura
 
 AI-powered stock recommendation tracker. Extracts analyst sentiment from YouTube videos and displays consensus scores on a public dashboard.
 
