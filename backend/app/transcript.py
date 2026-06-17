@@ -47,9 +47,14 @@ async def _fetch_via_worker(video_id: str) -> str | None:
                 transcript = data.get("transcript", "")
                 if transcript and len(transcript) > 50:
                     return transcript
+                else:
+                    logger.warning("Worker returned empty transcript for %s", video_id)
             else:
-                error = resp.json().get("error", resp.text[:200])
-                logger.warning("Worker transcript failed for %s: %s", video_id, error)
+                try:
+                    error = resp.json().get("error", "unknown")
+                except Exception:
+                    error = resp.text[:200]
+                logger.warning("Worker returned %d for %s: %s", resp.status_code, video_id, error)
     except Exception as e:
         logger.warning("Worker request failed for %s: %s: %s", video_id, type(e).__name__, e)
 

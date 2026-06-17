@@ -75,12 +75,24 @@ async def debug_transcript(
     try:
         worker_url = os.environ.get("TRANSCRIPT_WORKER_URL", "")
         results["worker_config"] = {"url": worker_url, "configured": bool(worker_url)}
-        worker_result = await _fetch_via_worker(video_id)
-        results["worker"] = {
-            "success": worker_result is not None,
-            "length": len(worker_result) if worker_result else 0,
-            "preview": worker_result[:200] if worker_result else None,
-        }
+
+        if worker_url:
+            import httpx
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    f"{worker_url}/transcript",
+                    params={"v": video_id},
+                )
+                results["worker"] = {
+                    "status_code": resp.status_code,
+                    "success": resp.status_code == 200,
+                    "response": resp.json() if resp.status_code != 200 else {
+                        "length": len(resp.json().get("transcript", "")),
+                        "preview": resp.json().get("transcript", "")[:200],
+                    },
+                }
+        else:
+            results["worker"] = {"success": False, "error": "Not configured"}
     except Exception as e:
         results["worker"] = {"success": False, "error": f"{type(e).__name__}: {e}"}
 
