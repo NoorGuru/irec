@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -59,7 +59,7 @@ const DEMO_RESULT: ExtractionResult = {
   recommendation_count: 3,
 }
 
-export default function IngestPage() {
+function IngestContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isDemo = searchParams.get('demo') === '1'
@@ -380,5 +380,20 @@ export default function IngestPage() {
         )}
       </div>
     </div>
+  )
+}
+
+
+export default function IngestPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1A]">
+          <p className="text-[#8B95A8]">Loading...</p>
+        </div>
+      }
+    >
+      <IngestContent />
+    </Suspense>
   )
 }
