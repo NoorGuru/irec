@@ -66,6 +66,46 @@ async def check_duplicate(youtube_video_id: str) -> bool:
         )
 
 
+async def delete_existing_video(youtube_video_id: str) -> bool:
+    """Delete an existing video and its recommendations (cascade via FK).
+
+    Used by force re-ingest to clear stale data before re-processing.
+    Returns True if a video was deleted, False if none found.
+    Raises HTTPException(503) on database error.
+    """
+    try:
+        client = _get_client()
+
+        # Find the video
+        response = (
+            client.table("videos")
+            .select("video_id")
+            .eq("youtube_video_id", youtube_video_id)
+            .execute()
+        )
+        if not response.data:
+            return False
+
+        video_id = response.data[0]["video_id"]
+
+        # Delete recommendations first (FK constraint)
+        client.table("recommendations").delete().eq("video_id", video_id).execute()
+
+        # Delete the video
+        client.table("videos").delete().eq("video_id", video_id).execute()
+
+        logger.info(f"Force re-ingest: deleted existing video {youtube_video_id} (id: {video_id})")
+        return True
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Database error during force delete: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Database service temporarily unavailable",
+        )
+
+
 async def get_cached_transcript(youtube_video_id: str) -> str | None:
     """Check if we have a cached transcript for this video (from a previous partial run).
 
@@ -198,11 +238,11 @@ async def insert_video(
         }
         if transcript is not None:
             record["transcript"] = transcript
-        if video_summary:
+        if video_summary is not None:
             record["video_summary"] = video_summary
-        if title:
+        if title is not None:
             record["title"] = title
-        if duration:
+        if duration is not None:
             record["duration"] = duration
         response = (
             client.table("videos")
@@ -219,6 +259,84 @@ async def insert_video(
         raise
     except Exception as e:
         logger.error(f"Database error during video insert: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal error, please try again",
+        )
+
+
+async def get_video_for_reextract(youtube_video_id: str) -> dict | None:
+    """Fetch existing video record with transcript for re-extraction.
+
+    Returns dict with video_id, transcript, channel_name, published_at, video_url.
+    Returns None if video doesn't exist or has no transcript.
+    """
+    try:
+        client = _get_client()
+        response = (
+            client.table("videos")
+            .select("video_id, transcript, published_at, video_url, channels(channel_name, youtube_channel_id)")
+            .eq("youtube_video_id", youtube_video_id)
+            .execute()
+        )
+        if not response.data:
+            return None
+        row = response.data[0]
+        if not row.get("transcript"):
+            return None
+        return row
+    except Exception as e:
+        logger.error(f"Database error fetching video for re-extract: {e}")
+        return None
+
+
+async def replace_recommendations(
+    video_id: str,
+    recommendations: list[Recommendation],
+    video_summary: str | None = None,
+    title: str | None = None,
+    duration: str | None = None,
+) -> None:
+    """Replace all recommendations for a video and update metadata.
+
+    Deletes existing recommendations, inserts new ones, and updates
+    video_summary/title/duration on the video record.
+    """
+    try:
+        client = _get_client()
+
+        # Delete old recommendations
+        client.table("recommendations").delete().eq("video_id", video_id).execute()
+
+        # Update video metadata
+        update_record: dict = {}
+        if video_summary is not None:
+            update_record["video_summary"] = video_summary
+        if title is not None:
+            update_record["title"] = title
+        if duration is not None:
+            update_record["duration"] = duration
+
+        if update_record:
+            client.table("videos").update(update_record).eq("video_id", video_id).execute()
+
+        # Insert new recommendations
+        if recommendations:
+            records = [
+                {
+                    "video_id": video_id,
+                    "ticker": rec.ticker,
+                    "stock_name": rec.stock_name,
+                    "sentiment": rec.sentiment,
+                    "target_price": rec.target_price,
+                    "conviction_level": rec.conviction_level,
+                    "catalyst_notes": rec.catalyst_notes,
+                }
+                for rec in recommendations
+            ]
+            client.table("recommendations").insert(records).execute()
+    except Exception as e:
+        logger.error(f"Database error during replace_recommendations: {e}")
         raise HTTPException(
             status_code=500,
             detail="Internal error, please try again",
@@ -315,11 +433,11 @@ async def persist_extraction(
         }
         if transcript is not None:
             record["transcript"] = transcript
-        if video_summary:
+        if video_summary is not None:
             record["video_summary"] = video_summary
-        if title:
+        if title is not None:
             record["title"] = title
-        if duration:
+        if duration is not None:
             record["duration"] = duration
 
         if existing.data:

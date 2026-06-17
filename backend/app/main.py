@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.auth import verify_owner
-from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, _get_client
+from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, _get_client
 from app.llm_parser import parse_recommendations
 from app.metadata import fetch_metadata, fetch_channel_thumbnail
 from app.schemas import ExtractionRequest, ExtractionResponse
@@ -247,6 +247,8 @@ async def extract_stream(
     body = await request.json()
     youtube_url = body.get("youtube_url", "")
     client_transcript = body.get("transcript")  # Optional: sent from browser
+    force_reingest = body.get("force_reingest", False)  # Force re-process even if duplicate
+    reextract_only = body.get("reextract_only", False)  # Re-run LLM only, keep transcript
 
     async def event_stream():
         def sse(data: dict) -> str:
@@ -266,6 +268,103 @@ async def extract_stream(
             return
         yield sse({"step": "url_parse", "status": "done", "detail": f"Video ID: {parsed.video_id}"})
 
+        # ── Re-extract only mode: shortened pipeline ──
+        if reextract_only:
+            # Step 2: Load existing video with transcript
+            yield sse({"step": "duplicate_check", "status": "running", "detail": "Loading existing video..."})
+            existing = await get_video_for_reextract(parsed.video_id)
+            if not existing:
+                yield sse({"step": "duplicate_check", "status": "error", "detail": "Video not found or has no transcript — use full re-ingest instead"})
+                return
+            transcript = existing["transcript"]
+            video_id = existing["video_id"]
+            word_count = len(transcript.split())
+            yield sse({"step": "duplicate_check", "status": "done", "detail": "Existing video loaded"})
+
+            # Step 3: Fetch fresh metadata
+            yield sse({"step": "metadata", "status": "running", "detail": "Refreshing metadata..."})
+            try:
+                metadata = await fetch_metadata(parsed.video_id)
+            except HTTPException as e:
+                _log_pipeline_error(youtube_url, "metadata_fetch", e)
+                yield sse({"step": "metadata", "status": "error", "detail": e.detail})
+                return
+            except Exception as e:
+                _log_pipeline_error(youtube_url, "metadata_fetch", e)
+                yield sse({"step": "metadata", "status": "error", "detail": "Could not retrieve video metadata"})
+                return
+            yield sse({"step": "metadata", "status": "done", "detail": f"Channel: {metadata.channel_name}"})
+
+            # Step 4: Skip transcript fetch
+            yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words (reusing existing)"})
+
+            # Step 5: LLM extraction
+            yield sse({"step": "llm_parse", "status": "running", "detail": "Re-extracting recommendations via AI..."})
+            try:
+                llm_retry_events: list[dict] = []
+
+                def on_llm_retry(attempt: int, max_retries: int, reason: str, delay: float):
+                    llm_retry_events.append({
+                        "step": "llm_parse",
+                        "status": "retrying",
+                        "detail": f"Retry {attempt}/{max_retries} — {reason}" + (f", waiting {delay:.0f}s..." if delay > 0 else ""),
+                    })
+
+                recommendations, video_summary = await parse_recommendations(transcript, metadata, on_retry=on_llm_retry)
+
+                for evt in llm_retry_events:
+                    yield sse(evt)
+            except HTTPException as e:
+                for evt in llm_retry_events:
+                    yield sse(evt)
+                _log_pipeline_error(youtube_url, "llm_parse", e)
+                yield sse({"step": "llm_parse", "status": "error", "detail": e.detail})
+                return
+            except Exception as e:
+                for evt in llm_retry_events:
+                    yield sse(evt)
+                _log_pipeline_error(youtube_url, "llm_parse", e)
+                yield sse({"step": "llm_parse", "status": "error", "detail": f"LLM parsing failed: {type(e).__name__}"})
+                return
+            tickers = [rec.ticker for rec in recommendations]
+            yield sse({"step": "llm_parse", "status": "done", "detail": f"Found {len(tickers)} ticker(s): {', '.join(tickers) or 'none'}"})
+
+            # Step 6: Replace recommendations in database
+            yield sse({"step": "database", "status": "running", "detail": "Replacing old recommendations..."})
+            try:
+                await replace_recommendations(
+                    video_id=video_id,
+                    recommendations=recommendations,
+                    video_summary=video_summary,
+                    title=metadata.title,
+                    duration=metadata.duration,
+                )
+            except HTTPException as e:
+                _log_pipeline_error(youtube_url, "database_insert", e)
+                yield sse({"step": "database", "status": "error", "detail": e.detail})
+                return
+            except Exception as e:
+                _log_pipeline_error(youtube_url, "database_insert", e)
+                yield sse({"step": "database", "status": "error", "detail": "Internal error, please try again"})
+                return
+            yield sse({"step": "database", "status": "done", "detail": "Recommendations replaced"})
+
+            # Final success
+            yield sse({
+                "step": "complete",
+                "status": "done",
+                "result": {
+                    "channel_name": metadata.channel_name,
+                    "video_id": parsed.video_id,
+                    "published_at": metadata.published_at,
+                    "tickers_extracted": tickers,
+                    "recommendation_count": len(recommendations),
+                },
+            })
+            return
+
+        # ── Normal / Force re-ingest mode ──
+
         # Step 2: Duplicate check
         yield sse({"step": "duplicate_check", "status": "running", "detail": "Checking for duplicates..."})
         try:
@@ -279,10 +378,24 @@ async def extract_stream(
             yield sse({"step": "duplicate_check", "status": "error", "detail": "Database service temporarily unavailable"})
             return
 
-        if is_duplicate:
+        if force_reingest:
+            # In force mode, always attempt to delete any existing record (even partial ones with 0 recs)
+            yield sse({"step": "duplicate_check", "status": "running", "detail": "Force re-ingest: removing old data..."})
+            try:
+                deleted = await delete_existing_video(parsed.video_id)
+            except HTTPException as e:
+                _log_pipeline_error(youtube_url, "duplicate_check", e)
+                yield sse({"step": "duplicate_check", "status": "error", "detail": f"Failed to remove old data: {e.detail}"})
+                return
+            if deleted:
+                yield sse({"step": "duplicate_check", "status": "done", "detail": "Old data removed — re-ingesting"})
+            else:
+                yield sse({"step": "duplicate_check", "status": "done", "detail": "No existing data — ingesting fresh"})
+        elif is_duplicate:
             yield sse({"step": "duplicate_check", "status": "error", "detail": "Video already processed"})
             return
-        yield sse({"step": "duplicate_check", "status": "done", "detail": "New video confirmed"})
+        else:
+            yield sse({"step": "duplicate_check", "status": "done", "detail": "New video confirmed"})
 
         # Step 3: Fetch metadata
         yield sse({"step": "metadata", "status": "running", "detail": "Fetching video metadata..."})

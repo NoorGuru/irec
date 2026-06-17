@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Clock, Zap } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Clock, Zap, RotateCcw, Sparkles } from 'lucide-react'
 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
@@ -117,6 +117,8 @@ function IngestContent() {
   const [steps, setSteps] = useState<PipelineStep[]>([])
   const [result, setResult] = useState<ExtractionResult | null>(null)
   const [pipelineError, setPipelineError] = useState('')
+  const [isDuplicate, setIsDuplicate] = useState(false)
+  const [lastSubmittedUrl, setLastSubmittedUrl] = useState('')
   const [authChecked, setAuthChecked] = useState(isDemo)
   const [totalStartedAt, setTotalStartedAt] = useState<number | null>(null)
   const [totalCompletedAt, setTotalCompletedAt] = useState<number | null>(null)
@@ -191,11 +193,27 @@ function IngestContent() {
 
     if (!validateUrl(url)) return
 
+    await startExtraction(url.trim(), 'normal')
+  }
+
+  const handleReextract = async () => {
+    if (!lastSubmittedUrl) return
+    await startExtraction(lastSubmittedUrl, 'reextract')
+  }
+
+  const handleForceReingest = async () => {
+    if (!lastSubmittedUrl) return
+    await startExtraction(lastSubmittedUrl, 'force_reingest')
+  }
+
+  const startExtraction = async (targetUrl: string, mode: 'normal' | 'reextract' | 'force_reingest') => {
     setIsLoading(true)
     setValidationError('')
     setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending', detail: undefined, startedAt: undefined, completedAt: undefined })))
     setResult(null)
     setPipelineError('')
+    setIsDuplicate(false)
+    setLastSubmittedUrl(targetUrl)
     setTotalStartedAt(Date.now())
     setTotalCompletedAt(null)
 
@@ -232,7 +250,11 @@ function IngestContent() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ youtube_url: url.trim() }),
+          body: JSON.stringify({
+            youtube_url: targetUrl,
+            ...(mode === 'force_reingest' && { force_reingest: true }),
+            ...(mode === 'reextract' && { reextract_only: true }),
+          }),
         }
       )
 
@@ -271,6 +293,10 @@ function IngestContent() {
               } else if (event.status === 'error') {
                 updateStep(event.step, 'error', event.detail)
                 setPipelineError(event.detail || 'An error occurred')
+                // Detect duplicate specifically
+                if (event.step === 'duplicate_check' && event.detail === 'Video already processed') {
+                  setIsDuplicate(true)
+                }
                 setTotalCompletedAt(Date.now())
               } else {
                 updateStep(event.step, event.status, event.detail)
@@ -531,6 +557,67 @@ function IngestContent() {
           {pipelineError && !steps.some((s) => s.status === 'error') && (
             <div className="rounded-xl border border-[#FF4D6A]/20 bg-[#FF4D6A]/5 px-5 py-4 animate-fade-up">
               <p className="text-sm text-[#FF4D6A] select-text whitespace-pre-wrap break-all">{pipelineError}</p>
+            </div>
+          )}
+
+          {/* ─── Re-ingest Options ─── */}
+          {isDuplicate && !isLoading && (
+            <div className="space-y-3 animate-fade-up">
+              {/* Header */}
+              <p className="text-sm text-[#8B95A8] px-1">
+                This video was already processed. Choose how to retry:
+              </p>
+
+              {/* Option 1: Re-extract (recommended) */}
+              <button
+                onClick={handleReextract}
+                className="group w-full text-left rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-5 transition-all duration-200 hover:border-[#00D4AA]/40 hover:bg-[#00D4AA]/[0.06] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 mt-0.5 rounded-lg border border-[#00D4AA]/20 bg-[#00D4AA]/10 p-2">
+                    <Sparkles className="h-4 w-4 text-[#00D4AA]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="text-sm font-semibold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
+                        Re-extract
+                      </h3>
+                      <span className="text-[9px] font-medium uppercase tracking-[0.15em] text-[#00D4AA]/70 border border-[#00D4AA]/20 rounded px-1.5 py-0.5">
+                        Fast
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[#8B95A8]">
+                      Keep the existing transcript, re-run AI extraction only. Best when the video has picks but the model missed them.
+                    </p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover:text-[#00D4AA] group-hover:translate-x-0.5 transition-all" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </button>
+
+              {/* Option 2: Full Re-ingest */}
+              <button
+                onClick={handleForceReingest}
+                className="group w-full text-left rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 p-5 transition-all duration-200 hover:border-[#F59E0B]/30 hover:bg-[#F59E0B]/[0.03] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 mt-0.5 rounded-lg border border-[#1E293B] group-hover:border-[#F59E0B]/20 bg-[#141B2D] group-hover:bg-[#F59E0B]/10 p-2 transition-colors">
+                    <RotateCcw className="h-4 w-4 text-[#8B95A8] group-hover:text-[#F59E0B] transition-colors" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
+                      Full Re-ingest
+                    </h3>
+                    <p className="mt-1 text-xs text-[#64748B]">
+                      Delete everything and start from scratch — re-fetch transcript, re-run AI. Use when the transcript itself was bad.
+                    </p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover:text-[#F59E0B] group-hover:translate-x-0.5 transition-all" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </button>
             </div>
           )}
 

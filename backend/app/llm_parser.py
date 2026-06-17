@@ -44,14 +44,14 @@ STOCK NAME RULES:
 - Never leave stock_name empty or null. Example: ticker "NVDA" → stock_name "NVIDIA".
 
 VIDEO SUMMARY RULES:
-- Provide a concise "video_summary" (max 350 chars) capturing the analyst's overall thesis, \
+- Provide a concise "video_summary" (max 500 chars) capturing the analyst's overall thesis, \
 key macro catalysts or sector themes, and whether the outlook is short-term or long-term.
 - Focus on WHAT is driving the picks, not listing the picks themselves.
 - If the video has no clear thesis, summarize the general market outlook discussed.
 
 Respond with a JSON object matching this schema:
 {
-  "video_summary": "<max 350 chars — overall thesis, catalysts, timeframe>",
+  "video_summary": "<max 500 chars — overall thesis, catalysts, timeframe>",
   "recommendations": [
     {
       "ticker": "SYMBOL",

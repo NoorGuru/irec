@@ -14,6 +14,8 @@ interface VideoRow {
   published_at: string
   channel_id: string
   video_summary: string | null
+  title: string | null
+  duration: string | null
   channels: {
     channel_name: string
     trust_weight: number
@@ -70,6 +72,17 @@ function formatDate(d: string): string {
     month: 'long',
     day: 'numeric',
   })
+}
+
+function formatDuration(iso: string | null): string | null {
+  if (!iso) return null
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return null
+  const h = match[1] ? parseInt(match[1]) : 0
+  const m = match[2] ? parseInt(match[2]) : 0
+  const s = match[3] ? parseInt(match[3]) : 0
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 function SentimentArrow({ value }: { value: number }) {
@@ -265,6 +278,8 @@ function VideoContent() {
           published_at,
           channel_id,
           video_summary,
+          title,
+          duration,
           channels!inner(channel_name, trust_weight)
         `)
         .eq('youtube_video_id', videoId)
@@ -337,6 +352,14 @@ function VideoContent() {
           <Link href={`/channel?id=${video.channel_id}`} className="text-[#64748B] hover:text-[#8B95A8] transition-colors truncate max-w-[200px]">
             {video.channels.channel_name}
           </Link>
+          {video.title && (
+            <>
+              <span className="text-[#1E293B]">/</span>
+              <span className="text-[#8B95A8] truncate max-w-[280px]" title={video.title}>
+                {video.title}
+              </span>
+            </>
+          )}
         </nav>
 
         {/* ─── Video Hero ─── */}
@@ -372,9 +395,22 @@ function VideoContent() {
                     </svg>
                   </div>
                 </div>
+                {/* Duration badge */}
+                {formatDuration(video.duration) && (
+                  <span className="absolute bottom-3 right-3 font-[family-name:var(--font-geist-mono)] text-xs font-medium text-[#F1F5F9] bg-[#0A0F1A]/80 backdrop-blur-sm rounded-md px-2 py-1 border border-[#1E293B]/60">
+                    {formatDuration(video.duration)}
+                  </span>
+                )}
               </button>
             )}
           </div>
+
+          {/* Video Title */}
+          {video.title && (
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#F1F5F9] leading-tight tracking-tight mb-4">
+              {video.title}
+            </h1>
+          )}
 
           {/* Video meta */}
           <div className="flex items-start justify-between flex-wrap gap-4">
