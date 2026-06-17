@@ -191,6 +191,21 @@ export function Footer() {
                 <span>© {currentYear}</span>
               </div>
             </div>
+
+            {/* Build version */}
+            <div className="mt-6 text-center">
+              <a
+                href={`https://github.com/NoorGuru/irec/commit/${process.env.NEXT_PUBLIC_COMMIT_HASH || ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#1E293B] hover:text-[#374151] transition-colors duration-300 tracking-wider"
+              >
+                {process.env.NEXT_PUBLIC_COMMIT_HASH || 'dev'}
+                {process.env.NEXT_PUBLIC_BUILD_DATE && (
+                  <> · {new Date(process.env.NEXT_PUBLIC_BUILD_DATE).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                )}
+              </a>
+            </div>
           </div>
         </div>
       </div>
