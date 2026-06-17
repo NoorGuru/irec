@@ -4,6 +4,7 @@ import re
 
 class ExtractionRequest(BaseModel):
     youtube_url: str
+    transcript: str | None = None  # Optional client-provided transcript
 
 
 class Recommendation(BaseModel):

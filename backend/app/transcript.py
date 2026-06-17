@@ -6,6 +6,7 @@ import logging
 import os
 from collections.abc import Callable
 
+import httpx
 from fastapi import HTTPException
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import (
@@ -20,8 +21,39 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 2
 BASE_DELAY_SECONDS = 3
 
+# Cloudflare Worker URL for transcript proxy (bypasses datacenter IP blocks)
+TRANSCRIPT_WORKER_URL = os.environ.get("TRANSCRIPT_WORKER_URL", "")
+
 # Type for an optional async retry callback: (attempt, max_retries, error, delay) -> None
 AsyncRetryCallback = Callable[[int, int, str, int], None] | None
+
+
+async def _fetch_via_worker(video_id: str) -> str | None:
+    """Fetch transcript via Cloudflare Worker proxy (edge IPs, not blocked).
+
+    Returns transcript text or None if unavailable/not configured.
+    """
+    if not TRANSCRIPT_WORKER_URL:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(
+                f"{TRANSCRIPT_WORKER_URL}/transcript",
+                params={"v": video_id},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                transcript = data.get("transcript", "")
+                if transcript and len(transcript) > 50:
+                    return transcript
+            else:
+                error = resp.json().get("error", resp.text[:200])
+                logger.warning("Worker transcript failed for %s: %s", video_id, error)
+    except Exception as e:
+        logger.warning("Worker request failed for %s: %s: %s", video_id, type(e).__name__, e)
+
+    return None
 
 
 def _build_api() -> YouTubeTranscriptApi:
@@ -65,11 +97,12 @@ def _fetch_transcript_ytdlp(video_id: str) -> str | None:
     if proxy_user and proxy_pass:
         proxy_url = f"http://{proxy_user}:{proxy_pass}@p.webshare.io:80"
 
-    # Try multiple client strategies in order of reliability from datacenter IPs
+    # Try multiple client strategies — mobile/tv clients bypass datacenter blocks better
     client_strategies = [
-        {"player_client": "ios,web"},
-        {"player_client": "android,web"},
-        {"player_client": "web"},
+        {"player_client": "mweb"},
+        {"player_client": "tv"},
+        {"player_client": "ios"},
+        {"player_client": "android"},
     ]
 
     for strategy in client_strategies:
@@ -268,10 +301,10 @@ async def _fetch_with_retry(video_id: str, on_retry: AsyncRetryCallback = None) 
 async def fetch_transcript(video_id: str, on_retry: AsyncRetryCallback = None) -> str:
     """Fetch the transcript for a YouTube video and concatenate segments.
 
-    Strategy (yt-dlp first since proxy is unreliable on free tier):
-    1. Try yt-dlp (browser impersonation, no proxy needed — most reliable)
-    2. Fall back to youtube-transcript-api with proxy + retries
-    3. Fall back to youtube-transcript-api any-language
+    Strategy (ordered by reliability from server environments):
+    1. Cloudflare Worker proxy (edge IPs, not blocked by YouTube)
+    2. yt-dlp with multiple client strategies + proxy
+    3. youtube-transcript-api with proxy + retries
 
     Args:
         video_id: The 11-character YouTube video ID.
@@ -283,16 +316,21 @@ async def fetch_transcript(video_id: str, on_retry: AsyncRetryCallback = None) -
     Raises:
         HTTPException(422): If the transcript is disabled or unavailable.
     """
-    # Primary method: yt-dlp (multiple client strategies)
+    # Method 1: Cloudflare Worker (fastest, most reliable from server)
+    worker_result = await _fetch_via_worker(video_id)
+    if worker_result:
+        return worker_result
+
+    # Method 2: yt-dlp (multiple client strategies)
     ytdlp_result = await asyncio.to_thread(_fetch_transcript_ytdlp, video_id)
     if ytdlp_result:
         return ytdlp_result
 
     logger.warning("yt-dlp failed for %s, trying proxy method", video_id)
 
-    # Fallback: youtube-transcript-api with proxy
+    # Method 3: youtube-transcript-api with proxy
     if on_retry:
-        on_retry(0, 0, "Primary method failed, trying proxy", 0)
+        on_retry(0, 0, "Primary methods failed, trying proxy", 0)
 
     try:
         result = await _fetch_with_retry(video_id, on_retry=on_retry)

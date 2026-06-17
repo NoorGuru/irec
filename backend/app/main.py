@@ -67,14 +67,49 @@ async def debug_transcript(
     video_id: str,
 ):
     """Debug endpoint to test transcript fetch methods in isolation."""
-    import traceback
-    from app.transcript import _fetch_transcript_ytdlp
+    from app.transcript import _fetch_transcript_ytdlp, _build_api
 
     results = {}
 
-    # Test yt-dlp
+    # Test yt-dlp (with detailed logging)
     try:
         import asyncio
+        import yt_dlp
+
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        ydl_opts = {
+            "skip_download": True,
+            "writeautomaticsub": True,
+            "writesubtitles": True,
+            "subtitleslangs": ["en"],
+            "subtitlesformat": "json3",
+            "quiet": False,
+            "ignore_no_formats_error": True,
+            "extractor_args": {"youtube": {"player_client": "mweb"}},
+        }
+
+        proxy_user = os.environ.get("WEBSHARE_PROXY_USER")
+        proxy_pass = os.environ.get("WEBSHARE_PROXY_PASS")
+        if proxy_user and proxy_pass:
+            ydl_opts["proxy"] = f"http://{proxy_user}:{proxy_pass}@p.webshare.io:80"
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                subs = info.get("subtitles", {})
+                auto_subs = info.get("automatic_captions", {})
+                results["ytdlp_detail"] = {
+                    "has_subtitles": bool(subs),
+                    "subtitle_langs": list(subs.keys())[:10] if subs else [],
+                    "has_auto_captions": bool(auto_subs),
+                    "auto_caption_langs": list(auto_subs.keys())[:10] if auto_subs else [],
+                    "title": info.get("title", ""),
+                    "duration": info.get("duration", 0),
+                }
+        except Exception as e:
+            results["ytdlp_detail"] = {"error": f"{type(e).__name__}: {str(e)[:500]}"}
+
+        # Also test the full function
         ytdlp_result = await asyncio.to_thread(_fetch_transcript_ytdlp, video_id)
         results["ytdlp"] = {
             "success": ytdlp_result is not None,
@@ -93,18 +128,17 @@ async def debug_transcript(
         text = " ".join(s.text for s in result.snippets)
         results["yt_api_no_proxy"] = {"success": True, "length": len(text), "preview": text[:200]}
     except Exception as e:
-        results["yt_api_no_proxy"] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+        results["yt_api_no_proxy"] = {"success": False, "error": f"{type(e).__name__}: {str(e)[:300]}"}
 
     # Test youtube-transcript-api (with proxy)
     try:
-        from app.transcript import _build_api
         api = _build_api()
         import asyncio
         result = await asyncio.to_thread(api.fetch, video_id, languages=["en", "en-US", "en-GB"])
         text = " ".join(s.text for s in result.snippets)
         results["yt_api_proxy"] = {"success": True, "length": len(text), "preview": text[:200]}
     except Exception as e:
-        results["yt_api_proxy"] = {"success": False, "error": f"{type(e).__name__}: {e}"}
+        results["yt_api_proxy"] = {"success": False, "error": f"{type(e).__name__}: {str(e)[:300]}"}
 
     return results
 
@@ -228,6 +262,7 @@ async def extract_stream(
     """
     body = await request.json()
     youtube_url = body.get("youtube_url", "")
+    client_transcript = body.get("transcript")  # Optional: sent from browser
 
     async def event_stream():
         def sse(data: dict) -> str:
@@ -281,36 +316,43 @@ async def extract_stream(
 
         # Step 4: Fetch transcript
         yield sse({"step": "transcript", "status": "running", "detail": "Fetching transcript..."})
-        try:
-            retry_events: list[dict] = []
 
-            def on_transcript_retry(attempt: int, max_retries: int, error: str, delay: int):
-                retry_events.append({
-                    "step": "transcript",
-                    "status": "retrying",
-                    "detail": f"Retry {attempt}/{max_retries} — {error}, waiting {delay}s...",
-                })
+        # Use client-provided transcript if available (bypasses server-side IP blocks)
+        if client_transcript and len(client_transcript.strip()) > 50:
+            transcript = client_transcript.strip()
+            word_count = len(transcript.split())
+            yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words (from browser)"})
+        else:
+            try:
+                retry_events: list[dict] = []
 
-            transcript = await fetch_transcript(parsed.video_id, on_retry=on_transcript_retry)
+                def on_transcript_retry(attempt: int, max_retries: int, error: str, delay: int):
+                    retry_events.append({
+                        "step": "transcript",
+                        "status": "retrying",
+                        "detail": f"Retry {attempt}/{max_retries} — {error}, waiting {delay}s...",
+                    })
 
-            # Emit any retry events that accumulated
-            for evt in retry_events:
-                yield sse(evt)
-        except HTTPException as e:
-            # Emit any accumulated retries before the final error
-            for evt in retry_events:
-                yield sse(evt)
-            _log_pipeline_error(youtube_url, "transcript_fetch", e)
-            yield sse({"step": "transcript", "status": "error", "detail": e.detail})
-            return
-        except Exception as e:
-            for evt in retry_events:
-                yield sse(evt)
-            _log_pipeline_error(youtube_url, "transcript_fetch", e)
-            yield sse({"step": "transcript", "status": "error", "detail": "Transcript unavailable for this video"})
-            return
-        word_count = len(transcript.split())
-        yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words"})
+                transcript = await fetch_transcript(parsed.video_id, on_retry=on_transcript_retry)
+
+                # Emit any retry events that accumulated
+                for evt in retry_events:
+                    yield sse(evt)
+            except HTTPException as e:
+                # Emit any accumulated retries before the final error
+                for evt in retry_events:
+                    yield sse(evt)
+                _log_pipeline_error(youtube_url, "transcript_fetch", e)
+                yield sse({"step": "transcript", "status": "error", "detail": e.detail})
+                return
+            except Exception as e:
+                for evt in retry_events:
+                    yield sse(evt)
+                _log_pipeline_error(youtube_url, "transcript_fetch", e)
+                yield sse({"step": "transcript", "status": "error", "detail": "Transcript unavailable for this video"})
+                return
+            word_count = len(transcript.split())
+            yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words"})
 
         # Step 5: LLM extraction
         yield sse({"step": "llm_parse", "status": "running", "detail": "Extracting recommendations via AI..."})
