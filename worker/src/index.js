@@ -103,7 +103,7 @@ async function getCaptionTracks(videoId, apiKey) {
  * Step 3: Fetch and parse the transcript from a track URL
  */
 async function fetchTranscriptFromTrack(track) {
-  let url = track.baseUrl.replace(/&amp;/g, '&');
+  let url = (typeof track === 'string' ? track : track.baseUrl).replace(/&amp;/g, '&');
 
   // Remove variant=gemini and exp=xpe which cause empty responses
   url = url.replace(/&variant=[^&]+/g, '');
@@ -190,19 +190,72 @@ async function fetchTranscriptFromTrack(track) {
 const INNERTUBE_API_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
 
 async function getTranscript(videoId) {
-  const { tracks } = await getCaptionTracks(videoId, INNERTUBE_API_KEY);
+  // Try player API first (faster, single request)
+  try {
+    const { tracks } = await getCaptionTracks(videoId, INNERTUBE_API_KEY);
+    const track = tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr')
+      || tracks.find(t => t.languageCode === 'en')
+      || tracks.find(t => t.languageCode?.startsWith('en'))
+      || tracks[0];
 
-  // Find best English track
+    if (track?.baseUrl) {
+      return await fetchTranscriptFromTrack(track);
+    }
+  } catch (e) {
+    // Player API blocked — fall back to page scraping
+  }
+
+  // Fallback: fetch video page and extract captions from HTML
+  const pageResp = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
+
+  if (!pageResp.ok) {
+    throw new Error(`All methods failed. Player API and page fetch both returned errors (page: ${pageResp.status})`);
+  }
+
+  const html = await pageResp.text();
+  const tracksJson = extractCaptionTracks(html);
+  if (!tracksJson) {
+    throw new Error('No captions found (player API blocked, page has no tracks)');
+  }
+
+  const tracks = JSON.parse(tracksJson);
   const track = tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr')
     || tracks.find(t => t.languageCode === 'en')
     || tracks.find(t => t.languageCode?.startsWith('en'))
     || tracks[0];
 
   if (!track?.baseUrl) {
-    throw new Error(`No usable track. Available: ${tracks.map(t => t.languageCode).join(', ')}`);
+    throw new Error('No usable caption track in page data');
   }
 
   return await fetchTranscriptFromTrack(track);
+}
+
+/**
+ * Extract the captionTracks JSON array from YouTube page HTML.
+ */
+function extractCaptionTracks(html) {
+  const marker = '"captionTracks":';
+  const startIdx = html.indexOf(marker);
+  if (startIdx === -1) return null;
+
+  const arrayStart = html.indexOf('[', startIdx + marker.length);
+  if (arrayStart === -1) return null;
+
+  let depth = 0;
+  for (let i = arrayStart; i < html.length && i < arrayStart + 100000; i++) {
+    if (html[i] === '[') depth++;
+    else if (html[i] === ']') {
+      depth--;
+      if (depth === 0) return html.substring(arrayStart, i + 1);
+    }
+  }
+  return null;
 }
 
 export default {
