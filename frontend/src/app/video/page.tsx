@@ -13,6 +13,7 @@ interface VideoRow {
   youtube_video_id: string
   published_at: string
   channel_id: string
+  video_summary: string | null
   channels: {
     channel_name: string
     trust_weight: number
@@ -255,7 +256,7 @@ function VideoContent() {
       const supabase = createClient()
 
       // Fetch video with channel info
-      const { data: videoData } = await supabase
+      const { data: videoData, error } = await supabase
         .from('videos')
         .select(`
           video_id,
@@ -263,12 +264,13 @@ function VideoContent() {
           youtube_video_id,
           published_at,
           channel_id,
+          video_summary,
           channels!inner(channel_name, trust_weight)
         `)
         .eq('youtube_video_id', videoId)
         .single()
 
-      if (!videoData) {
+      if (error || !videoData) {
         setLoading(false)
         return
       }
@@ -419,6 +421,23 @@ function VideoContent() {
             </a>
           </div>
         </header>
+
+        {/* ─── Video Summary (AI Thesis) ─── */}
+        {video.video_summary && (
+          <section className="mb-8 animate-fade-up stagger-1">
+            <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/60 p-6 md:p-8">
+              <div className="flex items-center gap-2 mb-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569]">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">Thesis</span>
+              </div>
+              <p className="text-base md:text-lg text-[#C8D1E0] leading-relaxed font-light">
+                {video.video_summary}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* ─── Summary Stats ─── */}
         <section className="mb-10">

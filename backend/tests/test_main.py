@@ -55,7 +55,7 @@ def mock_pipeline():
         patch("app.main.check_duplicate", new_callable=AsyncMock, return_value=False) as mock_dup,
         patch("app.main.fetch_metadata", new_callable=AsyncMock, return_value=metadata) as mock_meta,
         patch("app.main.fetch_transcript", return_value="some transcript text") as mock_trans,
-        patch("app.main.parse_recommendations", new_callable=AsyncMock, return_value=recommendations) as mock_llm,
+        patch("app.main.parse_recommendations", new_callable=AsyncMock, return_value=(recommendations, "Bullish outlook on big tech driven by AI spending acceleration and strong Q4 earnings expectations.")) as mock_llm,
         patch("app.main.persist_extraction", new_callable=AsyncMock, return_value={"channel_id": "uuid1", "video_id": "uuid2"}) as mock_db,
     ):
         yield {
@@ -183,13 +183,14 @@ async def test_extract_pipeline_order(mock_verify_owner, mock_pipeline):
     assert call_args[0][1].channel_name == "Financial Education"
 
     # Verify persist was called with correct data
-    mock_pipeline["persist_extraction"].assert_called_once_with(
-        channel_name="Financial Education",
-        youtube_video_id="abc123xyz99",
-        video_url="https://www.youtube.com/watch?v=abc123xyz99",
-        published_at="2024-01-15T10:30:00Z",
-        recommendations=mock_pipeline["parse_recommendations"].return_value,
-    )
+    mock_pipeline["persist_extraction"].assert_called_once()
+    persist_kwargs = mock_pipeline["persist_extraction"].call_args.kwargs
+    assert persist_kwargs["channel_name"] == "Financial Education"
+    assert persist_kwargs["youtube_video_id"] == "abc123xyz99"
+    assert persist_kwargs["video_url"] == "https://www.youtube.com/watch?v=abc123xyz99"
+    assert persist_kwargs["published_at"] == "2024-01-15T10:30:00Z"
+    assert persist_kwargs["transcript"] == "some transcript text"
+    assert "video_summary" in persist_kwargs
 
 
 @pytest.mark.asyncio
@@ -203,7 +204,7 @@ async def test_extract_empty_recommendations(mock_verify_owner):
         patch("app.main.check_duplicate", new_callable=AsyncMock, return_value=False),
         patch("app.main.fetch_metadata", new_callable=AsyncMock, return_value=metadata),
         patch("app.main.fetch_transcript", return_value="just some discussion"),
-        patch("app.main.parse_recommendations", new_callable=AsyncMock, return_value=[]),
+        patch("app.main.parse_recommendations", new_callable=AsyncMock, return_value=([], "General market discussion without specific stock recommendations.")),
         patch("app.main.persist_extraction", new_callable=AsyncMock, return_value={"channel_id": "uuid1", "video_id": "uuid2"}),
     ):
         async with AsyncClient(
@@ -231,7 +232,7 @@ async def test_extract_database_error(mock_verify_owner):
         patch("app.main.check_duplicate", new_callable=AsyncMock, return_value=False),
         patch("app.main.fetch_metadata", new_callable=AsyncMock, return_value=metadata),
         patch("app.main.fetch_transcript", return_value="transcript"),
-        patch("app.main.parse_recommendations", new_callable=AsyncMock, return_value=[]),
+        patch("app.main.parse_recommendations", new_callable=AsyncMock, return_value=([], "")),
         patch("app.main.persist_extraction", new_callable=AsyncMock, side_effect=HTTPException(status_code=500, detail="Internal error, please try again")),
     ):
         async with AsyncClient(

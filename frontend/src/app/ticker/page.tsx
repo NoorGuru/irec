@@ -265,6 +265,80 @@ function TickerContent() {
                 {showMoreLinks && (
                   <div className="absolute right-0 top-full mt-2 z-50 min-w-[180px] rounded-lg border border-[#1E293B] bg-[#0F172A] shadow-xl shadow-black/40 py-1">
                     <a
+                      href={`https://www.tradingview.com/symbols/${symbol.toUpperCase()}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M3 3v18h18"/>
+                        <path d="M7 12l4-4 4 4 5-5"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">TradingView</span>
+                    </a>
+                    <a
+                      href={`https://finviz.com/quote.ashx?t=${symbol.toUpperCase()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6v6H9z"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">Finviz</span>
+                    </a>
+                    <a
+                      href={`https://seekingalpha.com/symbol/${symbol.toUpperCase()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">Seeking Alpha</span>
+                    </a>
+                    <a
+                      href={`https://www.marketwatch.com/investing/stock/${symbol.toLowerCase()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">MarketWatch</span>
+                    </a>
+                    <a
+                      href={`https://stockanalysis.com/stocks/${symbol.toLowerCase()}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M21 21H4.6c-.56 0-.84 0-1.05-.11a1 1 0 0 1-.44-.44C3 20.24 3 19.96 3 19.4V3"/>
+                        <path d="M7 14l4-4 4 4 5-5"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">Stock Analysis</span>
+                    </a>
+                    <a
+                      href={`https://stockinvest.us/stock/${symbol.toUpperCase()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M12 20V10"/>
+                        <path d="M18 20V4"/>
+                        <path d="M6 20v-4"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">StockInvest.us</span>
+                    </a>
+                    <div className="my-1 border-t border-[#1E293B]"/>
+                    <a
                       href={`https://www.investing.com/search/?q=${symbol.toUpperCase()}`}
                       target="_blank"
                       rel="noopener noreferrer"

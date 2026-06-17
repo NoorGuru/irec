@@ -26,6 +26,7 @@ class Recommendation(BaseModel):
 
 
 class LLMResponse(BaseModel):
+    video_summary: str = Field("", max_length=350)
     recommendations: list[Recommendation]
 
 

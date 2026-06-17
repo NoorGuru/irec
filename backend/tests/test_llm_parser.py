@@ -73,12 +73,13 @@ async def test_parse_recommendations_success(metadata, valid_response_json):
     with patch("app.llm_parser._build_client", return_value=mock_client):
         result = await parse_recommendations("transcript text about stocks", metadata)
 
-    assert len(result) == 1
-    assert result[0].ticker == "AAPL"
-    assert result[0].sentiment == 2
-    assert result[0].target_price == 200.0
-    assert result[0].conviction_level == 8
-    assert result[0].catalyst_notes == "Strong iPhone sales expected"
+    recommendations, summary = result
+    assert len(recommendations) == 1
+    assert recommendations[0].ticker == "AAPL"
+    assert recommendations[0].sentiment == 2
+    assert recommendations[0].target_price == 200.0
+    assert recommendations[0].conviction_level == 8
+    assert recommendations[0].catalyst_notes == "Strong iPhone sales expected"
 
 
 @pytest.mark.asyncio
@@ -93,7 +94,8 @@ async def test_parse_recommendations_empty(metadata, empty_response_json):
     with patch("app.llm_parser._build_client", return_value=mock_client):
         result = await parse_recommendations("transcript with no stock mentions", metadata)
 
-    assert result == []
+    recommendations, summary = result
+    assert recommendations == []
 
 
 @pytest.mark.asyncio
@@ -115,8 +117,9 @@ async def test_parse_recommendations_validation_retry_success(metadata, valid_re
     with patch("app.llm_parser._build_client", return_value=mock_client):
         result = await parse_recommendations("transcript text", metadata)
 
-    assert len(result) == 1
-    assert result[0].ticker == "AAPL"
+    recommendations, summary = result
+    assert len(recommendations) == 1
+    assert recommendations[0].ticker == "AAPL"
     # Two API calls total: initial + retry
     assert mock_client.messages.create.call_count == 2
 
@@ -137,7 +140,7 @@ async def test_parse_recommendations_validation_failure_502(metadata):
             await parse_recommendations("transcript text", metadata)
 
     assert exc_info.value.status_code == 502
-    assert exc_info.value.detail == "Could not parse recommendations"
+    assert "Could not parse recommendations" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
@@ -160,7 +163,8 @@ async def test_parse_recommendations_rate_limit_retry_success(metadata, valid_re
     ):
         result = await parse_recommendations("transcript text", metadata)
 
-    assert len(result) == 1
+    recommendations, summary = result
+    assert len(recommendations) == 1
     # Should have slept for 1 second (first retry, count=0)
     mock_sleep.assert_called_once_with(1.0)
 

@@ -140,7 +140,7 @@ async def extract(
 
     # Step 5: Parse recommendations via LLM → get list[Recommendation]
     try:
-        recommendations = await parse_recommendations(transcript, metadata)
+        recommendations, video_summary = await parse_recommendations(transcript, metadata)
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "llm_parse", e)
         raise
@@ -157,6 +157,7 @@ async def extract(
             published_at=metadata.published_at,
             recommendations=recommendations,
             transcript=transcript,
+            video_summary=video_summary,
         )
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "database_insert", e)
@@ -284,7 +285,7 @@ async def extract_stream(
                     "detail": f"Retry {attempt}/{max_retries} — {reason}" + (f", waiting {delay:.0f}s..." if delay > 0 else ""),
                 })
 
-            recommendations = await parse_recommendations(transcript, metadata, on_retry=on_llm_retry)
+            recommendations, video_summary = await parse_recommendations(transcript, metadata, on_retry=on_llm_retry)
 
             # Emit any retry events that accumulated
             for evt in llm_retry_events:
@@ -314,6 +315,7 @@ async def extract_stream(
                 published_at=metadata.published_at,
                 recommendations=recommendations,
                 transcript=transcript,
+                video_summary=video_summary,
             )
         except HTTPException as e:
             _log_pipeline_error(youtube_url, "database_insert", e)
