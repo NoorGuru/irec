@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import (
     NoTranscriptFound,
+    RequestBlocked,
     TranscriptsDisabled,
 )
 from youtube_transcript_api.proxies import WebshareProxyConfig
@@ -16,7 +17,7 @@ from youtube_transcript_api.proxies import WebshareProxyConfig
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 5
-BASE_DELAY_SECONDS = 3
+BASE_DELAY_SECONDS = 5
 
 # Type for an optional async retry callback: (attempt, max_retries, error, delay) -> None
 AsyncRetryCallback = Callable[[int, int, str, int], None] | None
@@ -70,6 +71,21 @@ async def _fetch_with_retry(video_id: str, on_retry: AsyncRetryCallback = None) 
         except (TranscriptsDisabled, NoTranscriptFound):
             # Not a rate-limit issue — re-raise immediately for fallback handling
             raise
+        except RequestBlocked as e:
+            # Proxy IP was blocked — retry with a fresh IP
+            last_exception = e
+            delay = BASE_DELAY_SECONDS * (2**attempt)
+            logger.warning(
+                "Proxy blocked for %s (attempt %d/%d), "
+                "retrying in %ds with fresh proxy",
+                video_id,
+                attempt + 1,
+                MAX_RETRIES,
+                delay,
+            )
+            if on_retry:
+                on_retry(attempt + 1, MAX_RETRIES, "Proxy blocked, rotating IP", delay)
+            await asyncio.sleep(delay)
         except Exception as e:
             last_exception = e
             error_str = str(e).lower()
