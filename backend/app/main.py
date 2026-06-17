@@ -128,7 +128,7 @@ async def extract(
 
     # Step 4: Fetch transcript → get transcript text
     try:
-        transcript = fetch_transcript(parsed.video_id)
+        transcript = await fetch_transcript(parsed.video_id)
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "transcript_fetch", e)
         raise
@@ -252,9 +252,9 @@ async def extract_stream(
                     "detail": f"Retry {attempt}/{max_retries} — {error}, waiting {delay}s...",
                 })
 
-            transcript = fetch_transcript(parsed.video_id, on_retry=on_transcript_retry)
+            transcript = await fetch_transcript(parsed.video_id, on_retry=on_transcript_retry)
 
-            # Emit any retry events that accumulated during the sync call
+            # Emit any retry events that accumulated
             for evt in retry_events:
                 yield sse(evt)
         except HTTPException as e:
