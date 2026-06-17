@@ -28,6 +28,8 @@
 ## Infrastructure
 
 - **Database & Auth**: Supabase (PostgreSQL + Google OAuth + RLS)
+- **Supabase project ref**: `deasjnsdrhnsxqssfbrn`
+- **Supabase region**: ap-northeast-2
 - **Backend hosting**: Google Cloud Run
 - **Frontend hosting**: Static (GitHub Pages via CNAME)
 - **CI/CD**: GitHub Actions (deploy-backend.yml, deploy-frontend.yml)

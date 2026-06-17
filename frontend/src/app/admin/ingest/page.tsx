@@ -326,8 +326,10 @@ function IngestContent() {
                       {step.label}
                     </p>
                     {step.detail && (
-                      <p className={`mt-0.5 truncate text-xs ${
-                        step.status === 'error' ? 'text-[#FF4D6A]/80' : 'text-[#8B95A8]'
+                      <p className={`mt-0.5 text-xs select-text ${
+                        step.status === 'error'
+                          ? 'text-[#FF4D6A]/80 whitespace-pre-wrap break-all'
+                          : 'truncate text-[#8B95A8]'
                       }`}>
                         {step.detail}
                       </p>
@@ -342,7 +344,7 @@ function IngestContent() {
         {/* Error display */}
         {pipelineError && !steps.some((s) => s.status === 'error') && (
           <div className="rounded-lg border border-[#FF4D6A]/30 bg-[#FF4D6A]/10 px-4 py-3">
-            <p className="text-sm text-[#FF4D6A]">{pipelineError}</p>
+            <p className="text-sm text-[#FF4D6A] select-text whitespace-pre-wrap break-all">{pipelineError}</p>
           </div>
         )}
 

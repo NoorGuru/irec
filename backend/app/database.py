@@ -102,6 +102,7 @@ async def insert_video(
     video_url: str,
     channel_id: str,
     published_at: str,
+    transcript: str | None = None,
 ) -> str:
     """Insert a video record and return the video_id UUID.
 
@@ -110,16 +111,17 @@ async def insert_video(
     """
     try:
         client = _get_client()
+        record: dict = {
+            "youtube_video_id": youtube_video_id,
+            "video_url": video_url,
+            "channel_id": channel_id,
+            "published_at": published_at,
+        }
+        if transcript is not None:
+            record["transcript"] = transcript
         response = (
             client.table("videos")
-            .insert(
-                {
-                    "youtube_video_id": youtube_video_id,
-                    "video_url": video_url,
-                    "channel_id": channel_id,
-                    "published_at": published_at,
-                }
-            )
+            .insert(record)
             .execute()
         )
         if not response.data:
@@ -190,6 +192,7 @@ async def persist_extraction(
     video_url: str,
     published_at: str,
     recommendations: list[Recommendation],
+    transcript: str | None = None,
 ) -> dict:
     """Orchestrate the full database persistence for an extraction.
 
@@ -211,6 +214,7 @@ async def persist_extraction(
             video_url=video_url,
             channel_id=channel_id,
             published_at=published_at,
+            transcript=transcript,
         )
     except HTTPException:
         # Video insert failed — no rollback needed since nothing was inserted

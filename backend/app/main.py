@@ -147,6 +147,7 @@ async def extract(
             video_url=parsed.canonical_url,
             published_at=metadata.published_at,
             recommendations=recommendations,
+            transcript=transcript,
         )
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "database_insert", e)
@@ -268,6 +269,7 @@ async def extract_stream(
                 video_url=parsed.canonical_url,
                 published_at=metadata.published_at,
                 recommendations=recommendations,
+                transcript=transcript,
             )
         except HTTPException as e:
             _log_pipeline_error(youtube_url, "database_insert", e)

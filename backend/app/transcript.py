@@ -14,8 +14,8 @@ from youtube_transcript_api.proxies import WebshareProxyConfig
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 3
-BASE_DELAY_SECONDS = 5
+MAX_RETRIES = 5
+BASE_DELAY_SECONDS = 3
 
 
 def _build_api() -> YouTubeTranscriptApi:
@@ -57,19 +57,28 @@ def _fetch_with_retry(video_id: str) -> object:
         except Exception as e:
             last_exception = e
             error_str = str(e).lower()
-            if "429" in error_str or "too many" in error_str:
+            is_retryable = (
+                "429" in error_str
+                or "too many" in error_str
+                or "max retries" in error_str
+                or "connection" in error_str
+                or "timeout" in error_str
+                or "retryerror" in error_str
+            )
+            if is_retryable:
                 delay = BASE_DELAY_SECONDS * (2**attempt)
                 logger.warning(
-                    "Rate-limited fetching transcript for %s (attempt %d/%d), "
+                    "Retryable error fetching transcript for %s (attempt %d/%d): %s, "
                     "retrying in %ds",
                     video_id,
                     attempt + 1,
                     MAX_RETRIES,
+                    type(e).__name__,
                     delay,
                 )
                 time.sleep(delay)
             else:
-                # Non-rate-limit error — don't retry
+                # Non-retryable error — don't retry
                 raise
 
     raise last_exception  # type: ignore[misc]
