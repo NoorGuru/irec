@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Home } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Home, Clock } from 'lucide-react'
 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
@@ -17,6 +17,8 @@ interface PipelineStep {
   label: string
   status: StepStatus
   detail?: string
+  startedAt?: number
+  completedAt?: number
 }
 
 interface ExtractionResult {
@@ -36,7 +38,7 @@ const INITIAL_STEPS: PipelineStep[] = [
   { id: 'database', label: 'Save to Database', status: 'pending' },
 ]
 
-// --- Demo mode: simulates the SSE stream with fake data and delays ---
+// --- Demo mode ---
 const DEMO_EVENTS: { step: string; status: string; detail: string; delay: number }[] = [
   { step: 'url_parse', status: 'running', detail: 'Parsing YouTube URL...', delay: 0 },
   { step: 'url_parse', status: 'done', detail: 'Video ID: dQw4w9WgXcQ', delay: 400 },
@@ -44,7 +46,8 @@ const DEMO_EVENTS: { step: string; status: string; detail: string; delay: number
   { step: 'duplicate_check', status: 'done', detail: 'New video confirmed', delay: 600 },
   { step: 'metadata', status: 'running', detail: 'Fetching video metadata...', delay: 200 },
   { step: 'metadata', status: 'done', detail: 'Channel: Financial Analysis TV', delay: 900 },
-  { step: 'transcript', status: 'running', detail: 'Fetching transcript...', delay: 200 },
+  { step: 'transcript', status: 'running', detail: 'Fetching transcript via worker...', delay: 200 },
+  { step: 'transcript', status: 'retrying', detail: 'Retry 1/3 — Proxy blocked, rotating IP...', delay: 1500 },
   { step: 'transcript', status: 'done', detail: '~4,230 words', delay: 1200 },
   { step: 'llm_parse', status: 'running', detail: 'Extracting recommendations via AI...', delay: 300 },
   { step: 'llm_parse', status: 'done', detail: 'Found 3 ticker(s): AAPL, NVDA, MSFT', delay: 2500 },
@@ -60,6 +63,34 @@ const DEMO_RESULT: ExtractionResult = {
   recommendation_count: 3,
 }
 
+/** Formats elapsed ms into a readable string */
+function formatElapsed(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  const seconds = ms / 1000
+  if (seconds < 60) return `${seconds.toFixed(1)}s`
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.round(seconds % 60)
+  return `${mins}m ${secs}s`
+}
+
+/** Live elapsed timer component */
+function ElapsedTimer({ startedAt, completedAt }: { startedAt: number; completedAt?: number }) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (completedAt) return
+    const interval = setInterval(() => setNow(Date.now()), 100)
+    return () => clearInterval(interval)
+  }, [completedAt])
+
+  const elapsed = (completedAt || now) - startedAt
+  return (
+    <span className="font-mono text-[10px] text-[#8B95A8]/60 tabular-nums">
+      {formatElapsed(elapsed)}
+    </span>
+  )
+}
+
 function IngestContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -71,13 +102,11 @@ function IngestContent() {
   const [result, setResult] = useState<ExtractionResult | null>(null)
   const [pipelineError, setPipelineError] = useState('')
   const [authChecked, setAuthChecked] = useState(isDemo)
+  const [totalStartedAt, setTotalStartedAt] = useState<number | null>(null)
+  const [totalCompletedAt, setTotalCompletedAt] = useState<number | null>(null)
 
   useEffect(() => {
-    // In demo mode, skip auth check
-    if (isDemo) {
-      // Auth is handled synchronously below via initial state
-      return
-    }
+    if (isDemo) return
     const checkAuth = async () => {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -113,7 +142,17 @@ function IngestContent() {
 
   const updateStep = useCallback((stepId: string, status: StepStatus, detail?: string) => {
     setSteps((prev) =>
-      prev.map((s) => (s.id === stepId ? { ...s, status, detail } : s))
+      prev.map((s) => {
+        if (s.id !== stepId) return s
+        const now = Date.now()
+        return {
+          ...s,
+          status,
+          detail,
+          startedAt: s.startedAt || (status === 'running' ? now : undefined),
+          completedAt: status === 'done' || status === 'error' ? now : s.completedAt,
+        }
+      })
     )
   }, [])
 
@@ -124,19 +163,21 @@ function IngestContent() {
 
     setIsLoading(true)
     setValidationError('')
-    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending', detail: undefined })))
+    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending', detail: undefined, startedAt: undefined, completedAt: undefined })))
     setResult(null)
     setPipelineError('')
+    setTotalStartedAt(Date.now())
+    setTotalCompletedAt(null)
 
-    // --- Demo mode: simulate the pipeline with delays ---
+    // --- Demo mode ---
     if (isDemo) {
       for (const event of DEMO_EVENTS) {
         await new Promise((resolve) => setTimeout(resolve, event.delay))
         updateStep(event.step, event.status as StepStatus, event.detail)
       }
-      // Small pause before showing result
       await new Promise((resolve) => setTimeout(resolve, 300))
       setResult(DEMO_RESULT)
+      setTotalCompletedAt(Date.now())
       setUrl('')
       setIsLoading(false)
       return
@@ -196,9 +237,11 @@ function IngestContent() {
               const event = JSON.parse(line.slice(6))
               if (event.step === 'complete' && event.status === 'done') {
                 setResult(event.result)
+                setTotalCompletedAt(Date.now())
               } else if (event.status === 'error') {
                 updateStep(event.step, 'error', event.detail)
                 setPipelineError(event.detail || 'An error occurred')
+                setTotalCompletedAt(Date.now())
               } else {
                 updateStep(event.step, event.status, event.detail)
               }
@@ -217,6 +260,7 @@ function IngestContent() {
       })
     } catch {
       setPipelineError('Network error. Please check your connection and try again.')
+      setTotalCompletedAt(Date.now())
     } finally {
       setIsLoading(false)
     }
@@ -225,15 +269,15 @@ function IngestContent() {
   const StepIcon = ({ status }: { status: StepStatus }) => {
     switch (status) {
       case 'done':
-        return <CheckCircle2 className="h-5 w-5 text-[#00D4AA]" />
+        return <CheckCircle2 className="h-4 w-4 text-[#00D4AA]" />
       case 'error':
-        return <XCircle className="h-5 w-5 text-[#FF4D6A]" />
+        return <XCircle className="h-4 w-4 text-[#FF4D6A]" />
       case 'running':
-        return <Loader2 className="h-5 w-5 animate-spin text-[#00D4AA]" />
+        return <Loader2 className="h-4 w-4 animate-spin text-[#00D4AA]" />
       case 'retrying':
-        return <RefreshCw className="h-5 w-5 animate-spin text-[#F59E0B]" />
+        return <RefreshCw className="h-4 w-4 animate-spin text-[#F59E0B]" />
       default:
-        return <Circle className="h-5 w-5 text-[#8B95A8]/40" />
+        return <Circle className="h-4 w-4 text-[#8B95A8]/30" />
     }
   }
 
@@ -332,40 +376,74 @@ function IngestContent() {
         {/* Pipeline Progress */}
         {steps.length > 0 && (
           <div className="rounded-lg border border-[#1E293B] bg-[#141B2D] p-5">
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-[#8B95A8]">
-              Pipeline
-            </h2>
-            <div className="space-y-3">
-              {steps.map((step) => (
+            {/* Pipeline header with total timer */}
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-medium uppercase tracking-wider text-[#8B95A8]">
+                Pipeline
+              </h2>
+              {totalStartedAt && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-[#8B95A8]/50" />
+                  <ElapsedTimer startedAt={totalStartedAt} completedAt={totalCompletedAt ?? undefined} />
+                </div>
+              )}
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-1">
+              {steps.map((step, index) => (
                 <div
                   key={step.id}
-                  className={`flex items-start gap-3 transition-opacity duration-200 ${
-                    step.status === 'pending' ? 'opacity-40' : 'opacity-100'
+                  className={`rounded-md px-3 py-2.5 transition-all duration-200 ${
+                    step.status === 'pending'
+                      ? 'opacity-40'
+                      : step.status === 'running' || step.status === 'retrying'
+                      ? 'bg-[#0A0F1A]/50 opacity-100'
+                      : 'opacity-100'
                   }`}
                 >
-                  <div className="mt-0.5 shrink-0">
-                    <StepIcon status={step.status} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-medium ${
-                      step.status === 'error' ? 'text-[#FF4D6A]'
-                        : step.status === 'retrying' ? 'text-[#F59E0B]'
-                        : 'text-[#F1F5F9]'
-                    }`}>
-                      {step.label}
-                    </p>
-                    {step.detail && (
-                      <p className={`mt-0.5 text-xs select-text ${
-                        step.status === 'error'
-                          ? 'text-[#FF4D6A]/80 whitespace-pre-wrap break-all'
-                          : step.status === 'retrying'
-                          ? 'text-[#F59E0B]/80'
-                          : 'truncate text-[#8B95A8]'
+                  <div className="flex items-center gap-3">
+                    {/* Step number */}
+                    <span className="font-mono text-[10px] text-[#8B95A8]/40 w-3 text-right shrink-0">
+                      {index + 1}
+                    </span>
+
+                    {/* Icon */}
+                    <div className="shrink-0">
+                      <StepIcon status={step.status} />
+                    </div>
+
+                    {/* Label + timer */}
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                      <p className={`text-sm font-medium ${
+                        step.status === 'error' ? 'text-[#FF4D6A]'
+                          : step.status === 'retrying' ? 'text-[#F59E0B]'
+                          : step.status === 'done' ? 'text-[#F1F5F9]'
+                          : step.status === 'running' ? 'text-[#F1F5F9]'
+                          : 'text-[#8B95A8]'
                       }`}>
-                        {step.detail}
+                        {step.label}
                       </p>
-                    )}
+
+                      {/* Per-step elapsed timer */}
+                      {step.startedAt && (
+                        <ElapsedTimer startedAt={step.startedAt} completedAt={step.completedAt} />
+                      )}
+                    </div>
                   </div>
+
+                  {/* Detail line */}
+                  {step.detail && (
+                    <p className={`mt-1 ml-10 text-xs font-mono select-text ${
+                      step.status === 'error'
+                        ? 'text-[#FF4D6A]/80 whitespace-pre-wrap break-all'
+                        : step.status === 'retrying'
+                        ? 'text-[#F59E0B]/80'
+                        : 'text-[#8B95A8]/70 truncate'
+                    }`}>
+                      {step.detail}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -408,6 +486,14 @@ function IngestContent() {
                 <dt className="text-[#8B95A8]">Recommendations</dt>
                 <dd className="font-mono text-[#F1F5F9]">{result.recommendation_count}</dd>
               </div>
+              {totalStartedAt && totalCompletedAt && (
+                <div className="flex justify-between pt-2 border-t border-[#1E293B]">
+                  <dt className="text-[#8B95A8]">Total time</dt>
+                  <dd className="font-mono text-[#8B95A8]">
+                    {formatElapsed(totalCompletedAt - totalStartedAt)}
+                  </dd>
+                </div>
+              )}
             </dl>
           </div>
         )}

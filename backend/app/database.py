@@ -38,20 +38,24 @@ def _get_client() -> Client:
 
 
 async def check_duplicate(youtube_video_id: str) -> bool:
-    """Check if a video with the given youtube_video_id already exists.
+    """Check if a video with the given youtube_video_id already exists AND has recommendations.
 
-    Returns True if the video exists (duplicate), False otherwise.
+    Returns True if the video is fully processed (has recommendations), False otherwise.
     Raises HTTPException(503) on timeout.
     """
     try:
         client = _get_client()
         response = (
             client.table("videos")
-            .select("video_id")
+            .select("video_id, recommendations(ticker)")
             .eq("youtube_video_id", youtube_video_id)
             .execute()
         )
-        return len(response.data) > 0
+        if not response.data:
+            return False
+        # Only consider it a duplicate if it has recommendations (fully processed)
+        recs = response.data[0].get("recommendations", [])
+        return len(recs) > 0
     except HTTPException:
         raise
     except Exception as e:
@@ -60,6 +64,69 @@ async def check_duplicate(youtube_video_id: str) -> bool:
             status_code=503,
             detail=f"Database service temporarily unavailable: {type(e).__name__}: {e}",
         )
+
+
+async def get_cached_transcript(youtube_video_id: str) -> str | None:
+    """Check if we have a cached transcript for this video (from a previous partial run).
+
+    Returns the transcript text if found, None otherwise.
+    """
+    try:
+        client = _get_client()
+        response = (
+            client.table("videos")
+            .select("transcript")
+            .eq("youtube_video_id", youtube_video_id)
+            .execute()
+        )
+        if response.data and response.data[0].get("transcript"):
+            return response.data[0]["transcript"]
+        return None
+    except Exception:
+        return None
+
+
+async def save_transcript_cache(
+    youtube_video_id: str,
+    video_url: str,
+    channel_name: str,
+    published_at: str,
+    transcript: str,
+) -> None:
+    """Save transcript early so retries don't need to re-fetch it.
+
+    Creates the channel and video records if they don't exist.
+    If the video already exists, updates the transcript.
+    """
+    try:
+        client = _get_client()
+
+        # Check if video already exists
+        existing = (
+            client.table("videos")
+            .select("video_id")
+            .eq("youtube_video_id", youtube_video_id)
+            .execute()
+        )
+
+        if existing.data:
+            # Update transcript if missing
+            client.table("videos").update({"transcript": transcript}).eq(
+                "youtube_video_id", youtube_video_id
+            ).execute()
+        else:
+            # Create channel + video
+            channel_id = await upsert_channel(channel_name)
+            client.table("videos").insert({
+                "youtube_video_id": youtube_video_id,
+                "video_url": video_url,
+                "channel_id": channel_id,
+                "published_at": published_at,
+                "transcript": transcript,
+            }).execute()
+    except Exception as e:
+        # Non-fatal — just log, don't block the pipeline
+        logger.warning(f"Failed to cache transcript for {youtube_video_id}: {e}")
 
 
 async def upsert_channel(channel_name: str) -> str:
@@ -200,7 +267,7 @@ async def persist_extraction(
 ) -> dict:
     """Orchestrate the full database persistence for an extraction.
 
-    Sequence: upsert channel → insert video → insert recommendations.
+    Sequence: upsert channel → upsert video → insert recommendations.
     On failure during video/recommendations insert, rolls back the video
     (channel upsert is idempotent and not rolled back).
 
@@ -210,20 +277,43 @@ async def persist_extraction(
     # Step 1: Upsert channel (idempotent, not rolled back on failure)
     channel_id = await upsert_channel(channel_name)
 
-    # Step 2: Insert video
+    # Step 2: Upsert video (may already exist from transcript cache)
     video_id: str | None = None
     try:
-        video_id = await insert_video(
-            youtube_video_id=youtube_video_id,
-            video_url=video_url,
-            channel_id=channel_id,
-            published_at=published_at,
-            transcript=transcript,
-            video_summary=video_summary,
+        client = _get_client()
+        existing = (
+            client.table("videos")
+            .select("video_id")
+            .eq("youtube_video_id", youtube_video_id)
+            .execute()
         )
+
+        record: dict = {
+            "youtube_video_id": youtube_video_id,
+            "video_url": video_url,
+            "channel_id": channel_id,
+            "published_at": published_at,
+        }
+        if transcript is not None:
+            record["transcript"] = transcript
+        if video_summary:
+            record["video_summary"] = video_summary
+
+        if existing.data:
+            # Video exists (from transcript cache) — update it
+            video_id = existing.data[0]["video_id"]
+            client.table("videos").update(record).eq("video_id", video_id).execute()
+        else:
+            # New video — insert
+            response = client.table("videos").insert(record).execute()
+            if not response.data:
+                raise HTTPException(status_code=500, detail="Internal error, please try again")
+            video_id = response.data[0]["video_id"]
     except HTTPException:
-        # Video insert failed — no rollback needed since nothing was inserted
         raise
+    except Exception as e:
+        logger.error(f"Database error during video upsert: {e}")
+        raise HTTPException(status_code=500, detail="Internal error, please try again")
 
     # Step 3: Insert recommendations (skip if empty)
     try:

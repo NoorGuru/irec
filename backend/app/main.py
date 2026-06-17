@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.auth import verify_owner
-from app.database import check_duplicate, persist_extraction
+from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache
 from app.llm_parser import parse_recommendations
 from app.metadata import fetch_metadata
 from app.schemas import ExtractionRequest, ExtractionResponse
@@ -294,11 +294,18 @@ async def extract_stream(
         # Step 4: Fetch transcript
         yield sse({"step": "transcript", "status": "running", "detail": "Fetching transcript..."})
 
+        # Check for cached transcript from a previous partial run
+        cached_transcript = await get_cached_transcript(parsed.video_id)
+
         # Use client-provided transcript if available (bypasses server-side IP blocks)
         if client_transcript and len(client_transcript.strip()) > 50:
             transcript = client_transcript.strip()
             word_count = len(transcript.split())
             yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words (from browser)"})
+        elif cached_transcript:
+            transcript = cached_transcript
+            word_count = len(transcript.split())
+            yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words (cached)"})
         else:
             try:
                 retry_events: list[dict] = []
@@ -330,6 +337,15 @@ async def extract_stream(
                 return
             word_count = len(transcript.split())
             yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words"})
+
+            # Cache transcript for future retries (non-blocking)
+            await save_transcript_cache(
+                youtube_video_id=parsed.video_id,
+                video_url=parsed.canonical_url,
+                channel_name=metadata.channel_name,
+                published_at=metadata.published_at,
+                transcript=transcript,
+            )
 
         # Step 5: LLM extraction
         yield sse({"step": "llm_parse", "status": "running", "detail": "Extracting recommendations via AI..."})
