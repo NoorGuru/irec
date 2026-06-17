@@ -1,29 +1,82 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
 
-interface Toast {
-  id: number
-  message: string
-  type: 'success' | 'error'
+type StepStatus = 'pending' | 'running' | 'done' | 'error'
+
+interface PipelineStep {
+  id: string
+  label: string
+  status: StepStatus
+  detail?: string
+}
+
+interface ExtractionResult {
+  channel_name: string
+  video_id: string
+  published_at: string
+  tickers_extracted: string[]
+  recommendation_count: number
+}
+
+const INITIAL_STEPS: PipelineStep[] = [
+  { id: 'url_parse', label: 'Parse URL', status: 'pending' },
+  { id: 'duplicate_check', label: 'Duplicate Check', status: 'pending' },
+  { id: 'metadata', label: 'Fetch Metadata', status: 'pending' },
+  { id: 'transcript', label: 'Fetch Transcript', status: 'pending' },
+  { id: 'llm_parse', label: 'AI Extraction', status: 'pending' },
+  { id: 'database', label: 'Save to Database', status: 'pending' },
+]
+
+// --- Demo mode: simulates the SSE stream with fake data and delays ---
+const DEMO_EVENTS: { step: string; status: string; detail: string; delay: number }[] = [
+  { step: 'url_parse', status: 'running', detail: 'Parsing YouTube URL...', delay: 0 },
+  { step: 'url_parse', status: 'done', detail: 'Video ID: dQw4w9WgXcQ', delay: 400 },
+  { step: 'duplicate_check', status: 'running', detail: 'Checking for duplicates...', delay: 200 },
+  { step: 'duplicate_check', status: 'done', detail: 'New video confirmed', delay: 600 },
+  { step: 'metadata', status: 'running', detail: 'Fetching video metadata...', delay: 200 },
+  { step: 'metadata', status: 'done', detail: 'Channel: Financial Analysis TV', delay: 900 },
+  { step: 'transcript', status: 'running', detail: 'Fetching transcript...', delay: 200 },
+  { step: 'transcript', status: 'done', detail: '~4,230 words', delay: 1200 },
+  { step: 'llm_parse', status: 'running', detail: 'Extracting recommendations via AI...', delay: 300 },
+  { step: 'llm_parse', status: 'done', detail: 'Found 3 ticker(s): AAPL, NVDA, MSFT', delay: 2500 },
+  { step: 'database', status: 'running', detail: 'Saving to database...', delay: 200 },
+  { step: 'database', status: 'done', detail: 'Persisted successfully', delay: 500 },
+]
+
+const DEMO_RESULT: ExtractionResult = {
+  channel_name: 'Financial Analysis TV',
+  video_id: 'dQw4w9WgXcQ',
+  published_at: '2025-06-10T14:30:00Z',
+  tickers_extracted: ['AAPL', 'NVDA', 'MSFT'],
+  recommendation_count: 3,
 }
 
 export default function IngestPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isDemo = searchParams.get('demo') === '1'
   const [url, setUrl] = useState('')
   const [validationError, setValidationError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const [authChecked, setAuthChecked] = useState(false)
+  const [steps, setSteps] = useState<PipelineStep[]>([])
+  const [result, setResult] = useState<ExtractionResult | null>(null)
+  const [pipelineError, setPipelineError] = useState('')
+  const [authChecked, setAuthChecked] = useState(isDemo)
 
-  // Client-side auth protection
   useEffect(() => {
+    // In demo mode, skip auth check
+    if (isDemo) {
+      // Auth is handled synchronously below via initial state
+      return
+    }
     const checkAuth = async () => {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
@@ -40,25 +93,7 @@ export default function IngestPage() {
       setAuthChecked(true)
     }
     checkAuth()
-  }, [router])
-
-  const addToast = useCallback((message: string, type: 'success' | 'error') => {
-    const id = Date.now()
-    setToasts((prev) => [...prev, { id, message, type }])
-  }, [])
-
-  const removeToast = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }, [])
-
-  useEffect(() => {
-    if (toasts.length === 0) return
-    const latest = toasts[toasts.length - 1]
-    const timer = setTimeout(() => {
-      removeToast(latest.id)
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [toasts, removeToast])
+  }, [router, isDemo])
 
   const validateUrl = (value: string): boolean => {
     if (!value.trim()) {
@@ -67,13 +102,19 @@ export default function IngestPage() {
     }
     if (!YOUTUBE_URL_REGEX.test(value.trim())) {
       setValidationError(
-        'Invalid URL format. Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/'
+        'Invalid URL format. Supported: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/'
       )
       return false
     }
     setValidationError('')
     return true
   }
+
+  const updateStep = useCallback((stepId: string, status: StepStatus, detail?: string) => {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === stepId ? { ...s, status, detail } : s))
+    )
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,21 +123,37 @@ export default function IngestPage() {
 
     setIsLoading(true)
     setValidationError('')
+    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending', detail: undefined })))
+    setResult(null)
+    setPipelineError('')
 
+    // --- Demo mode: simulate the pipeline with delays ---
+    if (isDemo) {
+      for (const event of DEMO_EVENTS) {
+        await new Promise((resolve) => setTimeout(resolve, event.delay))
+        updateStep(event.step, event.status as StepStatus, event.detail)
+      }
+      // Small pause before showing result
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      setResult(DEMO_RESULT)
+      setUrl('')
+      setIsLoading(false)
+      return
+    }
+
+    // --- Real mode ---
     try {
       const supabase = createClient()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
-        addToast('Session expired. Please log in again.', 'error')
+        setPipelineError('Session expired. Please log in again.')
         setIsLoading(false)
         return
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/extract`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/extract/stream`,
         {
           method: 'POST',
           headers: {
@@ -107,40 +164,103 @@ export default function IngestPage() {
         }
       )
 
-      if (response.status === 201) {
-        const data = await response.json()
-        const tickers = data.tickers_extracted?.join(', ') || 'none'
-        setUrl('')
-        addToast(`Extracted tickers: ${tickers}`, 'success')
-      } else {
+      if (!response.ok) {
         const errorData = await response.json().catch(() => null)
-        const errorMessage =
-          errorData?.detail || errorData?.message || `Request failed with status ${response.status}`
-        addToast(errorMessage, 'error')
+        setPipelineError(errorData?.detail || `Request failed (${response.status})`)
+        setIsLoading(false)
+        return
       }
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        setPipelineError('Streaming not supported')
+        setIsLoading(false)
+        return
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6))
+              if (event.step === 'complete' && event.status === 'done') {
+                setResult(event.result)
+              } else if (event.status === 'error') {
+                updateStep(event.step, 'error', event.detail)
+                setPipelineError(event.detail || 'An error occurred')
+              } else {
+                updateStep(event.step, event.status, event.detail)
+              }
+            } catch {
+              // skip malformed SSE lines
+            }
+          }
+        }
+      }
+
+      // If we got a result, clear the URL
+      setSteps((prev) => {
+        const hasError = prev.some((s) => s.status === 'error')
+        if (!hasError) setUrl('')
+        return prev
+      })
     } catch {
-      addToast('Network error. Please check your connection and try again.', 'error')
+      setPipelineError('Network error. Please check your connection and try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
+  const StepIcon = ({ status }: { status: StepStatus }) => {
+    switch (status) {
+      case 'done':
+        return <CheckCircle2 className="h-5 w-5 text-[#00D4AA]" />
+      case 'error':
+        return <XCircle className="h-5 w-5 text-[#FF4D6A]" />
+      case 'running':
+        return <Loader2 className="h-5 w-5 animate-spin text-[#00D4AA]" />
+      default:
+        return <Circle className="h-5 w-5 text-[#8B95A8]/40" />
+    }
+  }
+
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Checking auth...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#0A0F1A]">
+        <p className="text-[#8B95A8]">Checking auth...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-8 shadow-sm">
-        <h1 className="mb-6 text-2xl font-semibold text-foreground">Ingestion Hub</h1>
+    <div className="flex min-h-screen items-center justify-center bg-[#0A0F1A] p-4">
+      <div className="w-full max-w-xl space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-[#F1F5F9]">
+            Ingest
+          </h1>
+          {isDemo && (
+            <p className="mt-1 text-xs font-mono text-[#00D4AA]/70 uppercase tracking-wider">
+              Demo Mode — no real API calls
+            </p>
+          )}
+        </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="youtube-url" className="mb-1.5 block text-sm font-medium text-foreground">
+            <label htmlFor="youtube-url" className="mb-1.5 block text-sm font-medium text-[#8B95A8]">
               YouTube URL
             </label>
             <input
@@ -153,13 +273,13 @@ export default function IngestPage() {
               }}
               maxLength={2048}
               placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/50 disabled:opacity-50"
+              className="w-full rounded-md border border-[#1E293B] bg-[#141B2D] px-3 py-2.5 font-mono text-sm text-[#F1F5F9] placeholder:text-[#8B95A8]/50 focus:border-[#00D4AA] focus:outline-none focus:ring-1 focus:ring-[#00D4AA]/50 disabled:opacity-50"
               disabled={isLoading}
               aria-describedby={validationError ? 'url-error' : undefined}
               aria-invalid={validationError ? true : undefined}
             />
             {validationError && (
-              <p id="url-error" className="mt-1.5 text-sm text-destructive" role="alert">
+              <p id="url-error" className="mt-1.5 text-sm text-[#FF4D6A]" role="alert">
                 {validationError}
               </p>
             )}
@@ -167,57 +287,97 @@ export default function IngestPage() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full bg-[#00D4AA] text-[#0A0F1A] font-semibold hover:bg-[#00D4AA]/90 disabled:opacity-50"
             size="lg"
             disabled={isLoading}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Processing...
               </span>
             ) : (
-              'Submit'
+              'Extract'
             )}
           </Button>
         </form>
-      </div>
 
-      {/* Toast notifications */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2" aria-live="polite">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`rounded-md px-4 py-3 text-sm shadow-lg transition-all ${
-              toast.type === 'success'
-                ? 'bg-green-600 text-white'
-                : 'bg-destructive text-white'
-            }`}
-            role="status"
-          >
-            {toast.message}
+        {/* Pipeline Progress */}
+        {steps.length > 0 && (
+          <div className="rounded-lg border border-[#1E293B] bg-[#141B2D] p-5">
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-[#8B95A8]">
+              Pipeline
+            </h2>
+            <div className="space-y-3">
+              {steps.map((step) => (
+                <div
+                  key={step.id}
+                  className={`flex items-start gap-3 transition-opacity duration-200 ${
+                    step.status === 'pending' ? 'opacity-40' : 'opacity-100'
+                  }`}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    <StepIcon status={step.status} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium ${
+                      step.status === 'error' ? 'text-[#FF4D6A]' : 'text-[#F1F5F9]'
+                    }`}>
+                      {step.label}
+                    </p>
+                    {step.detail && (
+                      <p className={`mt-0.5 truncate text-xs ${
+                        step.status === 'error' ? 'text-[#FF4D6A]/80' : 'text-[#8B95A8]'
+                      }`}>
+                        {step.detail}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
+
+        {/* Error display */}
+        {pipelineError && !steps.some((s) => s.status === 'error') && (
+          <div className="rounded-lg border border-[#FF4D6A]/30 bg-[#FF4D6A]/10 px-4 py-3">
+            <p className="text-sm text-[#FF4D6A]">{pipelineError}</p>
+          </div>
+        )}
+
+        {/* Success Result */}
+        {result && (
+          <div className="rounded-lg border border-[#00D4AA]/30 bg-[#00D4AA]/5 p-5">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[#00D4AA]">
+              Extraction Complete
+            </h2>
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-[#8B95A8]">Channel</dt>
+                <dd className="font-medium text-[#F1F5F9]">{result.channel_name}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-[#8B95A8]">Published</dt>
+                <dd className="font-mono text-[#F1F5F9]">
+                  {new Date(result.published_at).toLocaleDateString()}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-[#8B95A8]">Tickers</dt>
+                <dd className="font-mono font-semibold tracking-wide text-[#00D4AA]">
+                  {result.tickers_extracted.length > 0
+                    ? result.tickers_extracted.join(', ')
+                    : 'None found'}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-[#8B95A8]">Recommendations</dt>
+                <dd className="font-mono text-[#F1F5F9]">{result.recommendation_count}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
       </div>
     </div>
   )
