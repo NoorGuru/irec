@@ -292,7 +292,7 @@ async def extract_stream(
         yield sse({"step": "metadata", "status": "done", "detail": f"Channel: {metadata.channel_name}"})
 
         # Step 4: Fetch transcript
-        yield sse({"step": "transcript", "status": "running", "detail": "Fetching transcript..."})
+        yield sse({"step": "transcript", "status": "running", "detail": "Checking cache..."})
 
         # Check for cached transcript from a previous partial run
         cached_transcript = await get_cached_transcript(parsed.video_id)
@@ -307,34 +307,50 @@ async def extract_stream(
             word_count = len(transcript.split())
             yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words (cached)"})
         else:
-            try:
-                retry_events: list[dict] = []
+            transcript = None
 
-                def on_transcript_retry(attempt: int, max_retries: int, error: str, delay: int):
-                    retry_events.append({
-                        "step": "transcript",
-                        "status": "retrying",
-                        "detail": f"Retry {attempt}/{max_retries} — {error}, waiting {delay}s...",
-                    })
+            # Method 1: Cloudflare Worker
+            from app.transcript import _fetch_via_worker, _fetch_transcript_ytdlp, _fetch_with_retry, TRANSCRIPT_WORKER_URL
+            if TRANSCRIPT_WORKER_URL:
+                yield sse({"step": "transcript", "status": "running", "detail": "Trying Cloudflare worker..."})
+                worker_result = await _fetch_via_worker(parsed.video_id)
+                if worker_result:
+                    transcript = worker_result
 
-                transcript = await fetch_transcript(parsed.video_id, on_retry=on_transcript_retry)
+            # Method 2: yt-dlp
+            if not transcript:
+                yield sse({"step": "transcript", "status": "retrying", "detail": "Worker failed, trying yt-dlp..."})
+                import asyncio
+                ytdlp_result = await asyncio.to_thread(_fetch_transcript_ytdlp, parsed.video_id)
+                if ytdlp_result:
+                    transcript = ytdlp_result
 
-                # Emit any retry events that accumulated
-                for evt in retry_events:
-                    yield sse(evt)
-            except HTTPException as e:
-                # Emit any accumulated retries before the final error
-                for evt in retry_events:
-                    yield sse(evt)
-                _log_pipeline_error(youtube_url, "transcript_fetch", e)
-                yield sse({"step": "transcript", "status": "error", "detail": e.detail})
+            # Method 3: youtube-transcript-api with proxy
+            if not transcript:
+                yield sse({"step": "transcript", "status": "retrying", "detail": "yt-dlp failed, trying proxy..."})
+                try:
+                    retry_events: list[dict] = []
+
+                    def on_transcript_retry(attempt: int, max_retries: int, error: str, delay: int):
+                        retry_events.append({
+                            "step": "transcript",
+                            "status": "retrying",
+                            "detail": f"Proxy retry {attempt}/{max_retries} — {error}, waiting {delay}s...",
+                        })
+
+                    result = await _fetch_with_retry(parsed.video_id, on_retry=on_transcript_retry)
+                    for evt in retry_events:
+                        yield sse(evt)
+                    transcript = " ".join(snippet.text for snippet in result.snippets)
+                except Exception:
+                    for evt in retry_events:
+                        yield sse(evt)
+
+            if not transcript:
+                _log_pipeline_error(youtube_url, "transcript_fetch", Exception("All methods exhausted"))
+                yield sse({"step": "transcript", "status": "error", "detail": "Transcript unavailable — all methods exhausted"})
                 return
-            except Exception as e:
-                for evt in retry_events:
-                    yield sse(evt)
-                _log_pipeline_error(youtube_url, "transcript_fetch", e)
-                yield sse({"step": "transcript", "status": "error", "detail": "Transcript unavailable for this video"})
-                return
+
             word_count = len(transcript.split())
             yield sse({"step": "transcript", "status": "done", "detail": f"~{word_count:,} words"})
 
