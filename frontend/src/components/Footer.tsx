@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 function WaveformLine() {
   // A continuous waveform that evokes stock charts / audio signals
@@ -50,6 +51,22 @@ function FloatingOrb({ size, x, y, delay }: { size: number; x: string; y: string
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
+  const [backendVersion, setBackendVersion] = useState<{ commit: string; build_date: string } | null>(null)
+
+  useEffect(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || ''
+    if (!backendUrl) return
+    fetch(`${backendUrl}/api/v1/version`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setBackendVersion(data) })
+      .catch(() => {})
+  }, [])
+
+  const frontendCommit = process.env.NEXT_PUBLIC_COMMIT_HASH || 'dev'
+  const frontendBuildDate = process.env.NEXT_PUBLIC_BUILD_DATE || ''
+  const backendCommit = backendVersion?.commit && backendVersion.commit !== 'dev' ? backendVersion.commit : null
+  // Show split view only when backend was fetched AND commits actually differ
+  const showSplit = backendCommit !== null && frontendCommit !== 'dev' && !backendCommit.startsWith(frontendCommit.slice(0, 7))
 
   return (
     <footer
@@ -193,18 +210,46 @@ export function Footer() {
             </div>
 
             {/* Build version */}
-            <div className="mt-6 text-center">
-              <a
-                href={`https://github.com/NoorGuru/irec/commit/${process.env.NEXT_PUBLIC_COMMIT_HASH || ''}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#1E293B] hover:text-[#374151] transition-colors duration-300 tracking-wider"
-              >
-                {process.env.NEXT_PUBLIC_COMMIT_HASH || 'dev'}
-                {process.env.NEXT_PUBLIC_BUILD_DATE && (
-                  <> · {new Date(process.env.NEXT_PUBLIC_BUILD_DATE).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
-                )}
-              </a>
+            <div className="mt-6 text-center font-[family-name:var(--font-geist-mono)] text-[9px] text-[#1E293B] tracking-wider">
+              {showSplit ? (
+                <span className="inline-flex items-center gap-2 flex-wrap justify-center">
+                  <a
+                    href={`https://github.com/NoorGuru/irec/commit/${frontendCommit}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#374151] transition-colors duration-300"
+                  >
+                    fe:{frontendCommit}
+                    {frontendBuildDate && (
+                      <> · {new Date(frontendBuildDate).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                    )}
+                  </a>
+                  <span aria-hidden="true" className="text-[#1E293B]">·</span>
+                  <a
+                    href={`https://github.com/NoorGuru/irec/commit/${backendCommit}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#374151] transition-colors duration-300"
+                  >
+                    be:{backendCommit!.slice(0, 7)}
+                    {backendVersion?.build_date && (
+                      <> · {new Date(backendVersion.build_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                    )}
+                  </a>
+                </span>
+              ) : (
+                <a
+                  href={`https://github.com/NoorGuru/irec/commit/${frontendCommit}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#374151] transition-colors duration-300"
+                >
+                  {frontendCommit}
+                  {frontendBuildDate && (
+                    <> · {new Date(frontendBuildDate).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                  )}
+                </a>
+              )}
             </div>
           </div>
         </div>

@@ -228,12 +228,20 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
           type="button"
           className="group relative ml-auto cursor-help focus:outline-none"
           aria-label="Market pulse info"
+          onClick={(e) => {
+            const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
+            if (tooltip) tooltip.classList.toggle('opacity-0')
+          }}
+          onBlur={(e) => {
+            const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
+            if (tooltip) tooltip.classList.add('opacity-0')
+          }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569] hover:text-[#64748B] transition-colors">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
             <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          <span className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[11px] text-[#8B95A8] leading-relaxed opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+          <span role="tooltip" className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[11px] text-[#8B95A8] leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
             Weighted average of all ticker consensus scores, weighted by mention count. Each ticker&apos;s consensus is trust-weighted and dampened until 3+ mentions.
           </span>
         </button>
@@ -353,24 +361,36 @@ function RecentSignalsFeed({ signals }: { signals: RecentSignal[] }) {
 
       <div className="space-y-3">
         {signals.map((signal, i) => (
-          <Link
+          <div
             key={`${signal.ticker}-${i}`}
-            href={`/ticker?s=${signal.ticker}`}
             className="group flex items-center gap-4 py-2 px-3 -mx-3 rounded-lg hover:bg-[#0A0F1A]/60 transition-colors"
           >
-            <span className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors w-16 shrink-0">
+            <Link
+              href={`/ticker?s=${signal.ticker}`}
+              className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9] hover:text-[#00D4AA] transition-colors w-16 shrink-0"
+            >
               {signal.ticker}
-            </span>
+            </Link>
             <span className={getSentimentBadgeClass(signal.sentiment)}>
               {getSentimentLabel(signal.sentiment)}
             </span>
             <span className="hidden sm:inline text-xs text-[#64748B] truncate flex-1">
               {signal.videos.channels.channel_name}
             </span>
+            <Link
+              href={`/video?id=${signal.videos.youtube_video_id}`}
+              className="shrink-0 text-[#475569] hover:text-[#00D4AA] transition-colors"
+              title="View video analysis"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+              </svg>
+            </Link>
             <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569] shrink-0">
               <TimeAgo dateStr={signal.videos.extracted_at} />
             </span>
-          </Link>
+          </div>
         ))}
       </div>
     </div>

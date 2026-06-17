@@ -19,6 +19,7 @@ interface Recommendation {
     channel_id: string
     channels: {
       channel_name: string
+      trust_weight: number
     }
   }
 }
@@ -88,52 +89,30 @@ function ConvictionDots({ level }: { level: number }) {
   )
 }
 
-function LazyYouTubeEmbed({ youtubeVideoId }: { youtubeVideoId: string }) {
-  const [playing, setPlaying] = useState(false)
-
-  if (playing) {
-    return (
-      <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0A0F1A]">
-        <iframe
-          src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=1&rel=0`}
-          title="YouTube video player"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="absolute inset-0 w-full h-full"
-        />
-      </div>
-    )
-  }
-
+function VideoThumbnailLink({ youtubeVideoId }: { youtubeVideoId: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <button
-        onClick={() => setPlaying(true)}
-        className="group/play relative shrink-0 rounded-md overflow-hidden w-24 h-14 bg-[#0A0F1A] border border-[#1E293B] hover:border-[#2D3A4F] transition-all duration-200 cursor-pointer"
-        aria-label="Play video inline"
-      >
+    <Link
+      href={`/video?id=${youtubeVideoId}`}
+      className="group/thumb flex items-center gap-3"
+    >
+      <div className="relative shrink-0 rounded-md overflow-hidden w-24 h-14 bg-[#0A0F1A] border border-[#1E293B] group-hover/thumb:border-[#00D4AA]/30 transition-all duration-200">
         <img
           src={`https://i.ytimg.com/vi/${youtubeVideoId}/mqdefault.jpg`}
           alt=""
-          className="w-full h-full object-cover opacity-70 group-hover/play:opacity-100 transition-opacity duration-200"
+          className="w-full h-full object-cover opacity-70 group-hover/thumb:opacity-100 transition-opacity duration-200"
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-7 h-7 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center group-hover/play:scale-110 transition-all duration-200">
-            <svg width="10" height="10" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#F1F5F9] group-hover/play:text-[#00D4AA] transition-colors" aria-hidden="true">
+          <div className="w-7 h-7 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center group-hover/thumb:scale-110 transition-all duration-200">
+            <svg width="10" height="10" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#F1F5F9] group-hover/thumb:text-[#00D4AA] transition-colors" aria-hidden="true">
               <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
             </svg>
           </div>
         </div>
-      </button>
-      <a
-        href={`https://www.youtube.com/watch?v=${youtubeVideoId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-xs text-[#64748B] hover:text-[#00D4AA] transition-colors"
-      >
-        YouTube ↗
-      </a>
-    </div>
+      </div>
+      <span className="text-xs text-[#64748B] group-hover/thumb:text-[#00D4AA] transition-colors">
+        View analysis →
+      </span>
+    </Link>
   )
 }
 
@@ -142,6 +121,7 @@ function TickerContent() {
   const symbol = searchParams.get('s') || ''
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
+  const [showMoreLinks, setShowMoreLinks] = useState(false)
 
   const isInvalid = !symbol || symbol.length > 5 || /[^a-zA-Z]/.test(symbol)
 
@@ -167,7 +147,7 @@ function TickerContent() {
             youtube_video_id,
             published_at,
             channel_id,
-            channels!inner(channel_name)
+            channels!inner(channel_name, trust_weight)
           )
         `)
         .ilike("ticker", symbol)
@@ -222,6 +202,13 @@ function TickerContent() {
   const prices = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
   const avgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null
 
+  // Consensus score (same formula as homepage — trust-weighted + confidence-dampened)
+  const weightedSum = recommendations.reduce((s, r) => s + r.sentiment * r.videos.channels.trust_weight, 0)
+  const totalWeight = recommendations.reduce((s, r) => s + r.videos.channels.trust_weight, 0)
+  const rawWeightedSentiment = totalWeight > 0 ? weightedSum / totalWeight : 0
+  const confidence = Math.min(recommendations.length / 3, 1)
+  const consensusSentiment = Math.round(rawWeightedSentiment * confidence * 100) / 100
+
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-4xl mx-auto">
@@ -234,7 +221,7 @@ function TickerContent() {
         </Link>
 
         {/* Ticker header */}
-        <header className="mt-8 mb-10 animate-fade-up stagger-1">
+        <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
@@ -247,28 +234,70 @@ function TickerContent() {
                 {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} from YouTube analysts
               </p>
             </div>
-            <a
-              href={`https://finance.yahoo.com/quote/${symbol.toUpperCase()}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group/yf inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#F1F5F9] border border-[#1E293B] hover:border-[#2D3A4F] bg-[#141B2D]/60 hover:bg-[#141B2D] rounded-lg px-4 py-2 transition-all duration-200"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#475569] group-hover/yf:text-[#00D4AA] transition-colors">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-              </svg>
-              <span className="font-[family-name:var(--font-geist-mono)] text-xs tracking-wide">Yahoo Finance</span>
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="opacity-0 group-hover/yf:opacity-100 transition-opacity duration-200 text-[#00D4AA]">
-                <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://finance.yahoo.com/quote/${symbol.toUpperCase()}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/yf inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#F1F5F9] border border-[#1E293B] hover:border-[#2D3A4F] bg-[#141B2D]/60 hover:bg-[#141B2D] rounded-lg px-4 py-2 transition-all duration-200"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#475569] group-hover/yf:text-[#00D4AA] transition-colors">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xs tracking-wide">Yahoo Finance</span>
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="opacity-0 group-hover/yf:opacity-100 transition-opacity duration-200 text-[#00D4AA]">
+                  <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMoreLinks(!showMoreLinks)}
+                  className="inline-flex items-center justify-center text-sm text-[#64748B] hover:text-[#F1F5F9] border border-[#1E293B] hover:border-[#2D3A4F] bg-[#141B2D]/60 hover:bg-[#141B2D] rounded-lg w-8 h-8 transition-all duration-200"
+                  aria-label="More research links"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1"/>
+                    <circle cx="19" cy="12" r="1"/>
+                    <circle cx="5" cy="12" r="1"/>
+                  </svg>
+                </button>
+                {showMoreLinks && (
+                  <div className="absolute right-0 top-full mt-2 z-50 min-w-[180px] rounded-lg border border-[#1E293B] bg-[#0F172A] shadow-xl shadow-black/40 py-1">
+                    <a
+                      href={`https://www.investing.com/search/?q=${symbol.toUpperCase()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M3 3v18h18"/>
+                        <path d="M7 16l4-4 4 4 5-5"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">Investing.com</span>
+                    </a>
+                    <a
+                      href={`https://www.investing.com/pro/${symbol.toUpperCase()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-xs text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-colors"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                      <span className="font-[family-name:var(--font-geist-mono)] tracking-wide">InvestingPro</span>
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </header>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-10 animate-fade-up stagger-2">
+        <div className="relative z-0 grid grid-cols-2 md:grid-cols-4 gap-3 mb-10 animate-fade-up stagger-2">
           <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
-            <p className="text-xs text-[#64748B] mb-1">Avg Sentiment</p>
+            <p className="text-xs text-[#64748B] mb-1">Raw Sentiment</p>
             <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold ${
               avgSentiment >= 1.5 ? 'sentiment-strong-buy' :
               avgSentiment >= 0.5 ? 'text-[#00D4AA]' :
@@ -285,6 +314,46 @@ function TickerContent() {
           </div>
 
           <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-xs text-[#64748B]">Consensus</p>
+              <span
+                className="group/tip relative cursor-help"
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
+                  if (tooltip) tooltip.classList.toggle('opacity-0')
+                }}
+                onBlur={(e) => {
+                  const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
+                  if (tooltip) tooltip.classList.add('opacity-0')
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-[#475569] hover:text-[#64748B] transition-colors">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <span role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[10px] text-[#8B95A8] leading-relaxed opacity-0 group-hover/tip:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                  Dampened by data confidence. Reaches full strength at 3+ mentions.
+                </span>
+              </span>
+            </div>
+            <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold ${
+              consensusSentiment >= 1.5 ? 'sentiment-strong-buy' :
+              consensusSentiment >= 0.5 ? 'text-[#00D4AA]' :
+              consensusSentiment <= -1.5 ? 'sentiment-strong-sell' :
+              consensusSentiment <= -0.5 ? 'text-[#FF4D6A]' :
+              'text-[#F1F5F9]'
+            }`}>
+              {consensusSentiment.toFixed(2)}
+            </p>
+            <span className={getSentimentBadgeClass(consensusSentiment)}>
+              <SentimentArrow value={consensusSentiment} />
+              {consensusSentiment >= 1.5 ? 'Strong Buy' : consensusSentiment >= 0.5 ? 'Buy' : consensusSentiment > -0.5 ? 'Neutral' : consensusSentiment > -1.5 ? 'Sell' : 'Strong Sell'}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
             <p className="text-xs text-[#64748B] mb-1">Avg Target</p>
             <p className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9]">
               {avgPrice !== null ? `$${avgPrice.toFixed(0)}` : '—'}
@@ -296,7 +365,7 @@ function TickerContent() {
             )}
           </div>
 
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4 col-span-2 md:col-span-1">
+          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
             <p className="text-xs text-[#64748B] mb-1">Avg Conviction</p>
             <p className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9]">
               {avgConviction.toFixed(1)}<span className="text-sm text-[#64748B]">/10</span>
@@ -338,9 +407,9 @@ function TickerContent() {
                 </span>
               </div>
 
-              {/* Lazy YouTube embed */}
+              {/* Video thumbnail link */}
               <div className="mb-4">
-                <LazyYouTubeEmbed youtubeVideoId={rec.videos.youtube_video_id} />
+                <VideoThumbnailLink youtubeVideoId={rec.videos.youtube_video_id} />
               </div>
 
               {/* Stats row */}

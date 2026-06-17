@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Home } from 'lucide-react'
 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
@@ -248,14 +249,38 @@ function IngestContent() {
     <div className="flex min-h-screen items-center justify-center bg-[#0A0F1A] p-4">
       <div className="w-full max-w-xl space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight text-[#F1F5F9]">
-            Ingest
-          </h1>
-          {isDemo && (
-            <p className="mt-1 text-xs font-mono text-[#00D4AA]/70 uppercase tracking-wider">
-              Demo Mode — no real API calls
-            </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-[#F1F5F9]">
+              Ingest
+            </h1>
+            {isDemo && (
+              <p className="mt-1 text-xs font-mono text-[#00D4AA]/70 uppercase tracking-wider">
+                Demo Mode — no real API calls
+              </p>
+            )}
+          </div>
+          {!isDemo && (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="flex items-center gap-1.5 text-sm text-[#8B95A8] hover:text-[#F1F5F9] transition-colors"
+              >
+                <Home className="h-4 w-4" />
+                Home
+              </Link>
+              <button
+                onClick={async () => {
+                  const supabase = createClient()
+                  await supabase.auth.signOut()
+                  router.replace('/admin/login')
+                }}
+                className="flex items-center gap-1.5 text-sm text-[#8B95A8] hover:text-[#F1F5F9] transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            </div>
           )}
         </div>
 

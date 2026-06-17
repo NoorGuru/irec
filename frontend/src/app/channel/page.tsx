@@ -167,7 +167,6 @@ function TickerHeatCell({ breakdown }: { breakdown: TickerBreakdown }) {
 function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
   const staggerClass = `stagger-${Math.min(index + 1, 10)}`
   const [expanded, setExpanded] = useState(false)
-  const [playing, setPlaying] = useState(false)
 
   return (
     <div className={`rounded-xl border border-[#1E293B] bg-[#141B2D]/40 overflow-hidden transition-all duration-300 animate-fade-up ${staggerClass} ${expanded ? 'bg-[#141B2D]' : ''}`}>
@@ -225,47 +224,42 @@ function VideoCard({ video, index }: { video: VideoWithRecs; index: number }) {
       {/* Expanded detail panel */}
       {expanded && (
         <div className="px-4 pb-5 md:px-5 md:pb-6 pt-3 border-t border-[#1E293B]/60 space-y-3">
-          {/* Lazy-loaded YouTube embed */}
-          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0A0F1A]">
-            {playing ? (
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${video.youtube_video_id}?autoplay=1&rel=0`}
-                title="YouTube video player"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full"
+          {/* Video thumbnail + links */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <Link
+              href={`/video?id=${video.youtube_video_id}`}
+              className="group/thumb relative shrink-0 rounded-lg overflow-hidden w-32 h-20 bg-[#0A0F1A] border border-[#1E293B] hover:border-[#00D4AA]/30 transition-all duration-200"
+            >
+              <img
+                src={`https://i.ytimg.com/vi/${video.youtube_video_id}/mqdefault.jpg`}
+                alt=""
+                className="w-full h-full object-cover opacity-70 group-hover/thumb:opacity-100 transition-opacity duration-200"
               />
-            ) : (
-              <button
-                onClick={() => setPlaying(true)}
-                className="group/play absolute inset-0 w-full h-full cursor-pointer"
-                aria-label="Play video"
-              >
-                <img
-                  src={`https://i.ytimg.com/vi/${video.youtube_video_id}/hqdefault.jpg`}
-                  alt=""
-                  className="w-full h-full object-cover opacity-80 group-hover/play:opacity-100 transition-opacity duration-200"
-                />
-                {/* Play button overlay */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#0A0F1A]/80 border border-[#1E293B] flex items-center justify-center group-hover/play:bg-[#0A0F1A]/90 group-hover/play:border-[#00D4AA]/40 group-hover/play:scale-110 transition-all duration-200">
-                    <svg width="20" height="20" viewBox="0 0 16 18" fill="none" className="ml-1 text-[#F1F5F9] group-hover/play:text-[#00D4AA] transition-colors" aria-hidden="true">
-                      <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center group-hover/thumb:scale-110 transition-all duration-200">
+                  <svg width="12" height="12" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#F1F5F9] group-hover/thumb:text-[#00D4AA] transition-colors" aria-hidden="true">
+                    <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                  </svg>
                 </div>
-              </button>
-            )}
+              </div>
+            </Link>
+            <div className="flex flex-col gap-2">
+              <Link
+                href={`/video?id=${video.youtube_video_id}`}
+                className="text-sm text-[#8B95A8] hover:text-[#00D4AA] transition-colors font-medium"
+              >
+                View full analysis →
+              </Link>
+              <a
+                href={video.video_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-[#475569] hover:text-[#64748B] transition-colors"
+              >
+                Open on YouTube ↗
+              </a>
+            </div>
           </div>
-          {/* External YouTube link */}
-          <a
-            href={video.video_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-[#475569] hover:text-[#00D4AA] transition-colors"
-          >
-            Open on YouTube ↗
-          </a>
 
           {video.recommendations.map((rec) => (
             <div

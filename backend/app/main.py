@@ -53,6 +53,15 @@ def _log_pipeline_error(
     )
 
 
+@app.get("/api/v1/version")
+async def get_version():
+    """Return the deployed backend commit hash."""
+    return {
+        "commit": os.environ.get("COMMIT_HASH", "dev"),
+        "build_date": os.environ.get("BUILD_DATE", ""),
+    }
+
+
 @app.get("/api/v1/debug-auth")
 async def debug_auth(
     _owner: str = Depends(verify_owner),
