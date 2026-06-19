@@ -13,6 +13,18 @@ from .schemas import LLMResponse, Recommendation, VideoMetadata
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
+
+class LLMParseError(Exception):
+    """Raised when LLM response cannot be parsed into valid JSON.
+
+    Carries the raw response text for persistence/debugging.
+    """
+
+    def __init__(self, detail: str, raw_response: str):
+        self.detail = detail
+        self.raw_response = raw_response
+        super().__init__(detail)
+
 MODEL = "claude-sonnet-4-6"
 
 # Type for an optional async retry callback: (attempt, max_retries, reason, delay) -> None
@@ -104,7 +116,11 @@ def _build_client() -> anthropic.AsyncAnthropic:
 
 
 async def _call_anthropic(client: anthropic.AsyncAnthropic, transcript: str, metadata: VideoMetadata) -> str:
-    """Send transcript and metadata to Anthropic and return the raw response text."""
+    """Send transcript and metadata to Anthropic and return the raw response text.
+
+    Uses max_tokens=16384 to avoid truncation on long videos with many recommendations.
+    Raises HTTPException(502) if the response was truncated (stop_reason == 'max_tokens').
+    """
     user_message = (
         f"Channel: {metadata.channel_name}\n"
         f"Published: {metadata.published_at}\n\n"
@@ -113,13 +129,22 @@ async def _call_anthropic(client: anthropic.AsyncAnthropic, transcript: str, met
 
     message = await client.messages.create(
         model=MODEL,
-        max_tokens=4096,
+        max_tokens=16384,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
     )
 
     # Extract text from response content blocks
-    return message.content[0].text
+    response_text = message.content[0].text
+
+    # Detect truncation: if the model hit the token limit, the JSON is incomplete
+    if message.stop_reason == "max_tokens":
+        raise HTTPException(
+            status_code=502,
+            detail="AI response was truncated (too many recommendations). Please try a shorter video.",
+        )
+
+    return response_text
 
 
 async def parse_recommendations(
@@ -170,10 +195,11 @@ async def parse_recommendations(
         )
 
     # Schema validation with single retry
+    last_raw_response = response_text
     try:
         cleaned = _extract_json(response_text)
         parsed = LLMResponse.model_validate_json(cleaned)
-    except ValidationError:
+    except (ValidationError, ValueError) as first_error:
         # Retry once on validation failure
         if on_retry:
             on_retry(1, 2, "Invalid response format, retrying", 0)
@@ -181,6 +207,7 @@ async def parse_recommendations(
             for attempt in range(3):
                 try:
                     response_text = await _call_anthropic(client, transcript, metadata)
+                    last_raw_response = response_text
                     break
                 except anthropic.RateLimitError:
                     if attempt == 2:
@@ -200,10 +227,11 @@ async def parse_recommendations(
 
             cleaned = _extract_json(response_text)
             parsed = LLMResponse.model_validate_json(cleaned)
-        except ValidationError as e:
-            raise HTTPException(
-                status_code=502,
-                detail=f"Could not parse recommendations: {e.errors()[0]['msg'] if e.errors() else str(e)}",
+        except (ValidationError, ValueError) as e:
+            error_msg = e.errors()[0]['msg'] if isinstance(e, ValidationError) and e.errors() else str(e)
+            raise LLMParseError(
+                detail=f"Invalid JSON: {error_msg}",
+                raw_response=last_raw_response,
             )
 
     # Post-process: ensure stock_name is populated

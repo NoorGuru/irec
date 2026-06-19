@@ -10,8 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.auth import verify_owner
-from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, _get_client
-from app.llm_parser import parse_recommendations
+from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, save_llm_response, _get_client
+from app.llm_parser import parse_recommendations, LLMParseError
 from app.metadata import fetch_metadata, fetch_channel_thumbnail
 from app.schemas import ExtractionRequest, ExtractionResponse
 from app.transcript import fetch_transcript
@@ -191,6 +191,15 @@ async def extract(
     # Step 5: Parse recommendations via LLM → get list[Recommendation]
     try:
         recommendations, video_summary = await parse_recommendations(transcript, metadata)
+    except LLMParseError as e:
+        _log_pipeline_error(youtube_url, "llm_parse", e)
+        await save_llm_response(
+            youtube_video_id=parsed.video_id,
+            raw_response=e.raw_response,
+            parse_success=False,
+            error_detail=e.detail,
+        )
+        raise HTTPException(status_code=502, detail=f"Could not parse recommendations: {e.detail}")
     except HTTPException as e:
         _log_pipeline_error(youtube_url, "llm_parse", e)
         raise
@@ -314,6 +323,18 @@ async def extract_stream(
 
                 for evt in llm_retry_events:
                     yield sse(evt)
+            except LLMParseError as e:
+                for evt in llm_retry_events:
+                    yield sse(evt)
+                _log_pipeline_error(youtube_url, "llm_parse", e)
+                await save_llm_response(
+                    youtube_video_id=parsed.video_id,
+                    raw_response=e.raw_response,
+                    parse_success=False,
+                    error_detail=e.detail,
+                )
+                yield sse({"step": "llm_parse", "status": "error", "detail": f"Could not parse recommendations: {e.detail}"})
+                return
             except HTTPException as e:
                 for evt in llm_retry_events:
                     yield sse(evt)
@@ -500,6 +521,18 @@ async def extract_stream(
             # Emit any retry events that accumulated
             for evt in llm_retry_events:
                 yield sse(evt)
+        except LLMParseError as e:
+            for evt in llm_retry_events:
+                yield sse(evt)
+            _log_pipeline_error(youtube_url, "llm_parse", e)
+            await save_llm_response(
+                youtube_video_id=parsed.video_id,
+                raw_response=e.raw_response,
+                parse_success=False,
+                error_detail=e.detail,
+            )
+            yield sse({"step": "llm_parse", "status": "error", "detail": f"Could not parse recommendations: {e.detail}"})
+            return
         except HTTPException as e:
             for evt in llm_retry_events:
                 yield sse(evt)

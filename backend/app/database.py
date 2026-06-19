@@ -37,6 +37,31 @@ def _get_client() -> Client:
     return _client
 
 
+async def save_llm_response(
+    youtube_video_id: str,
+    raw_response: str,
+    parse_success: bool,
+    error_detail: str | None = None,
+) -> None:
+    """Persist raw LLM response for debugging (non-blocking).
+
+    Saves on both success and failure. On failure, error_detail captures why parsing failed.
+    Silently logs and continues if the save itself fails.
+    """
+    try:
+        client = _get_client()
+        record: dict = {
+            "youtube_video_id": youtube_video_id,
+            "raw_response": raw_response,
+            "parse_success": parse_success,
+        }
+        if error_detail:
+            record["error_detail"] = error_detail
+        client.table("llm_responses").insert(record).execute()
+    except Exception as e:
+        logger.warning(f"Failed to save LLM response for {youtube_video_id}: {e}")
+
+
 async def check_duplicate(youtube_video_id: str) -> bool:
     """Check if a video with the given youtube_video_id already exists AND has recommendations.
 
