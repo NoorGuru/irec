@@ -66,46 +66,46 @@ Install all required shadcn/ui components: tabs, dialog, input, slider, badge, t
 - `DELETE /admin/channels/{channel_id}` — cascade delete with counts
 - `POST /admin/channels/merge` — re-assign videos, delete source
 
-### Task 3: Backend admin API — Video & Recommendation mutations
+### Task 3: Backend admin API — Video & Recommendation mutations ✅
 - `DELETE /admin/videos/{video_id}` — cascade delete
 - `POST /admin/videos/bulk-reextract` — re-run LLM for multiple videos
 - `PATCH /admin/recommendations/{rec_id}` — partial update
 - `DELETE /admin/recommendations/{rec_id}`
 
-### Task 4: Backend admin API — LLM Logs & Stats
+### Task 4: Backend admin API — LLM Logs & Stats ✅
 - `POST /admin/llm-responses/{id}/retry` — retry extraction
 - `DELETE /admin/llm-responses/purge` — bulk delete with filters
 - `GET /admin/stats` — aggregated system health metrics
 
-### Task 5: Frontend — /admin/manage page shell with tab navigation
+### Task 5: Frontend — /admin/manage page shell with tab navigation ✅
 - Tab bar with pill-style tabs, teal sliding indicator
 - URL-synced tab state via searchParams
 - Auth guard, skeleton loading states
 
-### Task 6: Frontend — Channels tab
+### Task 6: Frontend — Channels tab ✅
 - Channel cards with trust weight "power bar"
 - Inline slider (0.0–2.0), rename, delete with confirmation, merge flow
 
-### Task 7: Frontend — Videos tab
+### Task 7: Frontend — Videos tab ✅
 - Dense table (desktop) / stacked cards (mobile)
 - Filters: channel, date, search. Bulk re-extract.
 
-### Task 8: Frontend — Recommendations tab (hero tab)
+### Task 8: Frontend — Recommendations tab (hero tab) ✅
 - Massive ticker type, sentiment pulse bars
 - Inline editing: ticker, sentiment buttons, target price, conviction dots
 - Search/filter, grouped view option
 
-### Task 9: Frontend — LLM Logs tab
+### Task 9: Frontend — LLM Logs tab ✅
 - Timeline-style failure viewer with red left-border
 - Raw response in mono scrollable box
 - Retry button, purge controls
 
-### Task 10: Frontend — Stats tab
+### Task 10: Frontend — Stats tab ✅
 - 4 stat cards (big mono numbers)
 - CSS-only weekly bar chart
 - Channel leaderboard, recent failures
 
-### Task 11: Integration — Wire into admin hub
+### Task 11: Integration — Wire into admin hub ✅
 - "Control Panel" card on admin hub
 - Cross-linking, breadcrumbs, keyboard shortcuts (1-5 for tabs)
 

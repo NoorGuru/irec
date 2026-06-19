@@ -528,7 +528,15 @@ export default function AdminHubPage() {
           </div>
 
           {/* ─── Quick links row ─── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-fade-up stagger-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 animate-fade-up stagger-2">
+            <Link
+              href="/admin/manage"
+              className="group rounded-2xl border border-[#00D4AA]/20 bg-gradient-to-br from-[#141B2D] to-[#0F1623] p-4 hover:border-[#00D4AA]/40 hover:bg-[#141B2D]/60 transition-all duration-300"
+            >
+              <Zap className="h-4 w-4 text-[#00D4AA]/70 mb-2.5 group-hover:text-[#00D4AA] transition-colors duration-300" />
+              <p className="text-sm font-medium text-[#F1F5F9]">Control Panel</p>
+              <p className="text-[11px] text-[#64748B] mt-0.5">Manage everything</p>
+            </Link>
             <Link
               href="/"
               className="group rounded-2xl border border-[#1E293B]/80 bg-[#141B2D]/30 p-4 hover:border-[#2D3A4F] hover:bg-[#141B2D]/60 transition-all duration-300"
