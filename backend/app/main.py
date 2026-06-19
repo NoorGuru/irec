@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
+from app.admin_routes import router as admin_router
 from app.auth import verify_owner
 from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, save_llm_response, _get_client
 from app.llm_parser import parse_recommendations, LLMParseError
@@ -32,6 +33,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register admin routes
+app.include_router(admin_router)
 
 
 def _log_pipeline_error(
