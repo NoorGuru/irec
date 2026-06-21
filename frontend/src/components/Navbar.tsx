@@ -319,7 +319,7 @@ export function Navbar() {
         <div className="max-w-6xl mx-auto px-8">
           <div className="flex items-center justify-between h-[72px]">
             {/* Logo */}
-            <Link href="/today" className="group shrink-0">
+            <Link href="/" className="group shrink-0">
               <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-extralight tracking-[0.3em] logo-sweep">
                 <span className="logo-letter">aura</span>
               </span>
@@ -382,7 +382,7 @@ export function Navbar() {
 
       {/* Mobile top bar — logo only, thin */}
       <div className="md:hidden sticky top-0 z-50 w-full h-8 flex items-center justify-center border-b border-[#1E293B]/30 bg-[#0A0F1A]/90 backdrop-blur-lg">
-        <Link href="/today">
+        <Link href="/">
           <span className="font-[family-name:var(--font-geist-mono)] text-base font-extralight tracking-[0.3em] logo-sweep">
             <span className="logo-letter">aura</span>
           </span>
