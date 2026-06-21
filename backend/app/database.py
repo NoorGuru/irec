@@ -5,6 +5,7 @@ Uses SUPABASE_SERVICE_KEY to bypass RLS for all write operations.
 
 import logging
 import os
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from supabase import Client, create_client
@@ -496,3 +497,56 @@ async def persist_extraction(
         "channel_id": channel_id,
         "video_id": video_id,
     }
+
+
+async def get_cache(key: str) -> dict | None:
+    """Retrieve cache payload from api_cache table.
+
+    Returns dict with 'payload' and 'last_updated' (as ISO string) if found, None otherwise.
+    """
+    try:
+        client = _get_client()
+        response = (
+            client.table("api_cache")
+            .select("payload, last_updated")
+            .eq("cache_key", key)
+            .execute()
+        )
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.warning(f"Cache miss/read error for key {key}: {e}")
+        return None
+
+
+async def set_cache(key: str, payload: dict) -> None:
+    """Upsert cache payload in api_cache table."""
+    try:
+        client = _get_client()
+        client.table("api_cache").upsert({
+            "cache_key": key,
+            "payload": payload,
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        }).execute()
+    except Exception as e:
+        logger.warning(f"Failed to set cache for key {key}: {e}")
+
+
+async def get_latest_extraction_time() -> str | None:
+    """Get the latest extraction time from the videos table."""
+    try:
+        client = _get_client()
+        response = (
+            client.table("videos")
+            .select("extracted_at")
+            .order("extracted_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if response.data:
+            return response.data[0]["extracted_at"]
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to get latest extraction time: {e}")
+        return None

@@ -9,6 +9,43 @@ import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Clock, Zap, 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
 
+const TRANSCRIPT_WORKER_URL = process.env.NEXT_PUBLIC_TRANSCRIPT_WORKER_URL || 'https://yt-transcript-proxy.abukhleif94.workers.dev'
+
+function extractVideoId(urlStr: string): string | null {
+  try {
+    const trimmed = urlStr.trim()
+    if (!trimmed) return null
+    
+    // Check standard watch?v=
+    if (trimmed.includes('youtube.com/watch')) {
+      const parts = trimmed.split('v=')
+      if (parts[1]) {
+        const id = parts[1].split('&')[0]
+        if (id.length === 11) return id
+      }
+    }
+    // Check youtu.be/
+    if (trimmed.includes('youtu.be/')) {
+      const parts = trimmed.split('youtu.be/')
+      if (parts[1]) {
+        const id = parts[1].split('?')[0].split('/')[0]
+        if (id.length === 11) return id
+      }
+    }
+    // Check shorts
+    if (trimmed.includes('youtube.com/shorts/')) {
+      const parts = trimmed.split('youtube.com/shorts/')
+      if (parts[1]) {
+        const id = parts[1].split('?')[0].split('/')[0]
+        if (id.length === 11) return id
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null
+}
+
 type StepStatus = 'pending' | 'running' | 'done' | 'error' | 'retrying'
 
 interface PipelineStep {
@@ -22,10 +59,13 @@ interface PipelineStep {
 
 interface ExtractionResult {
   channel_name: string
+  channel_id?: string | null
   video_id: string
+  title?: string | null
   published_at: string
   tickers_extracted: string[]
   recommendation_count: number
+  video_summary?: string | null
 }
 
 const INITIAL_STEPS: PipelineStep[] = [
@@ -56,10 +96,13 @@ const DEMO_EVENTS: { step: string; status: string; detail: string; delay: number
 
 const DEMO_RESULT: ExtractionResult = {
   channel_name: 'Financial Analysis TV',
+  channel_id: 'demo-channel-id',
   video_id: 'dQw4w9WgXcQ',
+  title: 'Top 3 Stocks to Watch in 2025 — AAPL, NVDA & MSFT Deep Dive',
   published_at: '2025-06-10T14:30:00Z',
   tickers_extracted: ['AAPL', 'NVDA', 'MSFT'],
   recommendation_count: 3,
+  video_summary: 'The analyst is strongly bullish on AI infrastructure plays, citing record data center capex as a secular tailwind. NVDA leads with a dominant GPU moat; AAPL is favored for its services flywheel and upcoming AI integration cycle; MSFT is a conviction buy for enterprise AI adoption through Azure and Copilot.',
 }
 
 /** Formats elapsed ms into a readable string */
@@ -118,13 +161,38 @@ function IngestContent() {
   const [result, setResult] = useState<ExtractionResult | null>(null)
   const [pipelineError, setPipelineError] = useState('')
   const [isDuplicate, setIsDuplicate] = useState(false)
+  const [duplicateVideo, setDuplicateVideo] = useState<any | null>(null)
   const [lastSubmittedUrl, setLastSubmittedUrl] = useState('')
   const [authChecked, setAuthChecked] = useState(isDemo)
   const [totalStartedAt, setTotalStartedAt] = useState<number | null>(null)
   const [totalCompletedAt, setTotalCompletedAt] = useState<number | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
+  const [showManualPaste, setShowManualPaste] = useState(false)
+  const [manualTranscript, setManualTranscript] = useState('')
+  const [manualVideoId, setManualVideoId] = useState<string | null>(null)
+  const [workerUrl, setWorkerUrl] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleTranscriptChange = useCallback((text: string) => {
+    let cleanText = text
+    try {
+      const trimmed = text.trim()
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        const parsed = JSON.parse(trimmed)
+        if (parsed && typeof parsed === 'object') {
+          if (typeof parsed.transcript === 'string') {
+            cleanText = parsed.transcript
+          } else if (typeof parsed.text === 'string') {
+            cleanText = parsed.text
+          }
+        }
+      }
+    } catch (e) {
+      // Keep original text
+    }
+    setManualTranscript(cleanText)
+  }, [])
 
   useEffect(() => {
     if (isDemo) return
@@ -149,6 +217,58 @@ function IngestContent() {
     }
     checkAuth()
   }, [router])
+
+  // Fetch duplicate video details when isDuplicate becomes true
+  useEffect(() => {
+    if (!isDuplicate) {
+      setDuplicateVideo(null)
+      return
+    }
+
+    // In demo mode, mock duplicateVideo data
+    if (isDemo) {
+      setDuplicateVideo({
+        video_id: 'demo-id',
+        youtube_video_id: extractVideoId(lastSubmittedUrl) || 'dQw4w9WgXcQ',
+        title: 'Top 3 Stocks to Watch in 2025 — AAPL, NVDA & MSFT Deep Dive',
+        published_at: '2025-06-10T14:30:00Z',
+        video_summary: 'The analyst is strongly bullish on AI infrastructure plays, citing record data center capex as a secular tailwind. NVDA leads with a dominant GPU moat; AAPL is favored for its services flywheel and upcoming AI integration cycle; MSFT is a conviction buy for enterprise AI adoption through Azure and Copilot.',
+        channels: {
+          channel_name: 'Financial Analysis TV'
+        }
+      })
+      return
+    }
+
+    const videoId = extractVideoId(lastSubmittedUrl)
+    if (!videoId) return
+
+    const fetchDuplicateDetails = async () => {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('videos')
+          .select(`
+            video_id,
+            youtube_video_id,
+            title,
+            published_at,
+            video_summary,
+            channels!inner(channel_name)
+          `)
+          .eq('youtube_video_id', videoId)
+          .single()
+
+        if (!error && data) {
+          setDuplicateVideo(data)
+        }
+      } catch (e) {
+        console.error('Error fetching duplicate video:', e)
+      }
+    }
+
+    fetchDuplicateDetails()
+  }, [isDuplicate, lastSubmittedUrl, isDemo])
 
   // Auto-focus input when auth resolves
   useEffect(() => {
@@ -206,21 +326,34 @@ function IngestContent() {
     await startExtraction(lastSubmittedUrl, 'force_reingest')
   }
 
-  const startExtraction = async (targetUrl: string, mode: 'normal' | 'reextract' | 'force_reingest') => {
+  const startExtraction = async (
+    targetUrl: string,
+    mode: 'normal' | 'reextract' | 'force_reingest',
+    manualTranscriptText?: string
+  ) => {
     setIsLoading(true)
     setValidationError('')
     setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending', detail: undefined, startedAt: undefined, completedAt: undefined })))
     setResult(null)
     setPipelineError('')
     setIsDuplicate(false)
+    setDuplicateVideo(null)
     setLastSubmittedUrl(targetUrl)
     setTotalStartedAt(Date.now())
     setTotalCompletedAt(null)
 
     // --- Demo mode ---
     if (isDemo) {
+      const isDuplicateDemo = searchParams.get('duplicate') === '1'
       for (const event of DEMO_EVENTS) {
         await new Promise((resolve) => setTimeout(resolve, event.delay))
+        if (isDuplicateDemo && event.step === 'duplicate_check') {
+          updateStep('duplicate_check', 'error', 'Video already processed')
+          setIsDuplicate(true)
+          setTotalCompletedAt(Date.now())
+          setIsLoading(false)
+          return
+        }
         updateStep(event.step, event.status as StepStatus, event.detail)
       }
       await new Promise((resolve) => setTimeout(resolve, 300))
@@ -254,6 +387,7 @@ function IngestContent() {
             youtube_url: targetUrl,
             ...(mode === 'force_reingest' && { force_reingest: true }),
             ...(mode === 'reextract' && { reextract_only: true }),
+            ...(manualTranscriptText && { transcript: manualTranscriptText }),
           }),
         }
       )
@@ -297,6 +431,12 @@ function IngestContent() {
                 if (event.step === 'duplicate_check' && event.detail === 'Video already processed') {
                   setIsDuplicate(true)
                 }
+                // Detect manual fallback required
+                if (event.needs_manual) {
+                  setShowManualPaste(true)
+                  if (event.video_id) setManualVideoId(event.video_id)
+                  if (event.worker_url) setWorkerUrl(event.worker_url)
+                }
                 setTotalCompletedAt(Date.now())
               } else {
                 updateStep(event.step, event.status, event.detail)
@@ -310,7 +450,11 @@ function IngestContent() {
 
       setSteps((prev) => {
         const hasError = prev.some((s) => s.status === 'error')
-        if (!hasError) setUrl('')
+        if (!hasError) {
+          setUrl('')
+          setManualTranscript('')
+          setShowManualPaste(false)
+        }
         return prev
       })
     } catch {
@@ -467,6 +611,149 @@ function IngestContent() {
             </button>
           </form>
 
+          {/* Proactive manual paste link */}
+          {!isLoading && (
+            <div className="flex justify-end animate-fade-up">
+              <button
+                type="button"
+                onClick={() => setShowManualPaste(!showManualPaste)}
+                className="text-xs text-[#8B95A8]/70 hover:text-[#00D4AA] transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {showManualPaste ? 'Hide manual transcript paste' : 'Paste transcript manually'}
+              </button>
+            </div>
+          )}
+
+          {/* Manual paste panel */}
+          {showManualPaste && (
+            <div className="rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.02] p-6 space-y-4 animate-fade-up">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[#00D4AA]" />
+                  <h3 className="text-sm font-semibold text-[#F1F5F9]">
+                    Manual Transcript Fallback
+                  </h3>
+                </div>
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={() => setShowManualPaste(false)}
+                  className="text-xs text-[#8B95A8]/50 hover:text-[#F1F5F9] transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Optional Link/ID input to fetch direct link inside panel */}
+              <div className="space-y-1.5 bg-[#0A0F1A]/40 border border-[#1E293B] rounded-xl p-4">
+                <label className="text-[11px] font-semibold text-[#8B95A8] block">
+                  YouTube URL or Video ID
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter URL or 11-char ID..."
+                    value={url || ''}
+                    onChange={(e) => {
+                      const inputVal = e.target.value.trim()
+                      // If it's 11 chars and has no youtube structures, treat as video ID
+                      if (inputVal.length === 11 && !inputVal.includes('/') && !inputVal.includes('.')) {
+                        setManualVideoId(inputVal)
+                        setWorkerUrl(`${TRANSCRIPT_WORKER_URL}/transcript?v=${inputVal}`)
+                        setUrl(`https://www.youtube.com/watch?v=${inputVal}`) // Set main URL too for convenience!
+                      } else {
+                        setUrl(inputVal)
+                        const parsedId = extractVideoId(inputVal)
+                        if (parsedId) {
+                          setManualVideoId(parsedId)
+                          setWorkerUrl(`${TRANSCRIPT_WORKER_URL}/transcript?v=${parsedId}`)
+                        } else {
+                          setManualVideoId(null)
+                          setWorkerUrl(null)
+                        }
+                      }
+                    }}
+                    className="flex-1 rounded-lg border border-[#1E293B] bg-[#0A0F1A] px-3 py-2 font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9] placeholder:text-[#8B95A8]/30 focus:border-[#00D4AA]/60 focus:outline-none"
+                  />
+                  {(() => {
+                    const currentVideoId = manualVideoId || extractVideoId(url) || extractVideoId(lastSubmittedUrl)
+                    const targetWorkerUrl = workerUrl || (currentVideoId ? `${TRANSCRIPT_WORKER_URL}/transcript?v=${currentVideoId}` : null)
+                    return (
+                      <a
+                        href={targetWorkerUrl || '#'}
+                        target={targetWorkerUrl ? "_blank" : undefined}
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          if (!targetWorkerUrl) {
+                            e.preventDefault()
+                          }
+                        }}
+                        className={`rounded-lg px-4 py-2 text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                          targetWorkerUrl
+                            ? 'bg-[#00D4AA] text-[#0A0F1A] hover:bg-[#00FFD0] active:scale-[0.98]'
+                            : 'bg-[#1E293B] text-[#8B95A8]/40 cursor-not-allowed'
+                        }`}
+                      >
+                        Open in Worker ↗
+                      </a>
+                    )
+                  })()}
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="space-y-1 text-xs text-[#8B95A8] leading-relaxed">
+                <p>1. Enter YouTube URL or Video ID above and click <strong>Open in Worker</strong>.</p>
+                <p>2. Copy the entire JSON response (or just the transcript value) and paste it below.</p>
+              </div>
+
+              {/* Textarea */}
+              <div className="space-y-1.5">
+                <textarea
+                  value={manualTranscript}
+                  onChange={(e) => handleTranscriptChange(e.target.value)}
+                  placeholder='{"transcript": "...", ...} or raw transcript text...'
+                  rows={6}
+                  className="w-full rounded-xl border border-[#1E293B] bg-[#0A0F1A] px-4 py-3 font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9] placeholder:text-[#8B95A8]/30 focus:border-[#00D4AA]/60 focus:outline-none focus:ring-1 focus:ring-[#00D4AA]/30"
+                />
+                <div className="flex items-center justify-between text-[10px] text-[#8B95A8]/50 font-[family-name:var(--font-geist-mono)]">
+                  <span>Characters: {manualTranscript.length.toLocaleString()}</span>
+                  {manualTranscript.trim().length > 50 && (
+                    <span className="text-[#00D4AA]/80 font-medium">Auto-extracted transcript!</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Submit/Resume button */}
+              <button
+                type="button"
+                disabled={isLoading || manualTranscript.trim().length < 20 || (!url && !lastSubmittedUrl)}
+                onClick={async () => {
+                  const targetUrl = url.trim() || lastSubmittedUrl.trim()
+                  if (!targetUrl) return
+                  // If we are resuming after a failure, we should force re-ingestion so the backend cleans up partial files
+                  const isResuming = steps.length > 0 && steps.some(s => s.status === 'error')
+                  await startExtraction(targetUrl, isResuming ? 'force_reingest' : 'normal', manualTranscript)
+                }}
+                className="w-full rounded-xl bg-[#00D4AA] px-5 py-3 text-xs font-semibold text-[#0A0F1A] transition-all hover:bg-[#00D4AA]/90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Extracting...
+                  </span>
+                ) : (
+                  <span>
+                    {steps.length > 0 && steps.some(s => s.status === 'error')
+                      ? 'Resume Pipeline with Paste'
+                      : 'Extract with Paste'}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* ─── Pipeline Progress ─── */}
           {steps.length > 0 && (
             <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/60 p-6 animate-fade-up">
@@ -537,15 +824,26 @@ function IngestContent() {
 
                     {/* Detail line */}
                     {step.detail && (
-                      <p className={`mt-1 ml-10 text-xs font-[family-name:var(--font-geist-mono)] select-text ${
-                        step.status === 'error'
-                          ? 'text-[#FF4D6A]/80 whitespace-pre-wrap break-all'
-                          : step.status === 'retrying'
-                          ? 'text-[#F59E0B]/70'
-                          : 'text-[#8B95A8]/60 truncate'
-                      }`}>
-                        {step.detail}
-                      </p>
+                      <div className="mt-1 ml-10 flex flex-col gap-1">
+                        <p className={`text-xs font-[family-name:var(--font-geist-mono)] select-text ${
+                          step.status === 'error'
+                            ? 'text-[#FF4D6A]/80 whitespace-pre-wrap break-all'
+                            : step.status === 'retrying'
+                            ? 'text-[#F59E0B]/70'
+                            : 'text-[#8B95A8]/60 truncate'
+                        }`}>
+                          {step.detail}
+                        </p>
+                        {step.id === 'duplicate_check' && step.status === 'error' && (
+                          <p className="text-[11px] text-[#00D4AA] font-medium tracking-wide flex items-center gap-1.5 animate-pulse mt-0.5">
+                            <span className="relative flex h-1.5 w-1.5 shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D4AA] opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#00D4AA]"></span>
+                            </span>
+                            Existing video details and options are loaded below ↓
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -560,81 +858,175 @@ function IngestContent() {
             </div>
           )}
 
-          {/* ─── Re-ingest Options ─── */}
+          {/* ─── Duplicate Video Card & Options ─── */}
           {isDuplicate && !isLoading && (
-            <div className="space-y-3 animate-fade-up">
-              {/* Header */}
-              <p className="text-sm text-[#8B95A8] px-1">
-                This video was already processed. Choose how to retry:
-              </p>
+            <div className="space-y-6 animate-fade-up">
+              {/* Nice designed element representing the duplicate video */}
+              <div className="rounded-2xl border border-[#F59E0B]/20 bg-[#F59E0B]/[0.02] p-6 space-y-4 shadow-xl shadow-[#0A0F1A]/50 relative overflow-hidden group/card">
+                {/* Glow effect in the background */}
+                <div className="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none transition-all duration-500 group-hover/card:bg-[#00D4AA]/10" />
 
-              {/* Option 1: Re-extract (recommended) */}
-              <button
-                onClick={handleReextract}
-                className="group w-full text-left rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-5 transition-all duration-200 hover:border-[#00D4AA]/40 hover:bg-[#00D4AA]/[0.06] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="shrink-0 mt-0.5 rounded-lg border border-[#00D4AA]/20 bg-[#00D4AA]/10 p-2">
-                    <Sparkles className="h-4 w-4 text-[#00D4AA]" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[#F59E0B] group-hover/card:text-[#00D4AA] transition-colors duration-300">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F59E0B] opacity-75 group-hover/card:bg-[#00D4AA]"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#F59E0B] group-hover/card:bg-[#00D4AA]"></span>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] font-[family-name:var(--font-geist-mono)]">
+                      Video Already Processed
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <h3 className="text-sm font-semibold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
-                        Re-extract
-                      </h3>
-                      <span className="text-[9px] font-medium uppercase tracking-[0.15em] text-[#00D4AA]/70 border border-[#00D4AA]/20 rounded px-1.5 py-0.5">
-                        Fast
-                      </span>
+                  <span className="text-[10px] text-[#8B95A8]/40 font-[family-name:var(--font-geist-mono)]">
+                    Duplicate Check
+                  </span>
+                </div>
+                
+                <div className="flex flex-col md:flex-row gap-5 rounded-xl border border-[#1E293B] bg-[#141B2D]/80 overflow-hidden shadow-inner transition-colors duration-300 hover:border-[#2D3A4F]">
+                  {/* Thumbnail on left */}
+                  <div className="relative shrink-0 w-full md:w-56 aspect-video bg-[#0A0F1A] border-b md:border-b-0 md:border-r border-[#1E293B]/60 overflow-hidden">
+                    <img
+                      src={`https://i.ytimg.com/vi/${extractVideoId(lastSubmittedUrl) || ''}/mqdefault.jpg`}
+                      alt=""
+                      className="w-full h-full object-cover opacity-60 group-hover/card:scale-105 group-hover/card:opacity-75 transition-all duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1A]/80 to-transparent" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center border border-[#1E293B]/60 group-hover/card:border-[#00D4AA]/40 group-hover/card:scale-110 transition-all duration-300 shadow-md">
+                        <svg width="12" height="14" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#F1F5F9] group-hover/card:text-[#00D4AA] transition-colors" aria-hidden="true">
+                          <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-[#8B95A8]">
-                      Keep the existing transcript, re-run AI extraction only. Best when the video has picks but the model missed them.
-                    </p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover:text-[#00D4AA] group-hover:translate-x-0.5 transition-all" aria-hidden="true">
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              </button>
 
-              {/* Option 2: Full Re-ingest */}
-              <button
-                onClick={handleForceReingest}
-                className="group w-full text-left rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 p-5 transition-all duration-200 hover:border-[#F59E0B]/30 hover:bg-[#F59E0B]/[0.03] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="shrink-0 mt-0.5 rounded-lg border border-[#1E293B] group-hover:border-[#F59E0B]/20 bg-[#141B2D] group-hover:bg-[#F59E0B]/10 p-2 transition-colors">
-                    <RotateCcw className="h-4 w-4 text-[#8B95A8] group-hover:text-[#F59E0B] transition-colors" />
+                  {/* Content on right */}
+                  <div className="flex-1 p-5 flex flex-col justify-between min-w-0">
+                    <div>
+                      {duplicateVideo ? (
+                        <>
+                          <h3 className="text-base font-semibold text-[#F1F5F9] group-hover/card:text-[#00D4AA] transition-colors duration-300 leading-snug line-clamp-2 mb-2">
+                            {duplicateVideo.title || 'Untitled Video'}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-[#8B95A8] flex-wrap mb-3">
+                            <span className="font-medium text-[#C8D1E0]">{duplicateVideo.channels?.channel_name || 'Unknown Channel'}</span>
+                            {duplicateVideo.published_at && (
+                              <>
+                                <span className="text-[#1E293B]">·</span>
+                                <span className="font-[family-name:var(--font-geist-mono)] text-[11px]">
+                                  {new Date(duplicateVideo.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {duplicateVideo.video_summary && (
+                            <p className="text-xs text-[#8B95A8] line-clamp-2 leading-relaxed mb-4 text-justify font-light">
+                              {duplicateVideo.video_summary}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="h-5 bg-[#1E293B] rounded-md w-3/4 animate-pulse" />
+                          <div className="flex gap-2">
+                            <div className="h-3 bg-[#1E293B] rounded-md w-1/4 animate-pulse" />
+                            <div className="h-3 bg-[#1E293B] rounded-md w-1/4 animate-pulse" />
+                          </div>
+                          <div className="h-10 bg-[#1E293B] rounded-md w-full animate-pulse" />
+                        </div>
+                      )}
+                    </div>
+
+                    <Link
+                      href={`/video?id=${extractVideoId(lastSubmittedUrl) || ''}`}
+                      className="inline-flex items-center justify-center gap-2 w-full md:w-auto rounded-xl bg-[#00D4AA] hover:bg-[#00FFD0] hover:shadow-[0_0_20px_rgba(0,212,170,0.4)] px-5 py-3 text-xs font-semibold text-[#0A0F1A] transition-all duration-300 active:scale-[0.98] shadow-md shadow-[#00D4AA]/10"
+                    >
+                      <span>View Video Analysis</span>
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="shrink-0 group-hover/card:translate-x-0.5 transition-transform" aria-hidden="true">
+                        <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </Link>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
-                      Full Re-ingest
-                    </h3>
-                    <p className="mt-1 text-xs text-[#64748B]">
-                      Delete everything and start from scratch — re-fetch transcript, re-run AI. Use when the transcript itself was bad.
-                    </p>
-                  </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover:text-[#F59E0B] group-hover:translate-x-0.5 transition-all" aria-hidden="true">
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
                 </div>
-              </button>
+              </div>
+
+              {/* Re-ingestion options */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 px-1">
+                  <div className="h-px bg-[#1E293B] flex-1" />
+                  <span className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#64748B] whitespace-nowrap font-[family-name:var(--font-geist-mono)]">
+                    Or Process Anyway
+                  </span>
+                  <div className="h-px bg-[#1E293B] flex-1" />
+                </div>
+
+                {/* Option 1: Re-extract (recommended) */}
+                <button
+                  onClick={handleReextract}
+                  className="group w-full text-left rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-5 transition-all duration-200 hover:border-[#00D4AA]/40 hover:bg-[#00D4AA]/[0.06] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 mt-0.5 rounded-lg border border-[#00D4AA]/20 bg-[#00D4AA]/10 p-2">
+                      <Sparkles className="h-4 w-4 text-[#00D4AA]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <h3 className="text-sm font-semibold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
+                          Re-extract
+                        </h3>
+                        <span className="text-[9px] font-medium uppercase tracking-[0.15em] text-[#00D4AA]/70 border border-[#00D4AA]/20 rounded px-1.5 py-0.5 font-[family-name:var(--font-geist-mono)]">
+                          Fast
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-[#8B95A8]">
+                        Keep the existing transcript, re-run AI extraction only. Best when the video has picks but the model missed them.
+                      </p>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover:text-[#00D4AA] group-hover:translate-x-0.5 transition-all" aria-hidden="true">
+                      <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Option 2: Full Re-ingest */}
+                <button
+                  onClick={handleForceReingest}
+                  className="group w-full text-left rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 p-5 transition-all duration-200 hover:border-[#F59E0B]/30 hover:bg-[#F59E0B]/[0.03] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 mt-0.5 rounded-lg border border-[#1E293B] group-hover:border-[#F59E0B]/20 bg-[#141B2D] group-hover:bg-[#F59E0B]/10 p-2 transition-colors">
+                      <RotateCcw className="h-4 w-4 text-[#8B95A8] group-hover:text-[#F59E0B] transition-colors" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
+                        Full Re-ingest
+                      </h3>
+                      <p className="mt-1 text-xs text-[#64748B]">
+                        Delete everything and start from scratch — re-fetch transcript, re-run AI. Use when the transcript itself was bad.
+                      </p>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0 mt-1 text-[#475569] group-hover:text-[#F59E0B] group-hover:translate-x-0.5 transition-all" aria-hidden="true">
+                      <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </button>
+              </div>
             </div>
           )}
 
           {/* ─── Success Result ─── */}
           {result && (
-            <div className="rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-6 animate-fade-up">
+            <div className="rounded-2xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-6 animate-fade-up space-y-5">
               {/* Success header */}
-              <div className="flex items-center gap-2 mb-5">
+              <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-[#00D4AA]" />
                 <h2 className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#00D4AA]">
                   Extraction Complete
                 </h2>
               </div>
 
-              {/* Tickers — the hero moment */}
+              {/* Tickers — hero moment */}
               {result.tickers_extracted.length > 0 && (
-                <div className="mb-5 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                   {result.tickers_extracted.map((ticker) => (
                     <Link
                       key={ticker}
@@ -647,12 +1039,86 @@ function IngestContent() {
                 </div>
               )}
 
-              {/* Metadata */}
-              <dl className="space-y-2.5 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-[#64748B]">Channel</dt>
-                  <dd className="font-medium text-[#F1F5F9]">{result.channel_name}</dd>
+              {/* ─── AI Summary ─── */}
+              {result.video_summary && (
+                <div className="rounded-xl border border-[#1E293B] bg-[#0A0F1A]/60 p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="h-3.5 w-3.5 text-[#00D4AA]/70" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">AI Thesis</span>
+                  </div>
+                  <p className="text-sm text-[#C8D1E0] leading-relaxed font-light">
+                    {result.video_summary}
+                  </p>
                 </div>
+              )}
+
+              {/* ─── Navigation Links ─── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Video page link */}
+                <Link
+                  href={`/video?id=${result.video_id}`}
+                  className="group flex items-center gap-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/60 p-4 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+                >
+                  {/* Thumbnail */}
+                  <div className="shrink-0 relative w-16 h-10 rounded-md overflow-hidden bg-[#0A0F1A] border border-[#1E293B]/60">
+                    <img
+                      src={`https://i.ytimg.com/vi/${result.video_id}/mqdefault.jpg`}
+                      alt=""
+                      className="w-full h-full object-cover opacity-60 group-hover:opacity-90 transition-opacity duration-200"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center">
+                        <svg width="7" height="8" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#F1F5F9]" aria-hidden="true">
+                          <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors truncate">
+                      {result.title || 'View video analysis'}
+                    </p>
+                    <p className="text-[11px] text-[#475569] mt-0.5">Video page →</p>
+                  </div>
+                </Link>
+
+                {/* Channel page link */}
+                {result.channel_id ? (
+                  <Link
+                    href={`/channel?id=${result.channel_id}`}
+                    className="group flex items-center gap-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/60 p-4 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+                  >
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-[#00D4AA]/10 border border-[#00D4AA]/20 flex items-center justify-center">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#00D4AA]/70 group-hover:text-[#00D4AA] transition-colors" aria-hidden="true">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors truncate">
+                        {result.channel_name}
+                      </p>
+                      <p className="text-[11px] text-[#475569] mt-0.5">Channel page →</p>
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/30 p-4">
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-[#141B2D] border border-[#1E293B] flex items-center justify-center">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#475569]" aria-hidden="true">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-[#8B95A8] truncate">{result.channel_name}</p>
+                      <p className="text-[11px] text-[#475569] mt-0.5">Analyst</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Metadata row */}
+              <dl className="space-y-2.5 text-sm border-t border-[#1E293B] pt-4">
                 <div className="flex justify-between">
                   <dt className="text-[#64748B]">Published</dt>
                   <dd className="font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -25,7 +25,7 @@ type TabId = (typeof TABS)[number]['id']
 
 // ─── Component ───
 
-export default function AdminManagePage() {
+function AdminManageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [authChecked, setAuthChecked] = useState(false)
@@ -159,5 +159,20 @@ export default function AdminManagePage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function AdminManagePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-[#00D4AA] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-[#8B95A8] font-mono">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AdminManageContent />
+    </Suspense>
   )
 }

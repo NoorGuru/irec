@@ -90,9 +90,12 @@ export function ChannelsTab() {
 
     const recCountMap: Record<string, number> = {}
     if (recData) {
-      for (const rec of recData as Array<{ id: string; videos: { channel_id: string } }>) {
-        const chId = rec.videos.channel_id
-        recCountMap[chId] = (recCountMap[chId] || 0) + 1
+      for (const rec of recData as any[]) {
+        const videos = rec.videos
+        const chId = Array.isArray(videos) ? videos[0]?.channel_id : videos?.channel_id
+        if (chId) {
+          recCountMap[chId] = (recCountMap[chId] || 0) + 1
+        }
       }
     }
 

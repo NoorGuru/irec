@@ -29,7 +29,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0A0F1A] text-[#F1F5F9] font-[family-name:var(--font-geist-sans)]">
+      <body className="min-h-full flex flex-col bg-[#0A0F1A] text-[#F1F5F9] font-[family-name:var(--font-geist-sans)]" suppressHydrationWarning>
         <Navbar />
         {children}
         <Footer />

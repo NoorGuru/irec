@@ -296,7 +296,8 @@ export function Navbar() {
   if (pathname?.startsWith('/admin')) return null
 
   const links = [
-    { href: '/', label: 'Dashboard', icon: DashboardIcon },
+    { href: '/today', label: "Today's Plays", icon: TodayPlaysIcon },
+    { href: '/', label: 'Explore', icon: DashboardIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
@@ -318,7 +319,7 @@ export function Navbar() {
         <div className="max-w-6xl mx-auto px-8">
           <div className="flex items-center justify-between h-[72px]">
             {/* Logo */}
-            <Link href="/" className="group shrink-0">
+            <Link href="/today" className="group shrink-0">
               <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-extralight tracking-[0.3em] logo-sweep">
                 <span className="logo-letter">aura</span>
               </span>
@@ -381,7 +382,7 @@ export function Navbar() {
 
       {/* Mobile top bar — logo only, thin */}
       <div className="md:hidden sticky top-0 z-50 w-full h-8 flex items-center justify-center border-b border-[#1E293B]/30 bg-[#0A0F1A]/90 backdrop-blur-lg">
-        <Link href="/">
+        <Link href="/today">
           <span className="font-[family-name:var(--font-geist-mono)] text-base font-extralight tracking-[0.3em] logo-sweep">
             <span className="logo-letter">aura</span>
           </span>
@@ -462,6 +463,14 @@ function VideosIcon({ active }: { active: boolean }) {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
       <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" strokeWidth="1.5" />
       <path d="M10 9l5 3-5 3V9z" fill="currentColor" />
+    </svg>
+  )
+}
+
+function TodayPlaysIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+      <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill={active ? 'currentColor' : 'none'} />
     </svg>
   )
 }

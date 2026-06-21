@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from app.admin_routes import router as admin_router
+from app.today_routes import router as today_router
 from app.auth import verify_owner
 from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, save_llm_response, _get_client
 from app.llm_parser import parse_recommendations, LLMParseError
@@ -36,6 +37,7 @@ app.add_middleware(
 
 # Register admin routes
 app.include_router(admin_router)
+app.include_router(today_router)
 
 
 def _log_pipeline_error(
@@ -374,16 +376,26 @@ async def extract_stream(
                 return
             yield sse({"step": "database", "status": "done", "detail": "Recommendations replaced"})
 
+            # Fetch channel_id for the result
+            try:
+                _ch_resp = _get_client().table("channels").select("channel_id").eq("channel_name", metadata.channel_name).single().execute()
+                reextract_channel_id = _ch_resp.data["channel_id"] if _ch_resp.data else None
+            except Exception:
+                reextract_channel_id = None
+
             # Final success
             yield sse({
                 "step": "complete",
                 "status": "done",
                 "result": {
                     "channel_name": metadata.channel_name,
+                    "channel_id": reextract_channel_id,
                     "video_id": parsed.video_id,
+                    "title": metadata.title,
                     "published_at": metadata.published_at,
                     "tickers_extracted": tickers,
                     "recommendation_count": len(recommendations),
+                    "video_summary": video_summary,
                 },
             })
             return
@@ -493,7 +505,14 @@ async def extract_stream(
 
             if not transcript:
                 _log_pipeline_error(youtube_url, "transcript_fetch", Exception("All methods exhausted"))
-                yield sse({"step": "transcript", "status": "error", "detail": "Transcript unavailable — all methods exhausted"})
+                yield sse({
+                    "step": "transcript",
+                    "status": "error",
+                    "detail": "Transcript unavailable — all methods exhausted",
+                    "needs_manual": True,
+                    "worker_url": f"{TRANSCRIPT_WORKER_URL}/transcript?v={parsed.video_id}" if TRANSCRIPT_WORKER_URL else None,
+                    "video_id": parsed.video_id,
+                })
                 return
 
             word_count = len(transcript.split())
@@ -557,7 +576,7 @@ async def extract_stream(
 
         yield sse({"step": "database", "status": "running", "detail": "Saving to database..."})
         try:
-            await persist_extraction(
+            db_result = await persist_extraction(
                 channel_name=metadata.channel_name,
                 youtube_video_id=parsed.video_id,
                 video_url=parsed.canonical_url,
@@ -586,10 +605,13 @@ async def extract_stream(
             "status": "done",
             "result": {
                 "channel_name": metadata.channel_name,
+                "channel_id": db_result.get("channel_id"),
                 "video_id": parsed.video_id,
+                "title": metadata.title,
                 "published_at": metadata.published_at,
                 "tickers_extracted": tickers,
                 "recommendation_count": len(recommendations),
+                "video_summary": video_summary,
             },
         })
 
