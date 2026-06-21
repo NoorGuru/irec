@@ -347,7 +347,12 @@ export function Navbar() {
                     `}
                   >
                     <Icon active={!!isActive} />
-                    {link.label}
+                    <span>{link.label}</span>
+                    {link.href === '/today' && (
+                      <span className="relative flex h-1.5 w-1.5 rounded-full bg-[#00D4AA] shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D4AA] opacity-75"></span>
+                      </span>
+                    )}
                   </Link>
                 )
               })}
@@ -407,7 +412,14 @@ export function Navbar() {
                   ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B]'}
                 `}
               >
-                <Icon active={!!isActive} />
+                <div className="relative">
+                  <Icon active={!!isActive} />
+                  {link.href === '/today' && (
+                    <span className="absolute -top-1 -right-1 flex h-1.5 w-1.5 rounded-full bg-[#00D4AA]">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D4AA] opacity-75"></span>
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-medium tracking-wide">
                   {link.label}
                 </span>
@@ -469,7 +481,16 @@ function VideosIcon({ active }: { active: boolean }) {
 
 function TodayPlaysIcon({ active }: { active: boolean }) {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      className={`
+        ${active ? 'text-[#00D4AA]' : 'text-current'}
+        today-pulse-icon
+      `}
+    >
       <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill={active ? 'currentColor' : 'none'} />
     </svg>
   )

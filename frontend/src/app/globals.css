@@ -635,6 +635,24 @@
   }
 }
 
+
+/* ─── Today's Pulse Navbar Animation ─── */
+@keyframes today-pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0px rgba(0, 212, 170, 0));
+  }
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 4.5px rgba(0, 212, 170, 0.55));
+  }
+}
+
+.today-pulse-icon {
+  animation: today-pulse-glow 2.2s infinite ease-in-out;
+  transform-origin: center;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
@@ -665,7 +683,8 @@
   .cmd-panel-out,
   .cmd-glow,
   .cmd-input-ring,
-  .cmd-result-item {
+  .cmd-result-item,
+  .today-pulse-icon {
     animation: none !important;
     opacity: 1;
     transform: none;
@@ -675,3 +694,4 @@
     display: none;
   }
 }
+
