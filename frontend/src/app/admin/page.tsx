@@ -254,7 +254,9 @@ export default function AdminHubPage() {
   ])
   const [recentVideos, setRecentVideos] = useState<RecentVideo[]>([])
   const [channels, setChannels] = useState<ChannelScout[]>([])
-  const [infraOpen, setInfraOpen] = useState(true)
+  const [recentVideosOpen, setRecentVideosOpen] = useState(false)
+  const [channelsOpen, setChannelsOpen] = useState(false)
+  const [infraOpen, setInfraOpen] = useState(false)
   const healthChecked = useRef(false)
 
   // Auth check
@@ -583,132 +585,184 @@ export default function AdminHubPage() {
 
           {/* ─── Recent Activity ─── */}
           {recentVideos.length > 0 && (
-            <section className="animate-fade-up stagger-3">
-              <div className="flex items-center gap-2 mb-4">
-                <Clock className="h-3.5 w-3.5 text-[#475569]" />
-                <h2 className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">
-                  Your recent extractions
-                </h2>
-              </div>
-              <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 divide-y divide-[#1E293B]/60">
-                {recentVideos.map((video) => (
-                  <Link
-                    key={video.youtube_video_id}
-                    href={`/video?id=${video.youtube_video_id}`}
-                    className="group flex items-center gap-4 px-5 py-3.5 hover:bg-[#141B2D] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                  >
-                    <Play className="h-3.5 w-3.5 text-[#475569] group-hover:text-[#00D4AA] transition-colors shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#F1F5F9] truncate group-hover:text-[#00D4AA] transition-colors">
-                        {video.title}
-                      </p>
-                      <p className="text-[11px] text-[#64748B] mt-0.5">
-                        {video.channel_name} · {video.recommendation_count} rec{video.recommendation_count !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    <span className="text-[11px] text-[#475569] font-[family-name:var(--font-geist-mono)] shrink-0">
-                      {timeAgo(video.extracted_at)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
+            <section className="animate-fade-up stagger-3 space-y-3">
+              <button
+                onClick={() => setRecentVideosOpen(!recentVideosOpen)}
+                className="flex items-center justify-between w-full text-left group py-3 px-4 rounded-xl hover:bg-[#141B2D]/40 border border-transparent hover:border-[#1E293B]/60 transition-all duration-300"
+                aria-expanded={recentVideosOpen}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#141B2D]/50 border border-[#1E293B]/60 group-hover:border-[#00D4AA]/30 group-hover:bg-[#00D4AA]/5 transition-all duration-300">
+                    <Clock className="h-4.5 w-4.5 text-[#64748B] group-hover:text-[#00D4AA] transition-colors duration-300" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-semibold text-[#F1F5F9] group-hover:text-white transition-colors duration-300">
+                      Your recent extractions
+                    </h2>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-[#475569] group-hover:text-[#00D4AA]/70 transition-colors">
+                  <span className="text-xs font-[family-name:var(--font-geist-mono)] bg-[#141B2D]/80 px-2.5 py-1 rounded-lg border border-[#1E293B]/60 group-hover:border-[#00D4AA]/20 transition-colors">
+                    {recentVideos.length}
+                  </span>
+                  <ChevronDown
+                    className={`h-5 w-5 transition-transform duration-300 ${
+                      recentVideosOpen ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {recentVideosOpen && (
+                <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 divide-y divide-[#1E293B]/60 animate-[fade-in_0.2s_ease-out]">
+                  {recentVideos.map((video) => (
+                    <Link
+                      key={video.youtube_video_id}
+                      href={`/video?id=${video.youtube_video_id}`}
+                      className="group flex items-center gap-4 px-5 py-3.5 hover:bg-[#141B2D] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                    >
+                      <Play className="h-3.5 w-3.5 text-[#475569] group-hover:text-[#00D4AA] transition-colors shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[#F1F5F9] truncate group-hover:text-[#00D4AA] transition-colors">
+                          {video.title}
+                        </p>
+                        <p className="text-[11px] text-[#64748B] mt-0.5">
+                          {video.channel_name} · {video.recommendation_count} rec{video.recommendation_count !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-[#475569] font-[family-name:var(--font-geist-mono)] shrink-0">
+                        {timeAgo(video.extracted_at)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
           {/* ─── Channel Scout: Check for new uploads ─── */}
           {channels.length > 0 && (
-            <section className="animate-fade-up stagger-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Radio className="h-3.5 w-3.5 text-[#475569]" />
-                  <h2 className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">
-                    Channels you follow
-                  </h2>
-                  <span className="text-[10px] text-[#475569] font-[family-name:var(--font-geist-mono)]">
+            <section className="animate-fade-up stagger-4 space-y-3">
+              <button
+                onClick={() => setChannelsOpen(!channelsOpen)}
+                className="flex items-center justify-between w-full text-left group py-3 px-4 rounded-xl hover:bg-[#141B2D]/40 border border-transparent hover:border-[#1E293B]/60 transition-all duration-300"
+                aria-expanded={channelsOpen}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#141B2D]/50 border border-[#1E293B]/60 group-hover:border-[#00D4AA]/30 group-hover:bg-[#00D4AA]/5 transition-all duration-300">
+                    <Radio className="h-4.5 w-4.5 text-[#64748B] group-hover:text-[#00D4AA] transition-colors duration-300" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-semibold text-[#F1F5F9] group-hover:text-white transition-colors duration-300">
+                      Channels you follow
+                    </h2>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-[#475569] group-hover:text-[#00D4AA]/70 transition-colors">
+                  <span className="hidden sm:inline text-xs text-[#475569]">
+                    Needs attention first
+                  </span>
+                  <span className="text-xs font-[family-name:var(--font-geist-mono)] bg-[#141B2D]/80 px-2.5 py-1 rounded-lg border border-[#1E293B]/60 group-hover:border-[#00D4AA]/20 transition-colors">
                     {channels.length}
                   </span>
+                  <ChevronDown
+                    className={`h-5 w-5 transition-transform duration-300 ${
+                      channelsOpen ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
                 </div>
-                <span className="text-[10px] text-[#475569]">
-                  Needs attention first
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {channels.map((ch) => {
-                  const freshness = getFreshnessLevel(ch.last_ingested)
-                  const youtubeUrl = ch.youtube_channel_id
-                    ? `https://www.youtube.com/channel/${ch.youtube_channel_id}/videos`
-                    : `https://www.youtube.com/results?search_query=${encodeURIComponent(ch.channel_name)}&sp=CAI%253D`
-                  return (
-                    <a
-                      key={ch.channel_id}
-                      href={youtubeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group relative flex items-center gap-4 rounded-xl border border-[#1E293B] bg-[#141B2D]/40 px-5 py-4 hover:border-[#2D3A4F] hover:bg-[#141B2D] transition-all duration-200 overflow-hidden"
-                    >
-                      {/* Freshness accent — left edge bar */}
-                      <div
-                        className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
-                        style={{ backgroundColor: freshness.color }}
-                        aria-hidden="true"
-                      />
+              </button>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors truncate">
-                            {ch.channel_name}
-                          </p>
-                          <ExternalLink className="h-3 w-3 text-[#475569] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              {channelsOpen && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-[fade-in_0.2s_ease-out]">
+                  {channels.map((ch) => {
+                    const freshness = getFreshnessLevel(ch.last_ingested)
+                    const youtubeUrl = ch.youtube_channel_id
+                      ? `https://www.youtube.com/channel/${ch.youtube_channel_id}/videos`
+                      : `https://www.youtube.com/results?search_query=${encodeURIComponent(ch.channel_name)}&sp=CAI%253D`
+                    return (
+                      <a
+                        key={ch.channel_id}
+                        href={youtubeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative flex items-center gap-4 rounded-xl border border-[#1E293B] bg-[#141B2D]/40 px-5 py-4 hover:border-[#2D3A4F] hover:bg-[#141B2D] transition-all duration-200 overflow-hidden"
+                      >
+                        {/* Freshness accent — left edge bar */}
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
+                          style={{ backgroundColor: freshness.color }}
+                          aria-hidden="true"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors truncate">
+                              {ch.channel_name}
+                            </p>
+                            <ExternalLink className="h-3 w-3 text-[#475569] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[11px] text-[#64748B]">
+                              {ch.total_videos} video{ch.total_videos !== 1 ? 's' : ''} ingested
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[11px] text-[#64748B]">
-                            {ch.total_videos} video{ch.total_videos !== 1 ? 's' : ''} ingested
+
+                        {/* Freshness indicator */}
+                        <div className="flex flex-col items-end gap-0.5 shrink-0">
+                          <span
+                            className="text-[10px] font-medium font-[family-name:var(--font-geist-mono)]"
+                            style={{ color: freshness.color }}
+                          >
+                            {freshness.label}
+                          </span>
+                          <span className="text-[10px] text-[#475569]">
+                            {ch.last_ingested ? timeAgo(ch.last_ingested) : 'never'}
                           </span>
                         </div>
-                      </div>
-
-                      {/* Freshness indicator */}
-                      <div className="flex flex-col items-end gap-0.5 shrink-0">
-                        <span
-                          className="text-[10px] font-medium font-[family-name:var(--font-geist-mono)]"
-                          style={{ color: freshness.color }}
-                        >
-                          {freshness.label}
-                        </span>
-                        <span className="text-[10px] text-[#475569]">
-                          {ch.last_ingested ? timeAgo(ch.last_ingested) : 'never'}
-                        </span>
-                      </div>
-                    </a>
-                  )
-                })}
-              </div>
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
             </section>
           )}
 
           {/* ─── Infrastructure (collapsible) ─── */}
-          <section className="animate-fade-up stagger-5">
+          <section className="animate-fade-up stagger-5 space-y-3">
             <button
               onClick={() => setInfraOpen(!infraOpen)}
-              className="flex items-center gap-2 w-full text-left group"
+              className="flex items-center justify-between w-full text-left group py-3 px-4 rounded-xl hover:bg-[#141B2D]/40 border border-transparent hover:border-[#1E293B]/60 transition-all duration-300"
               aria-expanded={infraOpen}
             >
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-[#475569] transition-transform duration-200 ${infraOpen ? 'rotate-0' : '-rotate-90'}`}
-              />
-              <h2 className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium group-hover:text-[#8B95A8] transition-colors">
-                Infrastructure & Billing
-              </h2>
-              <span className="text-[10px] text-[#475569]">
-                ({INFRA_LINKS.reduce((sum, g) => sum + g.links.length, 0)} links)
-              </span>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#141B2D]/50 border border-[#1E293B]/60 group-hover:border-[#00D4AA]/30 group-hover:bg-[#00D4AA]/5 transition-all duration-300">
+                  <Cloud className="h-4.5 w-4.5 text-[#64748B] group-hover:text-[#00D4AA] transition-colors duration-300" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-[#F1F5F9] group-hover:text-white transition-colors duration-300">
+                    Infrastructure & Billing
+                  </h2>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-[#475569] group-hover:text-[#00D4AA]/70 transition-colors">
+                <span className="text-xs font-[family-name:var(--font-geist-mono)] bg-[#141B2D]/80 px-2.5 py-1 rounded-lg border border-[#1E293B]/60 group-hover:border-[#00D4AA]/20 transition-colors">
+                  {INFRA_LINKS.reduce((sum, g) => sum + g.links.length, 0)} links
+                </span>
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform duration-300 ${
+                    infraOpen ? 'rotate-0' : '-rotate-90'
+                  }`}
+                />
+              </div>
             </button>
 
             {infraOpen && (
-              <div className="mt-5 space-y-6">
+              <div className="mt-2 space-y-6 animate-[fade-in_0.2s_ease-out]">
                 {INFRA_LINKS.map((group) => (
                   <div key={group.category}>
-                    <h3 className="text-xs font-medium text-[#8B95A8] mb-2.5">
+                    <h3 className="text-xs font-medium text-[#8B95A8] mb-2.5 px-1">
                       {group.category}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">

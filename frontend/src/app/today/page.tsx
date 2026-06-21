@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { 
+import {
   Activity, Grid, Layers, ChevronLeft, ChevronRight, Info, AlertTriangle, Sparkles,
   ArrowRight, ArrowLeft
 } from 'lucide-react'
@@ -12,13 +12,13 @@ import {
 // Custom Youtube Icon SVG
 function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg 
-      className={className} 
-      viewBox="0 0 24 24" 
-      fill="currentColor" 
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
       stroke="none"
     >
-      <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
     </svg>
   )
 }
@@ -79,27 +79,27 @@ function AuraReactor({ score, direction }: { score: number; direction: 'BUY' | '
   const isBuy = direction === 'BUY'
   const baseColor = isBuy ? '#00D4AA' : '#FF4D6A'
   const glowColor = isBuy ? 'rgba(0, 212, 170, 0.4)' : 'rgba(255, 77, 106, 0.4)'
-  
+
   // Faster pulse for higher conviction
   const pulseDuration = `${Math.max(0.6, 2.2 - (score / 100) * 1.5)}s`
 
   return (
     <div className="relative flex items-center justify-center w-16 h-16 shrink-0 select-none">
       {/* Reactor Rings */}
-      <div 
+      <div
         className="absolute inset-0 rounded-full border border-dashed opacity-25 animate-[spin_25s_linear_infinite]"
         style={{ borderColor: baseColor }}
       />
-      <div 
+      <div
         className="absolute inset-2 rounded-full border opacity-30 animate-ping"
-        style={{ 
+        style={{
           borderColor: baseColor,
-          animationDuration: pulseDuration 
+          animationDuration: pulseDuration
         }}
       />
-      <div 
+      <div
         className="absolute inset-3 rounded-full opacity-20 blur-md"
-        style={{ 
+        style={{
           backgroundColor: baseColor,
           boxShadow: `0 0 12px 4px ${glowColor}`
         }}
@@ -146,7 +146,7 @@ function AuraReactor({ score, direction }: { score: number; direction: 'BUY' | '
 function EKGHeartbeat({ overallMood, direction }: { overallMood: string; direction: 'BUY' | 'SELL' }) {
   const isBuy = direction === 'BUY'
   const strokeColor = isBuy ? '#00D4AA' : '#FF4D6A'
-  
+
   // Heart rate speed based on sentiment mood
   let duration = '2s'
   if (overallMood === 'Bullish' || overallMood.includes('Bull')) {
@@ -172,7 +172,7 @@ function EKGHeartbeat({ overallMood, direction }: { overallMood: string; directi
             <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
           </linearGradient>
         </defs>
-        
+
         {/* Grid lines */}
         <rect width="100%" height="100%" fill="url(#ekgGrid)" />
 
@@ -220,8 +220,8 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
 
   // Find channel and details matching the top catalyst
   const catalystMatch = play.catalysts?.find(c => c.notes === play.top_catalyst)
-  const catalystAuthor = catalystMatch 
-    ? catalystMatch.channel_name 
+  const catalystAuthor = catalystMatch
+    ? catalystMatch.channel_name
     : (play.catalysts?.[0]?.channel_name || play.latest_video.channel_name)
   const catalystConviction = catalystMatch
     ? catalystMatch.conviction
@@ -279,11 +279,10 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
         {/* Micro-metrics row (Context-Aware Highlighting in Ghost aesthetic) */}
         <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-[#060A13]/10 border border-white/5 rounded-xl mb-4 font-[family-name:var(--font-geist-mono)] text-center">
           {/* Conviction */}
-          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
-            activeSortBy === 'conviction' 
-              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]' 
+          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${activeSortBy === 'conviction'
+              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
               : 'opacity-60 hover:opacity-80'
-          }`}>
+            }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Conviction</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.avg_conviction.toFixed(1)}/10</span>
             <div className="w-full bg-white/10 h-0.5 rounded-full mt-1 overflow-hidden">
@@ -292,11 +291,10 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
           </div>
 
           {/* Buzz */}
-          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
-            activeSortBy === 'mentions' 
-              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]' 
+          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${activeSortBy === 'mentions'
+              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
               : 'opacity-60 hover:opacity-80'
-          }`}>
+            }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Buzz</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.recent_mentions}x</span>
             <div className="flex gap-0.5 mt-1 justify-center">
@@ -307,11 +305,10 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
           </div>
 
           {/* Agreement */}
-          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
-            activeSortBy === 'consensus_sentiment' 
-              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]' 
+          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${activeSortBy === 'consensus_sentiment'
+              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
               : 'opacity-60 hover:opacity-80'
-          }`}>
+            }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Agreement</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.agreement_pct}%</span>
             <div className="w-full bg-white/10 h-0.5 rounded-full mt-1 overflow-hidden">
@@ -381,32 +378,39 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
 
 // --- PulseStream (Tinder/TikTok full screen deck) ---
 
-function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
+function PulseStream({
+  plays,
+  sortBy,
+  index,
+  setIndex
+}: {
+  plays: Play[]
+  sortBy: string
+  index: number
+  setIndex: (idx: number) => void
+}) {
   const router = useRouter()
-  const [index, setIndex] = useState(0)
   const [direction, setDirection] = useState<'left' | 'right'>('right')
-
-  useEffect(() => {
-    setIndex(0)
-  }, [plays])
 
   if (plays.length === 0) return null
 
-  const play = plays[index]
+  // Ensure index stays safely within plays bounds
+  const activeIndex = index >= plays.length ? 0 : index
+  const play = plays[activeIndex]
   const isBuy = play.direction === 'BUY'
   const isStrong = play.aura_score >= 80
 
   const handleNext = () => {
-    if (index < plays.length - 1) {
+    if (activeIndex < plays.length - 1) {
       setDirection('right')
-      setIndex(index + 1)
+      setIndex(activeIndex + 1)
     }
   }
 
   const handlePrev = () => {
-    if (index > 0) {
+    if (activeIndex > 0) {
       setDirection('left')
-      setIndex(index - 1)
+      setIndex(activeIndex - 1)
     }
   }
 
@@ -441,8 +445,8 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
 
   // Find channel and details matching the top catalyst
   const catalystMatch = play.catalysts?.find(c => c.notes === play.top_catalyst)
-  const catalystAuthor = catalystMatch 
-    ? catalystMatch.channel_name 
+  const catalystAuthor = catalystMatch
+    ? catalystMatch.channel_name
     : (play.catalysts?.[0]?.channel_name || play.latest_video.channel_name)
   const catalystConviction = catalystMatch
     ? catalystMatch.conviction
@@ -460,7 +464,7 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'} opacity-75`}></span>
             <span className={`relative inline-flex rounded-full h-2 w-2 ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`}></span>
           </span>
-          <span>Signal {index + 1} of {plays.length}</span>
+          <span>Signal {activeIndex + 1} of {plays.length}</span>
         </div>
         <div className="flex gap-2">
           <span className="uppercase text-[9px] border border-white/5 px-1.5 py-0.5 rounded tracking-widest text-[#94A3B8]">
@@ -505,31 +509,28 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
 
                 {/* Dashboard Stats */}
                 <div className="grid grid-cols-3 gap-3 p-2 bg-[#060A13]/10 border border-white/5 rounded-xl mb-6 font-[family-name:var(--font-geist-mono)] text-center">
-                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${
-                    sortBy === 'conviction' 
-                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105' 
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'conviction'
+                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
                       : 'opacity-70'
-                  }`}>
+                    }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Conviction</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
                       {play.avg_conviction.toFixed(1)}/10
                     </span>
                   </div>
-                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${
-                    sortBy === 'mentions' 
-                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105' 
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'mentions'
+                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
                       : 'opacity-70'
-                  }`}>
+                    }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Buzz (Mentions)</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
                       {play.recent_mentions}x
                     </span>
                   </div>
-                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${
-                    sortBy === 'consensus_sentiment' 
-                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105' 
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'consensus_sentiment'
+                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
                       : 'opacity-70'
-                  }`}>
+                    }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Agreement</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
                       {play.agreement_pct}%
@@ -593,28 +594,26 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
       <div className="flex items-center justify-center gap-8 mt-5 w-full">
         <button
           onClick={handlePrev}
-          disabled={index === 0}
-          className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${
-            index === 0 
-              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed' 
+          disabled={activeIndex === 0}
+          className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${activeIndex === 0
+              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed'
               : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
-          }`}
+            }`}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
         <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#94A3B8]">
-          Signal {index + 1} of {plays.length}
+          Signal {activeIndex + 1} of {plays.length}
         </span>
 
         <button
           onClick={handleNext}
-          disabled={index === plays.length - 1}
-          className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${
-            index === plays.length - 1 
-              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed' 
+          disabled={activeIndex === plays.length - 1}
+          className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${activeIndex === plays.length - 1
+              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed'
               : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
-          }`}
+            }`}
         >
           <ArrowRight className="w-5 h-5" />
         </button>
@@ -658,15 +657,82 @@ export default function TodayPlaysPage() {
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
   const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
+  const [streamIndex, setStreamIndex] = useState(0)
+  const [sessionRestored, setSessionRestored] = useState(false)
 
-  // Auto detect mobile device width to default to full deck stream
+  // Restore user session tab preferences & handle mobile responsiveness
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setViewMode('stream')
+    let isFreshDocumentLoad = false
+    if (typeof window !== 'undefined') {
+      const win = window as any
+      if (win.__firstLoad === undefined) {
+        win.__firstLoad = false
+        isFreshDocumentLoad = true
+      }
     }
+
+    let isBackNavigation = false
+    if (typeof window !== 'undefined' && window.performance) {
+      const navs = window.performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+      if (navs && navs.length > 0) {
+        isBackNavigation = navs[0].type === 'back_forward'
+      }
+    }
+
+    if (isFreshDocumentLoad && !isBackNavigation) {
+      // Clear previous session settings on direct URL load or page refresh
+      sessionStorage.removeItem('today_sortBy')
+      sessionStorage.removeItem('today_activeTab')
+      sessionStorage.removeItem('today_viewMode')
+      sessionStorage.removeItem('today_streamIndex')
+
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setViewMode('stream')
+      }
+    } else {
+      // Restore from sessionStorage for client-side navigation (e.g. Back button)
+      const savedViewMode = sessionStorage.getItem('today_viewMode') as 'grid' | 'stream'
+      const savedSortBy = sessionStorage.getItem('today_sortBy') as SortOption
+      const savedActiveTab = sessionStorage.getItem('today_activeTab') as 'BUY' | 'SELL'
+      const savedStreamIndex = sessionStorage.getItem('today_streamIndex')
+
+      if (savedViewMode) setViewMode(savedViewMode)
+      if (savedSortBy) setSortBy(savedSortBy)
+      if (savedActiveTab) setActiveTab(savedActiveTab)
+      if (savedStreamIndex) {
+        const parsed = parseInt(savedStreamIndex, 10)
+        if (!isNaN(parsed)) setStreamIndex(parsed)
+      }
+    }
+
+    setSessionRestored(true)
   }, [])
 
+
+  // Sync state changes back to sessionStorage
   useEffect(() => {
+    if (!sessionRestored) return
+    sessionStorage.setItem('today_sortBy', sortBy)
+  }, [sortBy, sessionRestored])
+
+  useEffect(() => {
+    if (!sessionRestored) return
+    sessionStorage.setItem('today_activeTab', activeTab)
+  }, [activeTab, sessionRestored])
+
+  useEffect(() => {
+    if (!sessionRestored) return
+    sessionStorage.setItem('today_viewMode', viewMode)
+  }, [viewMode, sessionRestored])
+
+  useEffect(() => {
+    if (!sessionRestored) return
+    sessionStorage.setItem('today_streamIndex', streamIndex.toString())
+  }, [streamIndex, sessionRestored])
+
+  useEffect(() => {
+    if (!sessionRestored) return
+
     let active = true
 
     async function fetchPlays() {
@@ -680,6 +746,7 @@ export default function TodayPlaysPage() {
           if (parsed && parsed.plays) {
             if (active) {
               setData(parsed)
+              setLoading(false)
               hasCache = true
             }
           }
@@ -704,7 +771,7 @@ export default function TodayPlaysPage() {
         }
 
         const json = await res.json()
-        
+
         if (active) {
           setData(json)
           setError(null)
@@ -734,7 +801,7 @@ export default function TodayPlaysPage() {
     return () => {
       active = false
     }
-  }, [sortBy])
+  }, [sortBy, sessionRestored])
 
   const sortPlays = (playsList: Play[]) => {
     return [...playsList].sort((a, b) => {
@@ -784,7 +851,7 @@ export default function TodayPlaysPage() {
 
     const buyRatio = buyCount / total
     const scoreText = `${Math.round(buyRatio * 100)}% Bullish Bias`
-    
+
     if (buyRatio >= 0.8) {
       return {
         color: 'text-[#00D4AA] drop-shadow-[0_0_10px_rgba(0,212,170,0.3)]',
@@ -831,7 +898,7 @@ export default function TodayPlaysPage() {
   return (
     <main className="flex-1 w-full mx-auto relative min-h-screen pb-20 md:pb-8">
       {/* Premium SVG Noise Texture Overlay */}
-      <div 
+      <div
         className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] mix-blend-overlay"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
@@ -840,12 +907,12 @@ export default function TodayPlaysPage() {
 
       {/* 🚀 SCI-FI INTERACTIVE AURA GRADIENT BACKGROUND 🚀 */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden mix-blend-screen opacity-80 transition-all duration-1000">
-        <div 
+        <div
           className="absolute inset-[-100%] animate-[spin_120s_linear_infinite]"
           style={{
-             backgroundImage: `linear-gradient(${isBuyTab ? 'rgba(0,212,170,0.04)' : 'rgba(255,77,106,0.04)'} 1px, transparent 1px), linear-gradient(90deg, ${isBuyTab ? 'rgba(0,212,170,0.04)' : 'rgba(255,77,106,0.04)'} 1px, transparent 1px)`,
-             backgroundSize: '40px 40px',
-             backgroundPosition: 'center center',
+            backgroundImage: `linear-gradient(${isBuyTab ? 'rgba(0,212,170,0.04)' : 'rgba(255,77,106,0.04)'} 1px, transparent 1px), linear-gradient(90deg, ${isBuyTab ? 'rgba(0,212,170,0.04)' : 'rgba(255,77,106,0.04)'} 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
+            backgroundPosition: 'center center',
           }}
         />
         <div className={`absolute -top-[20%] left-1/2 -translate-x-1/2 w-[120vw] h-[800px] bg-[radial-gradient(ellipse_at_top,${isBuyTab ? 'rgba(0,212,170,0.12)' : 'rgba(255,77,106,0.12)'}_0%,transparent_70%)] animate-pulse`} />
@@ -853,7 +920,7 @@ export default function TodayPlaysPage() {
       </div>
 
       <div className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 relative z-10">
-        
+
         {/* Living EKG Verdict Header */}
         <section className="relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-10 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30">
           {data && (
@@ -931,30 +998,28 @@ export default function TodayPlaysPage() {
         {/* HUD Sort Controls */}
         {!loading && !error && data && (data.plays.length > 0) && (
           <div className="hidden md:flex flex-col gap-3 mb-6">
-            
+
             {/* Top Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 rounded-2xl border border-[#1E293B]/50 bg-[#0A0F1A]/50 backdrop-blur-md">
-              
+
               {/* Layout Switchers */}
               <div className="flex items-center gap-2 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl p-1 text-xs select-none">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${
-                    viewMode === 'grid' 
-                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}` 
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${viewMode === 'grid'
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
                       : 'text-[#64748B] hover:text-[#F1F5F9]'
-                  }`}
+                    }`}
                 >
                   <Grid className="w-3.5 h-3.5" />
-                  <span>Grid HUD</span>
+                  <span>Grid</span>
                 </button>
                 <button
                   onClick={() => setViewMode('stream')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${
-                    viewMode === 'stream' 
-                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}` 
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${viewMode === 'stream'
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
                       : 'text-[#64748B] hover:text-[#F1F5F9]'
-                  }`}
+                    }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
                   <span>Pulse Stream</span>
@@ -974,10 +1039,10 @@ export default function TodayPlaysPage() {
                 ).map((opt) => (
                   <button
                     key={opt.key}
-                    onClick={() => setSortBy(opt.key)}
+                    onClick={() => { setSortBy(opt.key); setStreamIndex(0); }}
                     className={`px-3 py-1 rounded-lg font-bold transition-all duration-300 relative overflow-hidden ${sortBy === opt.key
-                        ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing} ${activeShadow}`
-                        : 'text-[#64748B] hover:text-[#F1F5F9] hover:bg-[#141B2D]/40'
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing} ${activeShadow}`
+                      : 'text-[#64748B] hover:text-[#F1F5F9] hover:bg-[#141B2D]/40'
                       }`}
                   >
                     {sortBy === opt.key && (
@@ -1060,44 +1125,40 @@ export default function TodayPlaysPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            
+
             {/* Desktop Tabs Selectors */}
             <div className="hidden md:flex items-center gap-6 border-b border-[#1E293B]/60 pb-px select-none font-[family-name:var(--font-geist-mono)]">
               <button
-                onClick={() => setActiveTab('BUY')}
-                className={`pb-4 px-2 text-sm font-black tracking-widest transition-all duration-300 relative ${
-                  activeTab === 'BUY' ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#8B95A8]'
-                }`}
+                onClick={() => { setActiveTab('BUY'); setStreamIndex(0); }}
+                className={`pb-4 px-2 text-sm font-black tracking-widest transition-all duration-300 relative ${activeTab === 'BUY' ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#8B95A8]'
+                  }`}
               >
                 BUY SIGNALS
-                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${
-                  activeTab === 'BUY' ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20' : 'bg-[#1E293B] text-[#8B95A8]'
-                }`}>
+                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${activeTab === 'BUY' ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20' : 'bg-[#1E293B] text-[#8B95A8]'
+                  }`}>
                   {buyPlays.length}
                 </span>
                 {activeTab === 'BUY' && (
-                  <motion.div 
-                    layoutId="activeTabUnderline" 
-                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]" 
+                  <motion.div
+                    layoutId="activeTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]"
                   />
                 )}
               </button>
               <button
-                onClick={() => setActiveTab('SELL')}
-                className={`pb-4 px-2 text-sm font-black tracking-widest transition-all duration-300 relative ${
-                  activeTab === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#64748B] hover:text-[#8B95A8]'
-                }`}
+                onClick={() => { setActiveTab('SELL'); setStreamIndex(0); }}
+                className={`pb-4 px-2 text-sm font-black tracking-widest transition-all duration-300 relative ${activeTab === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#64748B] hover:text-[#8B95A8]'
+                  }`}
               >
                 SELL SIGNALS
-                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${
-                  activeTab === 'SELL' ? 'bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/20' : 'bg-[#1E293B] text-[#8B95A8]'
-                }`}>
+                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${activeTab === 'SELL' ? 'bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/20' : 'bg-[#1E293B] text-[#8B95A8]'
+                  }`}>
                   {sellPlays.length}
                 </span>
                 {activeTab === 'SELL' && (
-                  <motion.div 
-                    layoutId="activeTabUnderline" 
-                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]" 
+                  <motion.div
+                    layoutId="activeTabUnderline"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]"
                   />
                 )}
               </button>
@@ -1108,7 +1169,7 @@ export default function TodayPlaysPage() {
               {viewMode === 'grid' ? (
                 /* Grid View */
                 activePlays.length > 0 ? (
-                  <motion.div 
+                  <motion.div
                     layout
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                   >
@@ -1120,10 +1181,10 @@ export default function TodayPlaysPage() {
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ 
-                            type: 'spring', 
-                            stiffness: 300, 
-                            damping: 30 
+                          transition={{
+                            type: 'spring',
+                            stiffness: 300,
+                            damping: 30
                           }}
                           className="h-full"
                         >
@@ -1142,7 +1203,12 @@ export default function TodayPlaysPage() {
               ) : (
                 /* Stream View (Focused Swipe Cards) */
                 activePlays.length > 0 ? (
-                  <PulseStream plays={activePlays} sortBy={sortBy} />
+                  <PulseStream
+                    plays={activePlays}
+                    sortBy={sortBy}
+                    index={streamIndex}
+                    setIndex={setStreamIndex}
+                  />
                 ) : (
                   <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
                     <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
@@ -1164,18 +1230,16 @@ export default function TodayPlaysPage() {
             {/* BUY/SELL Toggle Pill */}
             <div className="flex items-center bg-[#0A0F1A] border border-[#1E293B] rounded-xl p-0.5 w-1/2">
               <button
-                onClick={() => setActiveTab('BUY')}
-                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${
-                  isBuyTab ? 'bg-[#00D4AA]/15 text-[#00D4AA]' : 'text-[#64748B]'
-                }`}
+                onClick={() => { setActiveTab('BUY'); setStreamIndex(0); }}
+                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${isBuyTab ? 'bg-[#00D4AA]/15 text-[#00D4AA]' : 'text-[#64748B]'
+                  }`}
               >
                 BUY ({buyPlays.length})
               </button>
               <button
-                onClick={() => setActiveTab('SELL')}
-                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${
-                  !isBuyTab ? 'bg-[#FF4D6A]/15 text-[#FF4D6A]' : 'text-[#64748B]'
-                }`}
+                onClick={() => { setActiveTab('SELL'); setStreamIndex(0); }}
+                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${!isBuyTab ? 'bg-[#FF4D6A]/15 text-[#FF4D6A]' : 'text-[#64748B]'
+                  }`}
               >
                 SELL ({sellPlays.length})
               </button>
@@ -1196,7 +1260,10 @@ export default function TodayPlaysPage() {
                 <Sparkles className={`w-3.5 h-3.5 ${isBuyTab ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`} />
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  onChange={(e) => {
+                    setSortBy(e.target.value as SortOption)
+                    setStreamIndex(0)
+                  }}
                   className="bg-transparent text-[#F1F5F9] uppercase outline-none cursor-pointer appearance-none pr-3.5 font-bold"
                 >
                   <option value="aura_score" className="bg-[#0A0F1A] text-[#F1F5F9]">Aura</option>

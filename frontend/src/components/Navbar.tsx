@@ -337,6 +337,14 @@ export function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
+                    onClick={() => {
+                      if (link.href === '/today') {
+                        sessionStorage.removeItem('today_sortBy')
+                        sessionStorage.removeItem('today_activeTab')
+                        sessionStorage.removeItem('today_viewMode')
+                        sessionStorage.removeItem('today_streamIndex')
+                      }
+                    }}
                     className={`
                       relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                       ${
@@ -407,6 +415,14 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => {
+                  if (link.href === '/today') {
+                    sessionStorage.removeItem('today_sortBy')
+                    sessionStorage.removeItem('today_activeTab')
+                    sessionStorage.removeItem('today_viewMode')
+                    sessionStorage.removeItem('today_streamIndex')
+                  }
+                }}
                 className={`
                   flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors
                   ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B]'}
