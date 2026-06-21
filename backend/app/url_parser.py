@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from app.schemas import ParsedURL
 
 # Regex patterns for supported YouTube URL formats
-# Supports: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/embed/
+# Supports: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/embed/, youtube.com/live/
 _YOUTUBE_PATTERNS = [
     # youtube.com/watch?v=VIDEO_ID (with optional extra params)
     re.compile(
@@ -23,6 +23,10 @@ _YOUTUBE_PATTERNS = [
     re.compile(
         r"(?:https?://)?(?:www\.)?youtube\.com/embed/([A-Za-z0-9_-]{11})"
     ),
+    # youtube.com/live/VIDEO_ID
+    re.compile(
+        r"(?:https?://)?(?:www\.)?youtube\.com/live/([A-Za-z0-9_-]{11})"
+    ),
 ]
 
 
@@ -30,7 +34,7 @@ def parse_url(url: str) -> ParsedURL:
     """Parse a YouTube URL and extract the Video_ID.
 
     Supports youtube.com/watch?v=, youtu.be/, youtube.com/shorts/,
-    and youtube.com/embed/ formats. Strips extra query parameters.
+    youtube.com/embed/, and youtube.com/live/ formats. Strips extra query parameters.
 
     Args:
         url: A YouTube video URL in any supported format.

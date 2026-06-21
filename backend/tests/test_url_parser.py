@@ -33,6 +33,16 @@ class TestParseURL:
         assert result.video_id == "dQw4w9WgXcQ"
         assert result.canonical_url == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
+    def test_live_url(self):
+        result = parse_url("https://www.youtube.com/live/dQw4w9WgXcQ")
+        assert result.video_id == "dQw4w9WgXcQ"
+        assert result.canonical_url == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+    def test_live_url_with_query_params(self):
+        result = parse_url("https://www.youtube.com/live/dQw4w9WgXcQ?si=abc123")
+        assert result.video_id == "dQw4w9WgXcQ"
+        assert result.canonical_url == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
     def test_strips_extra_query_params_time(self):
         result = parse_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=120")
         assert result.video_id == "dQw4w9WgXcQ"
