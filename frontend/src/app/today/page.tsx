@@ -3,6 +3,28 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
+import { 
+  Activity, Grid, Layers, ChevronLeft, ChevronRight, Info, AlertTriangle, Sparkles,
+  ArrowRight, ArrowLeft
+} from 'lucide-react'
+
+// Custom Youtube Icon SVG
+function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg 
+      className={className} 
+      viewBox="0 0 24 24" 
+      fill="currentColor" 
+      stroke="none"
+    >
+      <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+    </svg>
+  )
+}
+
+import HolographicCard from '@/components/HolographicCard'
+import TextScramble from '@/components/TextScramble'
 
 // --- Types ---
 
@@ -51,54 +73,67 @@ interface TodayPlaysData {
   market_mood: MarketMood
 }
 
-// --- Radial Gauge Component ---
+// --- Upgraded Aura Reactor Gauge ---
 
-function RadialScoreGauge({ score, direction }: { score: number; direction: 'BUY' | 'SELL' }) {
-  const radius = 28
-  const circumference = 2 * Math.PI * radius
-  const strokeDashoffset = circumference - (score / 100) * circumference
-
+function AuraReactor({ score, direction }: { score: number; direction: 'BUY' | 'SELL' }) {
   const isBuy = direction === 'BUY'
-
-  // Dynamic color classes
-  const strokeColor = isBuy
-    ? 'stroke-[#00D4AA]' // Bull Green
-    : 'stroke-[#FF4D6A]' // Bear Red
-
-  const glowColor = isBuy
-    ? 'rgba(0, 212, 170, 0.4)'
-    : 'rgba(255, 77, 106, 0.4)'
+  const baseColor = isBuy ? '#00D4AA' : '#FF4D6A'
+  const glowColor = isBuy ? 'rgba(0, 212, 170, 0.4)' : 'rgba(255, 77, 106, 0.4)'
+  
+  // Faster pulse for higher conviction
+  const pulseDuration = `${Math.max(0.6, 2.2 - (score / 100) * 1.5)}s`
 
   return (
     <div className="relative flex items-center justify-center w-16 h-16 shrink-0 select-none">
-      <svg className="w-16 h-16 transform -rotate-90">
-        {/* Track circle */}
+      {/* Reactor Rings */}
+      <div 
+        className="absolute inset-0 rounded-full border border-dashed opacity-25 animate-[spin_25s_linear_infinite]"
+        style={{ borderColor: baseColor }}
+      />
+      <div 
+        className="absolute inset-2 rounded-full border opacity-30 animate-ping"
+        style={{ 
+          borderColor: baseColor,
+          animationDuration: pulseDuration 
+        }}
+      />
+      <div 
+        className="absolute inset-3 rounded-full opacity-20 blur-md"
+        style={{ 
+          backgroundColor: baseColor,
+          boxShadow: `0 0 12px 4px ${glowColor}`
+        }}
+      />
+
+      {/* SVG Arc Gauge */}
+      <svg className="w-14 h-14 transform -rotate-90 relative z-10">
         <circle
-          cx="32"
-          cy="32"
-          r={radius}
+          cx="28"
+          cy="28"
+          r="21"
           className="stroke-[#1E293B]"
-          strokeWidth="4"
+          strokeWidth="3.5"
           fill="transparent"
         />
-        {/* Progress circle */}
         <circle
-          cx="32"
-          cy="32"
-          r={radius}
-          className={`transition-all duration-1000 ease-out ${strokeColor}`}
-          strokeWidth="4.5"
+          cx="28"
+          cy="28"
+          r="21"
+          stroke={baseColor}
+          strokeWidth="4"
           fill="transparent"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
+          strokeDasharray={2 * Math.PI * 21}
+          strokeDashoffset={2 * Math.PI * 21 - (score / 100) * (2 * Math.PI * 21)}
           strokeLinecap="round"
           style={{
-            filter: `drop-shadow(0 0 4px ${glowColor})`,
+            filter: `drop-shadow(0 0 3px ${glowColor})`,
           }}
         />
       </svg>
-      <div className="absolute flex flex-col items-center justify-center">
-        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9] leading-none">
+
+      {/* Score Text */}
+      <div className="absolute flex flex-col items-center justify-center z-20">
+        <span className="font-[family-name:var(--font-geist-mono)] text-xs font-black text-[#F1F5F9] leading-none">
           {score}
         </span>
       </div>
@@ -106,9 +141,75 @@ function RadialScoreGauge({ score, direction }: { score: number; direction: 'BUY
   )
 }
 
-// --- Card Component ---
+// --- Animated SVG EKG/Heartbeat Wave ---
 
-function PlayCard({ play, index, isAuraScore }: { play: Play; index: number; isAuraScore?: boolean }) {
+function EKGHeartbeat({ overallMood, direction }: { overallMood: string; direction: 'BUY' | 'SELL' }) {
+  const isBuy = direction === 'BUY'
+  const strokeColor = isBuy ? '#00D4AA' : '#FF4D6A'
+  
+  // Heart rate speed based on sentiment mood
+  let duration = '2s'
+  if (overallMood === 'Bullish' || overallMood.includes('Bull')) {
+    duration = '1.3s'
+  } else if (overallMood === 'Bearish' || overallMood.includes('Bear')) {
+    duration = '3.5s'
+  }
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 h-20 overflow-hidden pointer-events-none opacity-25 z-0">
+      <svg className="w-full h-full" viewBox="0 0 1000 100" preserveAspectRatio="none">
+        <defs>
+          <pattern id="ekgGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1E293B" strokeWidth="0.5" opacity="0.4" />
+          </pattern>
+          <linearGradient id="ekgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0" />
+            <stop offset="35%" stopColor={strokeColor} stopOpacity="0.1" />
+            <stop offset="48%" stopColor={strokeColor} stopOpacity="0.4" />
+            <stop offset="50%" stopColor={strokeColor} stopOpacity="1" />
+            <stop offset="52%" stopColor={strokeColor} stopOpacity="0.4" />
+            <stop offset="65%" stopColor={strokeColor} stopOpacity="0.1" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        
+        {/* Grid lines */}
+        <rect width="100%" height="100%" fill="url(#ekgGrid)" />
+
+        {/* Static Background Guide */}
+        <path
+          d="M 0 50 L 150 50 L 160 40 L 170 60 L 180 15 L 195 90 L 205 45 L 215 53 L 230 50 L 450 50 L 460 40 L 470 60 L 480 15 L 495 90 L 505 45 L 515 53 L 530 50 L 750 50 L 760 40 L 770 60 L 780 15 L 795 90 L 805 45 L 815 53 L 830 50 L 1000 50"
+          fill="none"
+          stroke="#1E293B"
+          strokeWidth="1.5"
+          opacity="0.3"
+        />
+
+        {/* Animated Heartbeat scanning glow */}
+        <motion.path
+          d="M 0 50 L 150 50 L 160 40 L 170 60 L 180 15 L 195 90 L 205 45 L 215 53 L 230 50 L 450 50 L 460 40 L 470 60 L 480 15 L 495 90 L 505 45 L 515 53 L 530 50 L 750 50 L 760 40 L 770 60 L 780 15 L 795 90 L 805 45 L 815 53 L 830 50 L 1000 50"
+          fill="none"
+          stroke="url(#ekgGradient)"
+          strokeWidth="2.5"
+          strokeDasharray="1000"
+          animate={{ strokeDashoffset: [1000, -1000] }}
+          transition={{
+            repeat: Infinity,
+            duration: parseFloat(duration),
+            ease: "linear",
+          }}
+          style={{
+            filter: `drop-shadow(0 0 6px ${strokeColor})`,
+          }}
+        />
+      </svg>
+    </div>
+  )
+}
+
+// --- HUD PlayCard Component ---
+
+function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; activeSortBy: SortOption }) {
   const router = useRouter()
   const isBuy = play.direction === 'BUY'
   const isStrong = play.aura_score >= 80
@@ -119,171 +220,495 @@ function PlayCard({ play, index, isAuraScore }: { play: Play; index: number; isA
   }
 
   return (
-    <div
+    <HolographicCard
       onClick={handleCardClick}
-      className={`
-        relative group flex flex-col rounded-2xl border border-[#1E293B] bg-[#141B2D]/50 hover:bg-[#141B2D]/80 p-5 md:p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-black/40 cursor-pointer animate-fade-up
-        ${isBuy ? 'hover:border-[#00D4AA]/30' : 'hover:border-[#FF4D6A]/30'}
-      `}
-      style={{
-        animationDelay: `${index * 80}ms`,
-      }}
+      direction={play.direction}
+      isStrong={isStrong}
+      className="h-full flex flex-col justify-between"
     >
-      {/* Top sentiment/conviction indicator band */}
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div>
-          {/* Ticker & Name */}
-          <div className={`flex items-center gap-2 transition-colors ${isBuy ? 'group-hover:text-[#00D4AA]' : 'group-hover:text-[#FF4D6A]'}`}>
-            <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold tracking-wider text-[#F1F5F9] leading-none">
-              {play.ticker}
-            </span>
-            <span className="text-xs text-[#64748B] truncate max-w-[140px] md:max-w-[200px] mt-0.5" title={play.stock_name}>
-              {play.stock_name}
-            </span>
+      <div>
+        {/* Header: Ticker & Name */}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black tracking-widest text-[#F1F5F9] leading-none">
+                <TextScramble text={play.ticker} />
+              </span>
+              <span className="text-[10px] text-[#94A3B8] font-bold truncate max-w-[110px]" title={play.stock_name}>
+                {play.stock_name}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 mt-2">
+              <span
+                className={`
+                  text-[9px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase font-[family-name:var(--font-geist-mono)]
+                  ${isBuy
+                    ? (isStrong ? 'bg-[#00FFD0]/10 border border-[#00FFD0]/30 text-[#00FFD0]' : 'bg-[#00D4AA]/10 border border-[#00D4AA]/20 text-[#00D4AA]')
+                    : (isStrong ? 'bg-[#FF1744]/10 border border-[#FF1744]/30 text-[#FF1744]' : 'bg-[#FF4D6A]/10 border border-[#FF4D6A]/20 text-[#FF4D6A]')
+                  }
+                `}
+              >
+                {play.action_label}
+              </span>
+              {play.avg_target_price !== null && (
+                <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#94A3B8]">
+                  Target: <span className="text-[#F1F5F9] font-bold">${play.avg_target_price}</span>
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Action Badge & Conviction */}
-          <div className="flex items-center gap-2 mt-2">
-            <span
-              className={`
-                text-[10px] font-bold px-2 py-0.5 rounded-md tracking-wider uppercase
-                ${isBuy
-                  ? (isStrong ? 'bg-[#00FFD0]/10 border border-[#00FFD0]/30 text-[#00FFD0]' : 'bg-[#00D4AA]/10 border border-[#00D4AA]/20 text-[#00D4AA]')
-                  : (isStrong ? 'bg-[#FF1744]/10 border border-[#FF1744]/30 text-[#FF1744]' : 'bg-[#FF4D6A]/10 border border-[#FF4D6A]/20 text-[#FF4D6A]')
-                }
-              `}
-            >
-              {play.action_label}
+          {/* Reactor with active highlight animation */}
+          <div className={`transition-all duration-300 ${activeSortBy === 'aura_score' ? `scale-110 filter drop-shadow-[0_0_12px_${isBuy ? 'rgba(0,212,170,0.5)' : 'rgba(255,77,106,0.5)'}]` : ''}`}>
+            <AuraReactor score={play.aura_score} direction={play.direction} />
+          </div>
+        </div>
+
+        {/* Micro-metrics row (Context-Aware Highlighting) */}
+        <div className="grid grid-cols-3 gap-1.5 p-2 bg-[#060A13]/60 border border-[#1E293B]/40 rounded-xl mb-4 font-[family-name:var(--font-geist-mono)] text-center">
+          {/* Conviction */}
+          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
+            activeSortBy === 'conviction' 
+              ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-[1.03]' 
+              : 'opacity-60 hover:opacity-80'
+          }`}>
+            <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Conviction</span>
+            <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.avg_conviction.toFixed(1)}/10</span>
+            <div className="w-full bg-[#1E293B] h-0.5 rounded-full mt-1 overflow-hidden">
+              <div className={`h-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} style={{ width: `${play.avg_conviction * 10}%` }} />
+            </div>
+          </div>
+
+          {/* Buzz */}
+          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
+            activeSortBy === 'mentions' 
+              ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-[1.03]' 
+              : 'opacity-60 hover:opacity-80'
+          }`}>
+            <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Buzz</span>
+            <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.recent_mentions}x</span>
+            <div className="flex gap-0.5 mt-1 justify-center">
+              {[...Array(Math.min(5, play.recent_mentions))].map((_, i) => (
+                <span key={i} className={`w-0.5 h-0.5 rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} />
+              ))}
+            </div>
+          </div>
+
+          {/* Agreement */}
+          <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
+            activeSortBy === 'consensus_sentiment' 
+              ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-[1.03]' 
+              : 'opacity-60 hover:opacity-80'
+          }`}>
+            <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Agreement</span>
+            <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.agreement_pct}%</span>
+            <div className="w-full bg-[#1E293B] h-0.5 rounded-full mt-1 overflow-hidden">
+              <div className={`h-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} style={{ width: `${play.agreement_pct}%` }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Why bullets */}
+        <div className="mb-5 space-y-2">
+          {play.why_bullets.map((bullet, i) => (
+            <div key={i} className="flex items-start gap-2.5 text-xs text-[#E2E8F0] tracking-wide">
+              <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${isBuy ? 'bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]' : 'bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]'}`} />
+              <span className="leading-relaxed">{bullet}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        {/* Catalyst Box */}
+        <div className="relative pt-3 border-t border-[#1E293B]/40">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
+              Analyst Intel ({(play.catalysts || []).length})
             </span>
-            {play.avg_target_price !== null && (
-              <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
-                Target: <span className="text-[#F1F5F9]">${play.avg_target_price}</span>
-              </span>
+            {play.catalysts && play.catalysts.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
+                className={`text-[10px] transition-colors font-bold flex items-center gap-1 select-none font-[family-name:var(--font-geist-mono)] ${isBuy ? 'text-[#00D4AA] hover:text-[#00FFD0]' : 'text-[#FF4D6A] hover:text-[#FF1744]'}`}
+              >
+                <span>{expanded ? 'Collapse' : 'Expand'}</span>
+                <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
+              </button>
             )}
           </div>
-        </div>
 
-        {/* Gauge */}
-        <RadialScoreGauge score={play.aura_score} direction={play.direction} />
-      </div>
-
-      {/* Why bullets */}
-      <div className="mb-4 space-y-1.5">
-        {play.why_bullets.map((bullet, i) => (
-          <div key={i} className="flex items-start gap-2 text-xs text-[#8B95A8]">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className={`mt-0.5 shrink-0 ${isBuy ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span className="leading-snug">{bullet}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Catalyst Box / Accordion */}
-      <div className="relative mt-auto pt-3 border-t border-[#1E293B]/40">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[8px] uppercase tracking-widest text-[#64748B] font-bold">
-            Analyst Opinions ({(play.catalysts || []).length})
-          </span>
-          {play.catalysts && play.catalysts.length > 0 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
-              className={`text-[10px] transition-colors font-semibold flex items-center gap-1 select-none ${isBuy ? 'text-[#00D4AA] hover:text-[#00FFD0]' : 'text-[#FF4D6A] hover:text-[#FF1744]'}`}
-            >
-              <span>{expanded ? 'Hide Opinions' : 'View All'}</span>
-              <svg
-                width="8"
-                height="8"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+          <AnimatePresence initial={false}>
+            {expanded ? (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-          )}
+                <div className="space-y-3 mt-2 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B] relative z-10" onClick={(e) => e.stopPropagation()}>
+                  {(play.catalysts || []).map((c, i) => (
+                    <div key={i} className="text-xs border-l-2 border-[#1E293B] pl-2 py-0.5 space-y-1">
+                      <div className="flex items-center justify-between text-[9px] text-[#94A3B8]">
+                        <Link
+                          href={`/video?id=${c.youtube_video_id}`}
+                          className="font-bold text-[#E2E8F0] hover:text-[#00D4AA] transition-colors font-[family-name:var(--font-geist-mono)]"
+                        >
+                          {c.channel_name}
+                        </Link>
+                        <span className="font-[family-name:var(--font-geist-mono)]">
+                          Conv: <span className="text-[#F1F5F9]">{c.conviction}/10</span>
+                        </span>
+                      </div>
+                      <p className="text-[#CBD5E1] italic font-serif leading-relaxed">&ldquo;{c.notes}&rdquo;</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ) : (
+              <p className="text-xs text-[#CBD5E1] italic leading-relaxed pl-1 line-clamp-2">
+                &ldquo;{play.top_catalyst}&rdquo;
+              </p>
+            )}
+          </AnimatePresence>
         </div>
 
-        {!expanded ? (
-          <p className="text-xs text-[#64748B] italic leading-relaxed pl-1 line-clamp-3">
-            &ldquo;{play.top_catalyst}&rdquo;
-          </p>
-        ) : (
-          <div className="space-y-3 mt-2 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B]" onClick={(e) => e.stopPropagation()}>
-            {(play.catalysts || []).map((c, i) => {
-              return (
-                <div key={i} className="text-xs border-l-2 border-[#1E293B] pl-2 py-0.5 space-y-1">
-                  <div className="flex items-center justify-between text-[9px] text-[#64748B]">
-                    <Link
-                      href={`/video?id=${c.youtube_video_id}`}
-                      className="font-bold text-[#8B95A8] hover:text-[#00D4AA] transition-colors"
-                    >
-                      {c.channel_name}
-                    </Link>
-                    <span className="font-[family-name:var(--font-geist-mono)]">
-                      Conviction: <span className="text-[#F1F5F9]">{c.conviction}/10</span>
+        {/* Source info */}
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#1E293B]/20 text-[10px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
+          <span className="truncate max-w-[130px]">
+            Latest: <span className="text-[#E2E8F0] font-bold">{play.latest_video.channel_name}</span>
+          </span>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={`/video?id=${play.latest_video.youtube_video_id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 text-[#94A3B8] hover:text-[#00D4AA] transition-colors"
+              title="View video details"
+            >
+              <span>Intel</span>
+              <Activity className="w-2.5 h-2.5" />
+            </Link>
+            <span className="text-[#374151]">•</span>
+            <a
+              href={`https://youtube.com/watch?v=${play.latest_video.youtube_video_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 text-[#94A3B8] hover:text-red-400 transition-colors"
+              title="Watch on YouTube"
+            >
+              <span>YouTube</span>
+              <YoutubeIcon className="w-2.5 h-2.5" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </HolographicCard>
+  )
+}
+
+// --- PulseStream (Tinder/TikTok full screen deck) ---
+
+function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
+  const router = useRouter()
+  const [index, setIndex] = useState(0)
+  const [direction, setDirection] = useState<'left' | 'right'>('right')
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    setIndex(0)
+    setExpanded(false)
+  }, [plays])
+
+  if (plays.length === 0) return null
+
+  const play = plays[index]
+  const isBuy = play.direction === 'BUY'
+  const isStrong = play.aura_score >= 80
+
+  const handleNext = () => {
+    if (index < plays.length - 1) {
+      setDirection('right')
+      setIndex(index + 1)
+      setExpanded(false)
+    }
+  }
+
+  const handlePrev = () => {
+    if (index > 0) {
+      setDirection('left')
+      setIndex(index - 1)
+      setExpanded(false)
+    }
+  }
+
+  // SNAPPY physics variants
+  const slideVariants = {
+    enter: (dir: 'left' | 'right') => ({
+      x: dir === 'right' ? 220 : -220,
+      opacity: 0,
+      scale: 0.96
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        x: { type: 'spring' as const, stiffness: 220, damping: 22 },
+        opacity: { duration: 0.18 },
+        scale: { duration: 0.18 }
+      }
+    },
+    exit: (dir: 'left' | 'right') => ({
+      x: dir === 'right' ? -220 : 220,
+      opacity: 0,
+      scale: 0.96,
+      transition: {
+        x: { type: 'spring' as const, stiffness: 220, damping: 22 },
+        opacity: { duration: 0.12 },
+        scale: { duration: 0.12 }
+      }
+    })
+  }
+
+  // Find channel that actually made the top catalyst
+  const topCatalystChannel = play.catalysts && play.catalysts[0] 
+    ? play.catalysts[0].channel_name 
+    : play.latest_video.channel_name
+
+  const topCatalystConviction = play.catalysts && play.catalysts[0]
+    ? play.catalysts[0].conviction
+    : play.avg_conviction
+
+  return (
+    <div className="w-full max-w-2xl mx-auto flex flex-col items-center px-2 animate-fade-up">
+      {/* Top micro stats */}
+      <div className="flex items-center justify-between w-full mb-3 px-2 text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B]">
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'} opacity-75`}></span>
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`}></span>
+          </span>
+          <span>Signal {index + 1} of {plays.length}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="uppercase text-[9px] border border-[#1E293B] px-1.5 py-0.5 rounded tracking-widest">
+            {sortBy.replace('_', ' ')}
+          </span>
+        </div>
+      </div>
+
+      {/* Focused Deck Container */}
+      <div className="relative w-full h-[520px] md:h-[500px]">
+        <AnimatePresence custom={direction} mode="wait">
+          <motion.div
+            key={play.ticker}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="absolute inset-0 w-full h-full"
+          >
+            <HolographicCard
+              direction={play.direction}
+              isStrong={isStrong}
+              className="w-full h-full p-6 md:p-8 flex flex-col justify-between border-2"
+              onClick={() => router.push(`/ticker?s=${play.ticker}`)}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <span className="text-[10px] tracking-widest font-black uppercase text-[#64748B] font-[family-name:var(--font-geist-mono)] block mb-1">
+                      Signal Node
+                    </span>
+                    <h2 className="text-3xl md:text-5xl font-black text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] tracking-wider">
+                      <TextScramble text={play.ticker} duration={600} />
+                    </h2>
+                    <p className="text-xs text-[#CBD5E1] mt-1 font-semibold">{play.stock_name}</p>
+                  </div>
+                  <div className="scale-125 mr-2">
+                    <AuraReactor score={play.aura_score} direction={play.direction} />
+                  </div>
+                </div>
+
+                {/* Dashboard Stats */}
+                <div className="grid grid-cols-3 gap-3 p-3 bg-[#0A0F1A]/70 border border-[#1E293B]/60 rounded-xl mb-6 font-[family-name:var(--font-geist-mono)] text-center">
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${
+                    sortBy === 'conviction' 
+                      ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-105' 
+                      : 'opacity-70'
+                  }`}>
+                    <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Conviction</span>
+                    <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
+                      {play.avg_conviction.toFixed(1)}/10
                     </span>
                   </div>
-                  <p className="text-[#8B95A8] italic">&ldquo;{c.notes}&rdquo;</p>
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${
+                    sortBy === 'mentions' 
+                      ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-105' 
+                      : 'opacity-70'
+                  }`}>
+                    <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Buzz (Mentions)</span>
+                    <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
+                      {play.recent_mentions}x
+                    </span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${
+                    sortBy === 'consensus_sentiment' 
+                      ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-105' 
+                      : 'opacity-70'
+                  }`}>
+                    <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Agreement</span>
+                    <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
+                      {play.agreement_pct}%
+                    </span>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+
+                {/* Bullets */}
+                <div className="space-y-3 mb-6">
+                  <span className="text-[8px] tracking-widest font-black uppercase text-[#94A3B8] font-[family-name:var(--font-geist-mono)] block">
+                    Catalyst Rationale
+                  </span>
+                  {play.why_bullets.map((bullet, i) => (
+                    <div key={i} className="flex items-start gap-3 text-sm text-[#E2E8F0]">
+                      <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${isBuy ? 'bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]' : 'bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]'}`} />
+                      <span className="leading-relaxed">{bullet}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                {/* Catalyst Box (Expandable) */}
+                <div className="relative pt-3 border-t border-[#1E293B]/40">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
+                      Analyst Intel ({(play.catalysts || []).length})
+                    </span>
+                    {play.catalysts && play.catalysts.length > 0 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
+                        className={`text-[10px] transition-colors font-bold flex items-center gap-1 select-none font-[family-name:var(--font-geist-mono)] ${isBuy ? 'text-[#00D4AA] hover:text-[#00FFD0]' : 'text-[#FF4D6A] hover:text-[#FF1744]'}`}
+                      >
+                        <span>{expanded ? 'Hide Opinions' : 'View All'}</span>
+                        <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
+                      </button>
+                    )}
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {expanded ? (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-3 mt-2 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B] relative z-10" onClick={(e) => e.stopPropagation()}>
+                          {(play.catalysts || []).map((c, i) => (
+                            <div key={i} className="text-xs border-l-2 border-[#1E293B] pl-2 py-0.5 space-y-1">
+                              <div className="flex items-center justify-between text-[9px] text-[#94A3B8]">
+                                <Link
+                                  href={`/video?id=${c.youtube_video_id}`}
+                                  className="font-bold text-[#E2E8F0] hover:text-[#00D4AA] transition-colors font-[family-name:var(--font-geist-mono)]"
+                                >
+                                  {c.channel_name}
+                                </Link>
+                                <span className="font-[family-name:var(--font-geist-mono)]">
+                                  Conv: <span className="text-[#F1F5F9]">{c.conviction}/10</span>
+                                </span>
+                              </div>
+                              <p className="text-[#CBD5E1] italic font-serif leading-relaxed">&ldquo;{c.notes}&rdquo;</p>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <div className="bg-[#141B2D]/70 border-l-2 border-[#1E293B] p-4 rounded-r-xl">
+                        <div className="flex items-center justify-between text-[9px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)] mb-1">
+                          <span className="font-bold text-[#E2E8F0]">
+                            {topCatalystChannel}
+                          </span>
+                          <span className="text-[10px]">
+                            Conviction {topCatalystConviction}/10
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#CBD5E1] italic font-serif leading-relaxed line-clamp-2">
+                          &ldquo;{play.top_catalyst}&rdquo;
+                        </p>
+                      </div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Links */}
+                <div className="flex items-center justify-between text-xs font-[family-name:var(--font-geist-mono)] text-[#94A3B8] border-t border-[#1E293B]/20 pt-4 mt-4">
+                  <Link
+                    href={`/video?id=${play.latest_video.youtube_video_id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 hover:text-[#00D4AA] transition-colors"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>View Analysis</span>
+                  </Link>
+
+                  <a
+                    href={`https://youtube.com/watch?v=${play.latest_video.youtube_video_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-1.5 hover:text-red-400 transition-colors"
+                  >
+                    <YoutubeIcon className="w-3.5 h-3.5" />
+                    <span>YouTube</span>
+                  </a>
+                </div>
+              </div>
+            </HolographicCard>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Video / Channel source row */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#1E293B]/20 text-[10px] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
-        <span className="truncate max-w-[150px]">
-          Source: <span className="text-[#8B95A8]">{play.latest_video.channel_name}</span>
+      {/* Stream Deck controls */}
+      <div className="flex items-center justify-center gap-8 mt-5 w-full">
+        <button
+          onClick={handlePrev}
+          disabled={index === 0}
+          className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${
+            index === 0 
+              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed' 
+              : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
+          }`}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+
+        <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#94A3B8]">
+          Signal {index + 1} of {plays.length}
         </span>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href={`/video?id=${play.latest_video.youtube_video_id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-[#64748B] hover:text-[#00D4AA] transition-colors"
-            title="View video details"
-          >
-            <span>Analysis</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="4" width="20" height="16" rx="3" />
-              <path d="M10 9l5 3-5 3V9z" fill="currentColor" />
-            </svg>
-          </Link>
-          <span className="text-[#374151]">•</span>
-          <a
-            href={`https://youtube.com/watch?v=${play.latest_video.youtube_video_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-[#64748B] hover:text-red-400 transition-colors"
-            title="Watch on YouTube"
-          >
-            <span>YouTube</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-          </a>
-        </div>
+        <button
+          onClick={handleNext}
+          disabled={index === plays.length - 1}
+          className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${
+            index === plays.length - 1 
+              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed' 
+              : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
+          }`}
+        >
+          <ArrowRight className="w-5 h-5" />
+        </button>
       </div>
     </div>
   )
 }
 
-// --- Skeleton Loader Component ---
+// --- Skeleton Loaders ---
 
 function SkeletonCard() {
   return (
@@ -317,6 +742,14 @@ export default function TodayPlaysPage() {
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
+  const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
+
+  // Auto detect mobile device width to default to full deck stream
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setViewMode('stream')
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -325,7 +758,6 @@ export default function TodayPlaysPage() {
       const cacheKey = `aura_today_plays_${sortBy}`
       let hasCache = false
 
-      // 1. Attempt to load from localStorage cache first
       try {
         const cached = localStorage.getItem(cacheKey)
         if (cached) {
@@ -338,13 +770,12 @@ export default function TodayPlaysPage() {
           }
         }
       } catch (e) {
-        console.warn('Failed to read from localStorage cache:', e)
+        console.warn('Failed to read from cache:', e)
       }
 
-      // 2. Only show loading skeletons if we don't have a cached version
       if (!hasCache) {
         if (active) {
-          setData(null) // Clear old data to prevent flashes of previous strategy values
+          setData(null)
           setLoading(true)
         }
       }
@@ -354,26 +785,24 @@ export default function TodayPlaysPage() {
         const res = await fetch(`${backendUrl}/api/v1/today?strategy=${sortBy}`)
 
         if (!res.ok) {
-          throw new Error(`Server returned status ${res.status}`)
+          throw new Error(`Server status ${res.status}`)
         }
 
         const json = await res.json()
         
         if (active) {
           setData(json)
-          setError(null) // Clear any previous errors if fetch succeeds
+          setError(null)
 
-          // 3. Save fresh payload to localStorage
           try {
             localStorage.setItem(cacheKey, JSON.stringify(json))
           } catch (e) {
-            console.warn('Failed to save to localStorage cache:', e)
+            console.warn('Failed to save cache:', e)
           }
         }
       } catch (err: any) {
         if (active) {
-          logger.error('Failed to fetch today\'s plays:', err)
-          // Only trigger full-screen offline error if we don't have cached data to display
+          logger.error('Failed to fetch plays:', err)
           if (!hasCache) {
             setError(err.message || 'Unable to connect to the backend server.')
           }
@@ -392,7 +821,6 @@ export default function TodayPlaysPage() {
     }
   }, [sortBy])
 
-  // Client-side sorting logic
   const sortPlays = (playsList: Play[]) => {
     return [...playsList].sort((a, b) => {
       if (sortBy === 'aura_score') {
@@ -408,31 +836,23 @@ export default function TodayPlaysPage() {
     })
   }
 
-  // Partition plays into Buy vs Sell with client-side sorting applied
   const buyPlays = data ? sortPlays(data.plays.filter((p) => p.direction === 'BUY')) : []
   const sellPlays = data ? sortPlays(data.plays.filter((p) => p.direction === 'SELL')) : []
+  const activePlays = activeTab === 'BUY' ? buyPlays : sellPlays
 
-  // Dynamic theme variables based on active tab
   const isBuyTab = activeTab === 'BUY'
-  const activeLabel = isBuyTab ? 'buy' : 'sell'
+  const isAuraScore = sortBy === 'aura_score'
+
+  // Colors & styles variables
   const activeColorText = isBuyTab ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'
   const activeColorBg = isBuyTab ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
-  const activeColorBorder = isBuyTab ? 'border-[#00D4AA]/20' : 'border-[#FF4D6A]/20'
-  const activeColorBorderStrong = isBuyTab ? 'border-[#00D4AA]/50' : 'border-[#FF4D6A]/50'
   const activeColorBgOpacity = isBuyTab ? 'bg-[#00D4AA]/10' : 'bg-[#FF4D6A]/10'
   const activeRing = isBuyTab ? 'ring-[#00D4AA]/30' : 'ring-[#FF4D6A]/30'
   const activeShadow = isBuyTab ? 'shadow-[0_0_15px_rgba(0,212,170,0.1)]' : 'shadow-[0_0_15px_rgba(255,77,106,0.1)]'
-  const activeShadowStrong = isBuyTab ? 'shadow-[0_0_30px_rgba(0,212,170,0.2)]' : 'shadow-[0_0_30px_rgba(255,77,106,0.2)]'
   const activeGradient = isBuyTab ? 'from-[#00D4AA]/0 via-[#00D4AA]/5 to-[#00D4AA]/0' : 'from-[#FF4D6A]/0 via-[#FF4D6A]/5 to-[#FF4D6A]/0'
-  const activeGlowBg = isBuyTab ? 'bg-[#00D4AA]/5' : 'bg-[#FF4D6A]/5'
-  const activeVia = isBuyTab ? 'via-[#00D4AA]' : 'via-[#FF4D6A]'
-  
-  const isAuraScore = sortBy === 'aura_score'
 
-  // Market mood display details (Calculates a precise ratio and randomly selects a punchy description)
   const moodConfig = useMemo(() => {
     if (!data) return null
-
     const buyCount = data.market_mood.buy_plays
     const sellCount = data.market_mood.sell_plays
     const total = buyCount + sellCount
@@ -441,412 +861,435 @@ export default function TodayPlaysPage() {
       return {
         color: 'text-[#8B95A8]',
         glow: 'from-[#8B95A8]/10 to-[#141B2D]/5',
-        title: 'Insufficient Data',
-        byline: 'Not enough data to determine market consensus.',
-        scoreText: '0 plays',
+        title: 'Neutral State',
+        byline: 'Analyst signals are flat today.',
+        scoreText: '0 signals',
       }
     }
 
     const buyRatio = buyCount / total
     const scoreText = `${Math.round(buyRatio * 100)}% Bullish Bias`
-    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
-
+    
     if (buyRatio >= 0.8) {
       return {
-        color: 'text-[#00D4AA] sentiment-strong-buy',
+        color: 'text-[#00D4AA] drop-shadow-[0_0_10px_rgba(0,212,170,0.3)]',
         glow: 'from-[#00D4AA]/20 to-[#00FFD0]/5',
         title: 'Extreme Bullish',
-        byline: pick([
-          "Massive buy consensus. Analysts are pounding the table.",
-          "Unwavering bullish sentiment. Almost zero sell signals today.",
-          "Extreme upside conviction. The market is overwhelmingly green."
-        ]),
+        byline: "Unwavering upside consensus. Analyst pipelines are loaded with green indicators.",
         scoreText,
       }
     } else if (buyRatio > 0.55) {
       return {
-        color: 'text-[#00D4AA] sentiment-strong-buy',
-        glow: 'from-[#00D4AA]/20 to-[#00FFD0]/5',
-        title: 'Bullish',
-        byline: pick([
-          "Clear buy bias. Analysts are leaning heavily positive.",
-          "Solid bullish momentum. Buy signals dominate today.",
-          "More upgrades than downgrades. Market leans green."
-        ]),
+        color: 'text-[#00D4AA]',
+        glow: 'from-[#00D4AA]/15 to-[#00D4AA]/5',
+        title: 'Bullish Momentum',
+        byline: "Clear buy bias. Market sentiment leans towards growth indicators today.",
         scoreText,
       }
     } else if (buyRatio <= 0.2) {
       return {
-        color: 'text-[#FF4D6A] sentiment-strong-sell',
+        color: 'text-[#FF4D6A] drop-shadow-[0_0_10px_rgba(255,77,106,0.3)]',
         glow: 'from-[#FF4D6A]/20 to-[#FF1744]/5',
         title: 'Extreme Bearish',
-        byline: pick([
-          "Massive sell consensus. Analysts are heading for the exits.",
-          "Unwavering bearish sentiment. Almost zero buy signals today.",
-          "Extreme downside conviction. Defensive positioning recommended."
-        ]),
+        byline: "Severe downside conviction. Defensive hedging is highly recommended.",
         scoreText,
       }
     } else if (buyRatio < 0.45) {
       return {
-        color: 'text-[#FF4D6A] sentiment-strong-sell',
-        glow: 'from-[#FF4D6A]/20 to-[#FF1744]/5',
-        title: 'Bearish',
-        byline: pick([
-          "Clear sell bias. Analysts are leaning heavily negative.",
-          "Solid bearish momentum. Sell signals dominate today.",
-          "Downgrades outpace upgrades. Proceed with caution."
-        ]),
+        color: 'text-[#FF4D6A]',
+        glow: 'from-[#FF4D6A]/15 to-[#FF4D6A]/5',
+        title: 'Bearish Bias',
+        byline: "Under pressure. Sellers outpace buyers in latest transcripts.",
         scoreText,
       }
     } else {
       return {
         color: 'text-[#8B95A8]',
         glow: 'from-[#8B95A8]/10 to-[#141B2D]/5',
-        title: 'Mixed / Neutral',
-        byline: pick([
-          "Mixed signals. Analysts are deeply divided on market direction.",
-          "No clear consensus. A tug-of-war between bulls and bears.",
-          "Deadlocked. Equal buy and sell pressure today."
-        ]),
+        title: 'Mixed Signals',
+        byline: "Tug-of-war. Bulls and Bears are divided on short term direction.",
         scoreText,
       }
     }
   }, [data])
 
   return (
-    <main className="flex-1 w-full mx-auto relative">
-      {/* 🚀 CRAZY GOD-MODE AURA SCORE BACKGROUND 🚀 */}
-      {isAuraScore && (
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden animate-fade-in mix-blend-screen opacity-80 transition-all duration-1000">
-          {/* Moving Matrix-style Data Grid */}
-          <div 
-            className="absolute inset-[-100%] animate-[spin_90s_linear_infinite]"
-            style={{
-               backgroundImage: `linear-gradient(${isBuyTab ? 'rgba(0,212,170,0.07)' : 'rgba(255,77,106,0.07)'} 1px, transparent 1px), linear-gradient(90deg, ${isBuyTab ? 'rgba(0,212,170,0.07)' : 'rgba(255,77,106,0.07)'} 1px, transparent 1px)`,
-               backgroundSize: '40px 40px',
-               backgroundPosition: 'center center',
-            }}
-          />
-          {/* Massive Pulsing Radial Beam */}
-          <div className={`absolute -top-[20%] left-1/2 -translate-x-1/2 w-[120vw] h-[800px] bg-[radial-gradient(ellipse_at_top,${isBuyTab ? 'rgba(0,212,170,0.15)' : 'rgba(255,77,106,0.15)'}_0%,transparent_70%)] animate-pulse`} />
-          {/* Deep Space Vignette to keep content readable */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,15,26,0.9)_100%)]" />
-        </div>
-      )}
+    <main className="flex-1 w-full mx-auto relative min-h-screen pb-20 md:pb-8">
+      {/* Premium SVG Noise Texture Overlay */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] mix-blend-overlay"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 250 250' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+        }}
+      />
+
+      {/* 🚀 SCI-FI INTERACTIVE AURA GRADIENT BACKGROUND 🚀 */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden mix-blend-screen opacity-80 transition-all duration-1000">
+        <div 
+          className="absolute inset-[-100%] animate-[spin_120s_linear_infinite]"
+          style={{
+             backgroundImage: `linear-gradient(${isBuyTab ? 'rgba(0,212,170,0.04)' : 'rgba(255,77,106,0.04)'} 1px, transparent 1px), linear-gradient(90deg, ${isBuyTab ? 'rgba(0,212,170,0.04)' : 'rgba(255,77,106,0.04)'} 1px, transparent 1px)`,
+             backgroundSize: '40px 40px',
+             backgroundPosition: 'center center',
+          }}
+        />
+        <div className={`absolute -top-[20%] left-1/2 -translate-x-1/2 w-[120vw] h-[800px] bg-[radial-gradient(ellipse_at_top,${isBuyTab ? 'rgba(0,212,170,0.12)' : 'rgba(255,77,106,0.12)'}_0%,transparent_70%)] animate-pulse`} />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,15,26,0.92)_100%)]" />
+      </div>
 
       <div className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 relative z-10">
-        {/* Header section / The Verdict */}
-        <section className="relative rounded-3xl border border-[#1E293B]/80 bg-[#141B2D]/40 overflow-hidden mb-12 p-8 md:p-12 animate-fade-up">
-        {/* Glow effect backdrops */}
-        {data && (
-          <>
-            <div className={`absolute top-0 right-1/4 w-[350px] h-[350px] rounded-full blur-[100px] pointer-events-none bg-gradient-to-br ${moodConfig?.glow} opacity-60`} />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,212,170,0.02),transparent_40%)] pointer-events-none" />
-          </>
+        
+        {/* Living EKG Verdict Header */}
+        <section className="relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-10 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30">
+          {data && (
+            <>
+              <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig?.glow} opacity-60 transition-all duration-1000`} />
+              <EKGHeartbeat overallMood={data.market_mood.overall} direction={activeTab} />
+            </>
+          )}
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className={`w-3.5 h-3.5 ${activeColorText} animate-pulse`} />
+                <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+                  Consensus Pulse Rate
+                </h1>
+              </div>
+
+              {loading ? (
+                <div className="space-y-2 mt-4">
+                  <div className="h-10 w-52 bg-[#1E293B] rounded animate-pulse" />
+                  <div className="h-3 w-80 bg-[#1E293B]/60 rounded animate-pulse" />
+                </div>
+              ) : error ? (
+                <div className="mt-4">
+                  <h2 className="text-xl font-bold text-[#FF4D6A] flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" /> Off-grid Node
+                  </h2>
+                  <p className="text-xs text-[#64748B] mt-1">
+                    Failed to synchronise with feed data. {error}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3">
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <span className={`text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000`}>
+                      {moodConfig?.title}
+                    </span>
+                    <span className="text-xs text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-2 py-1 rounded">
+                      {moodConfig?.scoreText}
+                    </span>
+                  </div>
+                  <p className="text-xs md:text-sm text-[#8B95A8] mt-3 max-w-xl leading-relaxed">
+                    {moodConfig?.byline}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Metrics Bar */}
+            {!loading && !error && data && (
+              <div className="flex items-center gap-5 divide-x divide-[#1E293B]/60 rounded-xl border border-[#1E293B] bg-[#0A0F1A]/80 p-4 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-inner">
+                <div className="flex flex-col">
+                  <span className="text-xl font-black text-[#00D4AA] tracking-wide">{buyPlays.length}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Buys</span>
+                </div>
+                <div className="flex flex-col pl-5">
+                  <span className="text-xl font-black text-[#FF4D6A] tracking-wide">{sellPlays.length}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Sells</span>
+                </div>
+                <div className="flex flex-col pl-5">
+                  <span className="text-xs text-[#8B95A8] font-bold">
+                    {new Date(data.generated_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Sync Clock</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* HUD Sort Controls */}
+        {!loading && !error && data && (data.plays.length > 0) && (
+          <div className="flex flex-col gap-3 mb-6">
+            
+            {/* Top Toolbar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 rounded-2xl border border-[#1E293B]/50 bg-[#0A0F1A]/50 backdrop-blur-md">
+              
+              {/* Layout Switchers */}
+              <div className="flex items-center gap-2 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl p-1 text-xs select-none">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${
+                    viewMode === 'grid' 
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}` 
+                      : 'text-[#64748B] hover:text-[#F1F5F9]'
+                  }`}
+                >
+                  <Grid className="w-3.5 h-3.5" />
+                  <span>Grid HUD</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('stream')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${
+                    viewMode === 'stream' 
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}` 
+                      : 'text-[#64748B] hover:text-[#F1F5F9]'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Pulse Stream</span>
+                </button>
+              </div>
+
+              {/* Sort selector */}
+              <div className="flex flex-wrap items-center gap-1 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl p-1 text-xs select-none">
+                <span className="text-[#64748B] px-2 font-bold font-[family-name:var(--font-geist-mono)] text-[10px]">SORT STRATEGY:</span>
+                {(
+                  [
+                    { key: 'aura_score', label: 'Aura' },
+                    { key: 'mentions', label: 'Buzz' },
+                    { key: 'conviction', label: 'Conviction' },
+                    { key: 'consensus_sentiment', label: 'Sentiment' },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSortBy(opt.key)}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all duration-300 relative overflow-hidden ${sortBy === opt.key
+                        ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing} ${activeShadow}`
+                        : 'text-[#64748B] hover:text-[#F1F5F9] hover:bg-[#141B2D]/40'
+                      }`}
+                  >
+                    {sortBy === opt.key && (
+                      <div className={`absolute inset-0 bg-gradient-to-r ${activeGradient} pointer-events-none`} />
+                    )}
+                    <span className="relative z-10 font-[family-name:var(--font-geist-mono)]">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Explanation box */}
+            <div className={`relative overflow-hidden rounded-xl border ${isAuraScore ? 'border-[#00D4AA]/40 shadow-[0_0_15px_rgba(0,212,170,0.05)]' : 'border-[#1E293B]/70'} bg-[#141B2D]/50 p-4 transition-all duration-500`}>
+              <div className="relative flex items-center gap-3">
+                <Sparkles className={`w-4 h-4 shrink-0 ${activeColorText}`} />
+                <div className="text-xs text-[#8B95A8] leading-relaxed flex-1 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                  <span className="font-bold text-[#F1F5F9] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] text-[10px]">
+                    {sortBy.replace('_', ' ')}:
+                  </span>
+                  <span className="flex-1">
+                    {sortBy === 'aura_score' && "Composite scoring balancing agreement, recency, and conviction parameters."}
+                    {sortBy === 'mentions' && "Prioritized strictly by coverage volume and social buzz metrics."}
+                    {sortBy === 'conviction' && "Focuses on absolute levels of certainty among elite market channels."}
+                    {sortBy === 'consensus_sentiment' && "Pure polarity sorting, highlighting overall bullishness or bearishness."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div>
-            <div className="flex items-center gap-2.5 mb-3">
-              <span className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
-              <h1 className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#64748B]">
-                Daily Action Verdict
-              </h1>
+        {/* Main Content Area */}
+        {loading ? (
+          <div className="space-y-8 animate-fade-up">
+            <div className="flex gap-4 border-b border-[#1E293B] pb-px">
+              <div className="h-8 w-24 bg-[#1E293B] rounded-t-lg" />
+              <div className="h-8 w-24 bg-[#1E293B] rounded-t-lg" />
             </div>
-
-            {loading ? (
-              <div className="space-y-3">
-                <div className="h-12 w-64 bg-[#1E293B] rounded animate-pulse" />
-                <div className="h-4 w-96 bg-[#1E293B]/60 rounded animate-pulse" />
-              </div>
-            ) : error ? (
-              <div>
-                <h2 className="text-2xl font-bold text-[#FF4D6A]">Connection Offline</h2>
-                <p className="text-sm text-[#64748B] mt-1">
-                  Could not load market verdict. {error}
-                </p>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-baseline gap-3">
-                  <span className={`text-4xl md:text-5xl lg:text-6xl font-black tracking-tight ${moodConfig?.color}`}>
-                    {moodConfig?.title}
-                  </span>
-                  <span className="text-sm text-[#64748B] font-light font-[family-name:var(--font-geist-mono)]">
-                    &bull; {moodConfig?.scoreText}
-                  </span>
-                </div>
-                <p className="text-sm text-[#8B95A8] mt-3 max-w-xl leading-relaxed">
-                  {moodConfig?.byline}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Quick stats panel */}
-          {!loading && !error && data && (
-            <div className="flex items-center gap-6 divide-x divide-[#1E293B]/80 rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/60 p-5 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)]">
-              <div className="flex flex-col">
-                <span className="text-2xl font-extrabold text-[#00D4AA]">{buyPlays.length}</span>
-                <span className="text-[9px] uppercase tracking-wider text-[#64748B] mt-0.5">Buy Plays</span>
-              </div>
-              <div className="flex flex-col pl-6">
-                <span className="text-2xl font-extrabold text-[#FF4D6A]">{sellPlays.length}</span>
-                <span className="text-[9px] uppercase tracking-wider text-[#64748B] mt-0.5">Sell Plays</span>
-              </div>
-              <div className="flex flex-col pl-6">
-                <span className="text-xs text-[#8B95A8] font-bold">
-                  {new Date(data.generated_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </span>
-                <span className="text-[9px] uppercase tracking-wider text-[#64748B] mt-0.5">Last Updated</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Sort Options and Dynamic Insights Panel */}
-      {!loading && !error && data && (data.plays.length > 0) && (
-        <div className="flex flex-col gap-3 mb-8 animate-fade-up">
-          {/* Main Sort Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-[#1E293B]/40 bg-[#0A0F1A]/30 transition-colors duration-300">
-            <div className="text-xs text-[#64748B] font-[family-name:var(--font-geist-mono)] flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${activeColorBg} opacity-75`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${activeColorBg}`}></span>
-              </span>
-              Displaying top-tier {activeLabel} opportunities
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1.5 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl p-1 text-xs select-none">
-              <span className="text-[#64748B] px-2 font-medium">Sort Strategy:</span>
-              {(
-                [
-                  { key: 'aura_score', label: 'Aura Score' },
-                  { key: 'mentions', label: 'Mentions' },
-                  { key: 'conviction', label: 'Conviction' },
-                  { key: 'consensus_sentiment', label: 'Sentiment' },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.key}
-                  onClick={() => setSortBy(opt.key)}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all duration-300 relative overflow-hidden ${sortBy === opt.key
-                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing} ${activeShadow}`
-                      : 'text-[#64748B] hover:text-[#F1F5F9] hover:bg-[#141B2D]/50'
-                    }`}
-                >
-                  {sortBy === opt.key && (
-                    <div className={`absolute inset-0 bg-gradient-to-r ${activeGradient} pointer-events-none`} />
-                  )}
-                  <span className="relative z-10">{opt.label}</span>
-                </button>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
             </div>
           </div>
-
-          {/* Dynamic Sort Explanation Panel */}
-          <div className={`relative overflow-hidden rounded-xl border ${isAuraScore ? `${activeColorBorderStrong} ${activeShadowStrong}` : 'border-[#1E293B]/60 hover:border-[#1E293B]'} bg-gradient-to-br from-[#141B2D]/80 to-[#0A0F1A]/80 p-4 md:p-5 transition-all duration-500`}>
+        ) : error ? (
+          <div className="text-center py-16 border border-[#1E293B] bg-[#141B2D]/20 rounded-2xl relative overflow-hidden">
+            <AlertTriangle className="w-12 h-12 mx-auto text-[#FF4D6A] mb-4 animate-bounce" />
+            <h3 className="text-lg font-bold text-[#F1F5F9]">Failed to Sync Channels</h3>
+            <p className="text-xs text-[#64748B] mt-2 max-w-xs mx-auto">
+              Please check your database connectivity or API network route.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 px-4 py-2 text-xs font-bold rounded-lg bg-[#00D4AA]/10 hover:bg-[#00D4AA]/25 text-[#00D4AA] border border-[#00D4AA]/30 transition-all duration-200"
+            >
+              Re-initialize Link
+            </button>
+          </div>
+        ) : buyPlays.length === 0 && sellPlays.length === 0 ? (
+          <div className="text-center py-16 border border-[#1E293B] bg-[#141B2D]/15 rounded-3xl">
+            <Activity className="w-12 h-12 mx-auto text-[#64748B] mb-4" />
+            <h3 className="text-lg font-bold text-[#F1F5F9]">No Actionable Signals</h3>
+            <p className="text-xs text-[#64748B] mt-2 max-w-xs mx-auto">
+              No recommendations met the quality consensus criteria in the 30 day window.
+            </p>
+            <div className="flex justify-center gap-4 mt-6">
+              <Link
+                href="/"
+                className="px-4 py-2 text-xs font-bold rounded-lg border border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-all"
+              >
+                Go to Explorer
+              </Link>
+              <Link
+                href="/admin/ingest"
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#00D4AA] text-[#0A0F1A] hover:opacity-90 transition-all"
+              >
+                Scan Channels
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
             
-            {/* Live Scanline & Glow Effects for Aura Score */}
-            {isAuraScore && (
-              <div className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
-                <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${activeVia} to-transparent opacity-60`} />
-                <div className={`absolute -inset-x-[150%] top-0 bottom-0 bg-gradient-to-r from-transparent ${activeColorBgOpacity} to-transparent opacity-40 animate-pulse skew-x-12`} />
-              </div>
-            )}
-
-            {/* Subtle glow effect behind the text */}
-            <div className={`absolute top-0 left-1/4 w-[200px] h-full ${activeGlowBg} blur-3xl pointer-events-none transition-transform duration-700 ease-in-out`}
-              style={{ transform: `translateX(${['aura_score', 'mentions', 'conviction', 'consensus_sentiment'].indexOf(sortBy) * 50}%)` }}
-            />
-
-            <div className="relative flex items-start sm:items-center gap-3">
-              <div className={`shrink-0 mt-0.5 sm:mt-0 p-1.5 rounded-lg ${activeColorBgOpacity} ${activeColorText} border ${activeColorBorder} transition-colors duration-300`}>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="text-xs md:text-sm text-[#8B95A8] leading-relaxed transition-opacity duration-300 flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <div className="shrink-0 sm:w-32 border-b sm:border-b-0 sm:border-r border-[#1E293B] pb-1 sm:pb-0 sm:pr-4 flex items-center justify-between">
-                  <strong className="text-[#F1F5F9] font-bold tracking-widest uppercase text-[11px] sm:text-xs">
-                    {sortBy === 'aura_score' && "Aura Score"}
-                    {sortBy === 'mentions' && "Mentions"}
-                    {sortBy === 'conviction' && "Conviction"}
-                    {sortBy === 'consensus_sentiment' && "Pure Sentiment"}
-                  </strong>
-                </div>
-                <span className="animate-fade-in flex-1">
-                  {sortBy === 'aura_score' && (
-                    <span className="flex flex-col gap-1.5">
-                      <span>Our exclusive rating blending {activeLabel} conviction, consensus, and momentum to give you the ultimate edge.</span>
-                      <span className={`${activeColorText} font-semibold text-[10px] sm:text-[11px] tracking-wide transition-colors uppercase`}>Use this when: You want the ultimate, well-rounded &ldquo;{activeLabel} now&rdquo; signal.</span>
-                    </span>
-                  )}
-                  {sortBy === 'mentions' && (
-                    <span className="flex flex-col gap-1.5">
-                      <span>Ranks {isBuyTab ? 'bullish' : 'bearish'} plays strictly by the volume of recent analyst chatter and coverage.</span>
-                      <span className={`${activeColorText} font-semibold text-[10px] sm:text-[11px] tracking-wide transition-colors uppercase`}>Use this when: You want to track what&apos;s currently buzzing in the community.</span>
-                    </span>
-                  )}
-                  {sortBy === 'conviction' && (
-                    <span className="flex flex-col gap-1.5">
-                      <span>Prioritizes plays where analysts express the highest levels of absolute certainty {isBuyTab ? 'for a massive upside' : 'for a severe downside'}.</span>
-                      <span className={`${activeColorText} font-semibold text-[10px] sm:text-[11px] tracking-wide transition-colors uppercase`}>Use this when: You are looking for hidden gems with unwavering {isBuyTab ? 'bullish' : 'bearish'} belief.</span>
-                    </span>
-                  )}
-                  {sortBy === 'consensus_sentiment' && (
-                    <span className="flex flex-col gap-1.5">
-                      <span>Sorts by pure {isBuyTab ? 'bullishness' : 'bearishness'}, ignoring video age or total volume of mentions.</span>
-                      <span className={`${activeColorText} font-semibold text-[10px] sm:text-[11px] tracking-wide transition-colors uppercase`}>Use this when: You want to find plays with the most overwhelmingly {isBuyTab ? 'positive' : 'negative'} consensus.</span>
-                    </span>
-                  )}
+            {/* Desktop Tabs Selectors */}
+            <div className="hidden md:flex items-center gap-6 border-b border-[#1E293B]/60 pb-px select-none font-[family-name:var(--font-geist-mono)]">
+              <button
+                onClick={() => setActiveTab('BUY')}
+                className={`pb-4 px-2 text-sm font-black tracking-widest transition-all duration-300 relative ${
+                  activeTab === 'BUY' ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#8B95A8]'
+                }`}
+              >
+                BUY SIGNALS
+                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${
+                  activeTab === 'BUY' ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20' : 'bg-[#1E293B] text-[#8B95A8]'
+                }`}>
+                  {buyPlays.length}
                 </span>
+                {activeTab === 'BUY' && (
+                  <motion.div 
+                    layoutId="activeTabUnderline" 
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]" 
+                  />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('SELL')}
+                className={`pb-4 px-2 text-sm font-black tracking-widest transition-all duration-300 relative ${
+                  activeTab === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#64748B] hover:text-[#8B95A8]'
+                }`}
+              >
+                SELL SIGNALS
+                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${
+                  activeTab === 'SELL' ? 'bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/20' : 'bg-[#1E293B] text-[#8B95A8]'
+                }`}>
+                  {sellPlays.length}
+                </span>
+                {activeTab === 'SELL' && (
+                  <motion.div 
+                    layoutId="activeTabUnderline" 
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]" 
+                  />
+                )}
+              </button>
+            </div>
+
+            {/* Layout Renderers */}
+            <div className="relative">
+              {viewMode === 'grid' ? (
+                /* Grid View */
+                activePlays.length > 0 ? (
+                  <motion.div 
+                    layout
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    <AnimatePresence mode="popLayout">
+                      {activePlays.map((play, idx) => (
+                        <motion.div
+                          key={play.ticker}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ 
+                            type: 'spring', 
+                            stiffness: 300, 
+                            damping: 30 
+                          }}
+                          className="h-full"
+                        >
+                          <PlayCard play={play} index={idx} activeSortBy={sortBy} />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </motion.div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
+                    <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
+                    <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active {activeTab} Indicators</div>
+                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">Adjust your sort filter strategy to see other signal channels.</div>
+                  </div>
+                )
+              ) : (
+                /* Stream View (Focused Swipe Cards) */
+                activePlays.length > 0 ? (
+                  <PulseStream plays={activePlays} sortBy={sortBy} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
+                    <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
+                    <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active Stream</div>
+                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">No signals found under this classification node.</div>
+                  </div>
+                )
+              )}
+            </div>
+
+          </div>
+        )}
+      </div>
+
+      {/* 📱 MOBILE FLOATING DOCK CONTROL BAR 📱 */}
+      {!loading && !error && data && (
+        <div className="md:hidden fixed bottom-16 left-4 right-4 z-40 bg-[#0A0F1A]/85 backdrop-blur-lg border border-[#1E293B] shadow-2xl rounded-2xl p-2 select-none">
+          <div className="flex items-center justify-between gap-1">
+            {/* BUY/SELL Toggle Pill */}
+            <div className="flex items-center bg-[#0A0F1A] border border-[#1E293B] rounded-xl p-0.5 w-1/2">
+              <button
+                onClick={() => setActiveTab('BUY')}
+                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${
+                  isBuyTab ? 'bg-[#00D4AA]/15 text-[#00D4AA]' : 'text-[#64748B]'
+                }`}
+              >
+                BUY ({buyPlays.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('SELL')}
+                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${
+                  !isBuyTab ? 'bg-[#FF4D6A]/15 text-[#FF4D6A]' : 'text-[#64748B]'
+                }`}
+              >
+                SELL ({sellPlays.length})
+              </button>
+            </div>
+
+            {/* Layout and Info Dock */}
+            <div className="flex items-center gap-1 w-1/2 justify-end">
+              {/* Quick Layout Swap */}
+              <button
+                onClick={() => setViewMode(viewMode === 'grid' ? 'stream' : 'grid')}
+                className="p-2 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] transition-colors"
+                title="Toggle View Mode"
+              >
+                {viewMode === 'grid' ? <Layers className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
+              </button>
+              {/* Quick Info Modal/Tip */}
+              <div className="text-[10px] font-black font-[family-name:var(--font-geist-mono)] px-2 py-2.5 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#8B95A8] flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-[#00D4AA]" />
+                <span className="uppercase">{sortBy.substring(0, 4)}</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Swim Lanes section */}
-      {loading ? (
-        <div className="space-y-8">
-          <div className="flex gap-6 mb-4 border-b border-[#1E293B]/60 pb-px">
-            <div className="h-8 w-32 bg-[#1E293B] rounded-t-lg" />
-            <div className="h-8 w-32 bg-[#1E293B] rounded-t-lg" />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        </div>
-      ) : error ? (
-        <div className="text-center py-16 border border-[#1E293B] bg-[#141B2D]/10 rounded-2xl">
-          <svg className="w-12 h-12 mx-auto text-[#FF4D6A] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
-            <path d="M12 9v4M12 17h.01" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <h3 className="text-lg font-bold text-[#F1F5F9]">Failed to Load Today&apos;s Plays</h3>
-          <p className="text-sm text-[#64748B] mt-2 max-w-md mx-auto">
-            {error}. Ensure your backend server is running and accessible.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-6 px-4 py-2 text-xs font-semibold rounded-lg bg-[#00D4AA]/10 hover:bg-[#00D4AA]/20 text-[#00D4AA] border border-[#00D4AA]/30 transition-all duration-200"
-          >
-            Retry Connection
-          </button>
-        </div>
-      ) : buyPlays.length === 0 && sellPlays.length === 0 ? (
-        <div className="text-center py-16 border border-[#1E293B] bg-[#141B2D]/20 rounded-3xl">
-          <svg className="w-12 h-12 mx-auto text-[#64748B] mb-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
-            <path d="M8 12h8" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <h3 className="text-lg font-bold text-[#F1F5F9]">No Actionable Plays Found</h3>
-          <p className="text-sm text-[#64748B] mt-2 max-w-sm mx-auto">
-            We couldn&apos;t find enough recent analyst recommendations (needs at least 2 recommendations per stock within the last 30 days).
-          </p>
-          <p className="text-xs text-[#475569] mt-2">
-            Try importing or ingesting some recent video transcripts in the Admin panel.
-          </p>
-          <div className="flex justify-center gap-4 mt-6">
-            <Link
-              href="/"
-              className="px-4 py-2 text-xs font-semibold rounded-lg border border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-all"
-            >
-              Go to Explorer
-            </Link>
-            <Link
-              href="/admin/ingest"
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#00D4AA] text-[#0A0F1A] hover:opacity-90 transition-all"
-            >
-              Ingest Videos
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-8 animate-fade-up">
-          {/* Tabs Selector */}
-          <div className="flex items-center justify-center sm:justify-start gap-6 border-b border-[#1E293B]/60 pb-px select-none">
-            <button
-              onClick={() => setActiveTab('BUY')}
-              className={`pb-4 px-2 text-sm font-bold tracking-wide transition-all duration-300 relative ${activeTab === 'BUY' ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#8B95A8]'
-                }`}
-            >
-              BUY PLAYS
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] transition-colors ${activeTab === 'BUY' ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20' : 'bg-[#1E293B] text-[#8B95A8] border border-transparent'
-                }`}>
-                {buyPlays.length}
-              </span>
-              {activeTab === 'BUY' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00D4AA] shadow-[0_-2px_10px_rgba(0,212,170,0.5)] animate-fade-in" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('SELL')}
-              className={`pb-4 px-2 text-sm font-bold tracking-wide transition-all duration-300 relative ${activeTab === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#64748B] hover:text-[#8B95A8]'
-                }`}
-            >
-              SELL PLAYS
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] transition-colors ${activeTab === 'SELL' ? 'bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/20' : 'bg-[#1E293B] text-[#8B95A8] border border-transparent'
-                }`}>
-                {sellPlays.length}
-              </span>
-              {activeTab === 'SELL' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FF4D6A] shadow-[0_-2px_10px_rgba(255,77,106,0.5)] animate-fade-in" />
-              )}
-            </button>
-          </div>
-
-          {/* Active Tab Content - Grid Layout */}
-          <div key={sortBy} className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
-            {activeTab === 'BUY' && (
-              buyPlays.length > 0 ? (
-                buyPlays.map((play, idx) => (
-                  <PlayCard key={play.ticker} play={play} index={idx} isAuraScore={isAuraScore} />
-                ))
-              ) : (
-                <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B]/60 bg-[#141B2D]/30 p-16 text-center animate-fade-in relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,212,170,0.05)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                  <svg className="w-10 h-10 text-[#64748B] mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="text-base font-bold text-[#F1F5F9] mb-1">No Actionable Buy Plays</div>
-                  <div className="text-sm text-[#8B95A8] max-w-sm leading-relaxed">No recent buy recommendations met our strict criteria today. Check back later as new data flows in!</div>
-                </div>
-              )
-            )}
-
-            {activeTab === 'SELL' && (
-              sellPlays.length > 0 ? (
-                sellPlays.map((play, idx) => (
-                  <PlayCard key={play.ticker} play={play} index={idx} isAuraScore={isAuraScore} />
-                ))
-              ) : (
-                <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B]/60 bg-[#141B2D]/30 p-16 text-center animate-fade-in relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,77,106,0.05)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                  <svg className="w-10 h-10 text-[#64748B] mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="text-base font-bold text-[#F1F5F9] mb-1">No Actionable Sell Plays</div>
-                  <div className="text-sm text-[#8B95A8] max-w-sm leading-relaxed">No recent sell recommendations met our strict criteria today. Check back later as new data flows in!</div>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-      )}
-      </div>
     </main>
   )
 }
+
 const logger = {
   error: (msg: string, ...args: any[]) => {
     console.error(msg, ...args)
