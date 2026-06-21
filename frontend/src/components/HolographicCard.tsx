@@ -141,8 +141,8 @@ export default function HolographicCard({
   )
 
   const borderStyle = isBuy 
-    ? (isStrong ? 'border-[#00FFD0]/40' : 'border-[#00D4AA]/25')
-    : (isStrong ? 'border-[#FF1744]/40' : 'border-[#FF4D6A]/25')
+    ? (isStrong ? 'border-[#00FFD0]/15' : 'border-white/5')
+    : (isStrong ? 'border-[#FF1744]/15' : 'border-white/5')
 
   return (
     <motion.div
@@ -165,10 +165,10 @@ export default function HolographicCard({
         boxShadow: shadowValue,
       }}
       className={`
-        relative group flex flex-col rounded-2xl border bg-[#0B0F19]/90 backdrop-blur-md p-5 md:p-6 transition-all duration-300 cursor-pointer overflow-hidden
+        relative group flex flex-col rounded-2xl border bg-[#0A0F1A]/20 backdrop-blur-xl p-5 md:p-6 transition-all duration-300 cursor-pointer overflow-hidden
         outline-none focus-visible:ring-2 ${isBuy ? 'focus-visible:ring-[#00D4AA]/70 focus-visible:border-[#00D4AA]' : 'focus-visible:ring-[#FF4D6A]/70 focus-visible:border-[#FF4D6A]'}
         ${borderStyle}
-        ${isBuy ? 'hover:border-[#00D4AA]/60' : 'hover:border-[#FF4D6A]/60'}
+        ${isBuy ? 'hover:border-[#00D4AA]/30' : 'hover:border-[#FF4D6A]/30'}
         ${className}
       `}
     >

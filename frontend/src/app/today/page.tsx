@@ -213,11 +213,22 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
   const router = useRouter()
   const isBuy = play.direction === 'BUY'
   const isStrong = play.aura_score >= 80
-  const [expanded, setExpanded] = useState(false)
 
   const handleCardClick = () => {
     router.push(`/ticker?s=${play.ticker}`)
   }
+
+  // Find channel and details matching the top catalyst
+  const catalystMatch = play.catalysts?.find(c => c.notes === play.top_catalyst)
+  const catalystAuthor = catalystMatch 
+    ? catalystMatch.channel_name 
+    : (play.catalysts?.[0]?.channel_name || play.latest_video.channel_name)
+  const catalystConviction = catalystMatch
+    ? catalystMatch.conviction
+    : (play.catalysts?.[0]?.conviction || play.avg_conviction)
+  const catalystVideoId = catalystMatch
+    ? catalystMatch.youtube_video_id
+    : (play.catalysts?.[0]?.youtube_video_id || play.latest_video.youtube_video_id)
 
   return (
     <HolographicCard
@@ -265,17 +276,17 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
           </div>
         </div>
 
-        {/* Micro-metrics row (Context-Aware Highlighting) */}
-        <div className="grid grid-cols-3 gap-1.5 p-2 bg-[#060A13]/60 border border-[#1E293B]/40 rounded-xl mb-4 font-[family-name:var(--font-geist-mono)] text-center">
+        {/* Micro-metrics row (Context-Aware Highlighting in Ghost aesthetic) */}
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-[#060A13]/10 border border-white/5 rounded-xl mb-4 font-[family-name:var(--font-geist-mono)] text-center">
           {/* Conviction */}
           <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
             activeSortBy === 'conviction' 
-              ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-[1.03]' 
+              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]' 
               : 'opacity-60 hover:opacity-80'
           }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Conviction</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.avg_conviction.toFixed(1)}/10</span>
-            <div className="w-full bg-[#1E293B] h-0.5 rounded-full mt-1 overflow-hidden">
+            <div className="w-full bg-white/10 h-0.5 rounded-full mt-1 overflow-hidden">
               <div className={`h-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} style={{ width: `${play.avg_conviction * 10}%` }} />
             </div>
           </div>
@@ -283,7 +294,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
           {/* Buzz */}
           <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
             activeSortBy === 'mentions' 
-              ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-[1.03]' 
+              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]' 
               : 'opacity-60 hover:opacity-80'
           }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Buzz</span>
@@ -298,84 +309,43 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
           {/* Agreement */}
           <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${
             activeSortBy === 'consensus_sentiment' 
-              ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-[1.03]' 
+              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]' 
               : 'opacity-60 hover:opacity-80'
           }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Agreement</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.agreement_pct}%</span>
-            <div className="w-full bg-[#1E293B] h-0.5 rounded-full mt-1 overflow-hidden">
+            <div className="w-full bg-white/10 h-0.5 rounded-full mt-1 overflow-hidden">
               <div className={`h-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} style={{ width: `${play.agreement_pct}%` }} />
             </div>
           </div>
         </div>
 
-        {/* Why bullets */}
-        <div className="mb-5 space-y-2">
-          {play.why_bullets.map((bullet, i) => (
-            <div key={i} className="flex items-start gap-2.5 text-xs text-[#E2E8F0] tracking-wide">
-              <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${isBuy ? 'bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]' : 'bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]'}`} />
-              <span className="leading-relaxed">{bullet}</span>
-            </div>
-          ))}
+        {/* Catalyst Quote - Editorial Pull-Quote Block */}
+        <div className={`relative pl-4 border-l-2 ${isBuy ? 'border-[#00D4AA]/30' : 'border-[#FF4D6A]/30'} py-1 my-4`}>
+          <span className={`absolute left-0 -top-3 text-3xl font-serif select-none pointer-events-none ${isBuy ? 'text-[#00D4AA]/10' : 'text-[#FF4D6A]/10'}`}>
+            “
+          </span>
+          <p className="text-xs md:text-[13px] text-[#E2E8F0] italic font-serif leading-relaxed line-clamp-3">
+            {play.top_catalyst}
+          </p>
+          <div className="flex items-center gap-1.5 mt-2 text-[9px] font-[family-name:var(--font-geist-mono)] tracking-wider text-[#94A3B8] font-bold">
+            <span className="text-[#64748B]">—</span>
+            <Link
+              href={`/video?id=${catalystVideoId}`}
+              onClick={(e) => e.stopPropagation()}
+              className={`hover:underline ${isBuy ? 'hover:text-[#00D4AA]' : 'hover:text-[#FF4D6A]'} transition-colors`}
+            >
+              {catalystAuthor}
+            </Link>
+            <span className="text-[#475569]">•</span>
+            <span>Conviction {catalystConviction}/10</span>
+          </div>
         </div>
       </div>
 
       <div>
-        {/* Catalyst Box */}
-        <div className="relative pt-3 border-t border-[#1E293B]/40">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
-              Analyst Intel ({(play.catalysts || []).length})
-            </span>
-            {play.catalysts && play.catalysts.length > 0 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
-                className={`text-[10px] transition-colors font-bold flex items-center gap-1 select-none font-[family-name:var(--font-geist-mono)] ${isBuy ? 'text-[#00D4AA] hover:text-[#00FFD0]' : 'text-[#FF4D6A] hover:text-[#FF1744]'}`}
-              >
-                <span>{expanded ? 'Collapse' : 'Expand'}</span>
-                <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
-              </button>
-            )}
-          </div>
-
-          <AnimatePresence initial={false}>
-            {expanded ? (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden"
-              >
-                <div className="space-y-3 mt-2 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B] relative z-10" onClick={(e) => e.stopPropagation()}>
-                  {(play.catalysts || []).map((c, i) => (
-                    <div key={i} className="text-xs border-l-2 border-[#1E293B] pl-2 py-0.5 space-y-1">
-                      <div className="flex items-center justify-between text-[9px] text-[#94A3B8]">
-                        <Link
-                          href={`/video?id=${c.youtube_video_id}`}
-                          className="font-bold text-[#E2E8F0] hover:text-[#00D4AA] transition-colors font-[family-name:var(--font-geist-mono)]"
-                        >
-                          {c.channel_name}
-                        </Link>
-                        <span className="font-[family-name:var(--font-geist-mono)]">
-                          Conv: <span className="text-[#F1F5F9]">{c.conviction}/10</span>
-                        </span>
-                      </div>
-                      <p className="text-[#CBD5E1] italic font-serif leading-relaxed">&ldquo;{c.notes}&rdquo;</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            ) : (
-              <p className="text-xs text-[#CBD5E1] italic leading-relaxed pl-1 line-clamp-2">
-                &ldquo;{play.top_catalyst}&rdquo;
-              </p>
-            )}
-          </AnimatePresence>
-        </div>
-
         {/* Source info */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#1E293B]/20 text-[10px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5 text-[10px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
           <span className="truncate max-w-[130px]">
             Latest: <span className="text-[#E2E8F0] font-bold">{play.latest_video.channel_name}</span>
           </span>
@@ -415,11 +385,9 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
   const router = useRouter()
   const [index, setIndex] = useState(0)
   const [direction, setDirection] = useState<'left' | 'right'>('right')
-  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     setIndex(0)
-    setExpanded(false)
   }, [plays])
 
   if (plays.length === 0) return null
@@ -432,7 +400,6 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
     if (index < plays.length - 1) {
       setDirection('right')
       setIndex(index + 1)
-      setExpanded(false)
     }
   }
 
@@ -440,7 +407,6 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
     if (index > 0) {
       setDirection('left')
       setIndex(index - 1)
-      setExpanded(false)
     }
   }
 
@@ -473,14 +439,17 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
     })
   }
 
-  // Find channel that actually made the top catalyst
-  const topCatalystChannel = play.catalysts && play.catalysts[0] 
-    ? play.catalysts[0].channel_name 
-    : play.latest_video.channel_name
-
-  const topCatalystConviction = play.catalysts && play.catalysts[0]
-    ? play.catalysts[0].conviction
-    : play.avg_conviction
+  // Find channel and details matching the top catalyst
+  const catalystMatch = play.catalysts?.find(c => c.notes === play.top_catalyst)
+  const catalystAuthor = catalystMatch 
+    ? catalystMatch.channel_name 
+    : (play.catalysts?.[0]?.channel_name || play.latest_video.channel_name)
+  const catalystConviction = catalystMatch
+    ? catalystMatch.conviction
+    : (play.catalysts?.[0]?.conviction || play.avg_conviction)
+  const catalystVideoId = catalystMatch
+    ? catalystMatch.youtube_video_id
+    : (play.catalysts?.[0]?.youtube_video_id || play.latest_video.youtube_video_id)
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col items-center px-2 animate-fade-up">
@@ -494,14 +463,14 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
           <span>Signal {index + 1} of {plays.length}</span>
         </div>
         <div className="flex gap-2">
-          <span className="uppercase text-[9px] border border-[#1E293B] px-1.5 py-0.5 rounded tracking-widest">
+          <span className="uppercase text-[9px] border border-white/5 px-1.5 py-0.5 rounded tracking-widest text-[#94A3B8]">
             {sortBy.replace('_', ' ')}
           </span>
         </div>
       </div>
 
       {/* Focused Deck Container */}
-      <div className="relative w-full h-[520px] md:h-[500px]">
+      <div className="relative w-full h-[460px] md:h-[430px]">
         <AnimatePresence custom={direction} mode="wait">
           <motion.div
             key={play.ticker}
@@ -535,10 +504,10 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
                 </div>
 
                 {/* Dashboard Stats */}
-                <div className="grid grid-cols-3 gap-3 p-3 bg-[#0A0F1A]/70 border border-[#1E293B]/60 rounded-xl mb-6 font-[family-name:var(--font-geist-mono)] text-center">
+                <div className="grid grid-cols-3 gap-3 p-2 bg-[#060A13]/10 border border-white/5 rounded-xl mb-6 font-[family-name:var(--font-geist-mono)] text-center">
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${
                     sortBy === 'conviction' 
-                      ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-105' 
+                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105' 
                       : 'opacity-70'
                   }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Conviction</span>
@@ -548,7 +517,7 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
                   </div>
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${
                     sortBy === 'mentions' 
-                      ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-105' 
+                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105' 
                       : 'opacity-70'
                   }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Buzz (Mentions)</span>
@@ -558,7 +527,7 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
                   </div>
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${
                     sortBy === 'consensus_sentiment' 
-                      ? 'bg-[#141B2D] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.05)] scale-105' 
+                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105' 
                       : 'opacity-70'
                   }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Agreement</span>
@@ -568,86 +537,32 @@ function PulseStream({ plays, sortBy }: { plays: Play[]; sortBy: string }) {
                   </div>
                 </div>
 
-                {/* Bullets */}
-                <div className="space-y-3 mb-6">
-                  <span className="text-[8px] tracking-widest font-black uppercase text-[#94A3B8] font-[family-name:var(--font-geist-mono)] block">
-                    Catalyst Rationale
+                {/* Catalyst Quote - Editorial Pull-Quote Block */}
+                <div className={`relative pl-4 border-l-2 ${isBuy ? 'border-[#00D4AA]/30' : 'border-[#FF4D6A]/30'} py-2 my-4`}>
+                  <span className={`absolute left-0 -top-3.5 text-4xl font-serif select-none pointer-events-none ${isBuy ? 'text-[#00D4AA]/10' : 'text-[#FF4D6A]/10'}`}>
+                    “
                   </span>
-                  {play.why_bullets.map((bullet, i) => (
-                    <div key={i} className="flex items-start gap-3 text-sm text-[#E2E8F0]">
-                      <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${isBuy ? 'bg-[#00D4AA] shadow-[0_0_8px_#00D4AA]' : 'bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A]'}`} />
-                      <span className="leading-relaxed">{bullet}</span>
-                    </div>
-                  ))}
+                  <p className="text-sm md:text-base text-[#E2E8F0] italic font-serif leading-relaxed line-clamp-4">
+                    {play.top_catalyst}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-[family-name:var(--font-geist-mono)] tracking-wider text-[#94A3B8] font-bold">
+                    <span className="text-[#64748B]">—</span>
+                    <Link
+                      href={`/video?id=${catalystVideoId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`hover:underline ${isBuy ? 'hover:text-[#00D4AA]' : 'hover:text-[#FF4D6A]'} transition-colors`}
+                    >
+                      {catalystAuthor}
+                    </Link>
+                    <span className="text-[#475569]">•</span>
+                    <span>Conviction {catalystConviction}/10</span>
+                  </div>
                 </div>
               </div>
 
               <div>
-                {/* Catalyst Box (Expandable) */}
-                <div className="relative pt-3 border-t border-[#1E293B]/40">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
-                      Analyst Intel ({(play.catalysts || []).length})
-                    </span>
-                    {play.catalysts && play.catalysts.length > 0 && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
-                        className={`text-[10px] transition-colors font-bold flex items-center gap-1 select-none font-[family-name:var(--font-geist-mono)] ${isBuy ? 'text-[#00D4AA] hover:text-[#00FFD0]' : 'text-[#FF4D6A] hover:text-[#FF1744]'}`}
-                      >
-                        <span>{expanded ? 'Hide Opinions' : 'View All'}</span>
-                        <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
-                      </button>
-                    )}
-                  </div>
-
-                  <AnimatePresence initial={false}>
-                    {expanded ? (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-3 mt-2 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B] relative z-10" onClick={(e) => e.stopPropagation()}>
-                          {(play.catalysts || []).map((c, i) => (
-                            <div key={i} className="text-xs border-l-2 border-[#1E293B] pl-2 py-0.5 space-y-1">
-                              <div className="flex items-center justify-between text-[9px] text-[#94A3B8]">
-                                <Link
-                                  href={`/video?id=${c.youtube_video_id}`}
-                                  className="font-bold text-[#E2E8F0] hover:text-[#00D4AA] transition-colors font-[family-name:var(--font-geist-mono)]"
-                                >
-                                  {c.channel_name}
-                                </Link>
-                                <span className="font-[family-name:var(--font-geist-mono)]">
-                                  Conv: <span className="text-[#F1F5F9]">{c.conviction}/10</span>
-                                </span>
-                              </div>
-                              <p className="text-[#CBD5E1] italic font-serif leading-relaxed">&ldquo;{c.notes}&rdquo;</p>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <div className="bg-[#141B2D]/70 border-l-2 border-[#1E293B] p-4 rounded-r-xl">
-                        <div className="flex items-center justify-between text-[9px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)] mb-1">
-                          <span className="font-bold text-[#E2E8F0]">
-                            {topCatalystChannel}
-                          </span>
-                          <span className="text-[10px]">
-                            Conviction {topCatalystConviction}/10
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#CBD5E1] italic font-serif leading-relaxed line-clamp-2">
-                          &ldquo;{play.top_catalyst}&rdquo;
-                        </p>
-                      </div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
                 {/* Links */}
-                <div className="flex items-center justify-between text-xs font-[family-name:var(--font-geist-mono)] text-[#94A3B8] border-t border-[#1E293B]/20 pt-4 mt-4">
+                <div className="flex items-center justify-between text-xs font-[family-name:var(--font-geist-mono)] text-[#94A3B8] border-t border-white/5 pt-4">
                   <Link
                     href={`/video?id=${play.latest_video.youtube_video_id}`}
                     onClick={(e) => e.stopPropagation()}
@@ -1015,7 +930,7 @@ export default function TodayPlaysPage() {
 
         {/* HUD Sort Controls */}
         {!loading && !error && data && (data.plays.length > 0) && (
-          <div className="flex flex-col gap-3 mb-6">
+          <div className="hidden md:flex flex-col gap-3 mb-6">
             
             {/* Top Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 rounded-2xl border border-[#1E293B]/50 bg-[#0A0F1A]/50 backdrop-blur-md">
@@ -1276,10 +1191,20 @@ export default function TodayPlaysPage() {
               >
                 {viewMode === 'grid' ? <Layers className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
               </button>
-              {/* Quick Info Modal/Tip */}
-              <div className="text-[10px] font-black font-[family-name:var(--font-geist-mono)] px-2 py-2.5 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#8B95A8] flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-[#00D4AA]" />
-                <span className="uppercase">{sortBy.substring(0, 4)}</span>
+              {/* Interactive Sort Strategy Selector */}
+              <div className="relative text-[10px] font-black font-[family-name:var(--font-geist-mono)] px-2.5 py-2 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] flex items-center gap-1 active:scale-95 transition-all">
+                <Sparkles className={`w-3.5 h-3.5 ${isBuyTab ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`} />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="bg-transparent text-[#F1F5F9] uppercase outline-none cursor-pointer appearance-none pr-3.5 font-bold"
+                >
+                  <option value="aura_score" className="bg-[#0A0F1A] text-[#F1F5F9]">Aura</option>
+                  <option value="mentions" className="bg-[#0A0F1A] text-[#F1F5F9]">Buzz</option>
+                  <option value="conviction" className="bg-[#0A0F1A] text-[#F1F5F9]">Conviction</option>
+                  <option value="consensus_sentiment" className="bg-[#0A0F1A] text-[#F1F5F9]">Sentiment</option>
+                </select>
+                <span className="absolute right-2 pointer-events-none text-[7px] text-[#64748B]">▼</span>
               </div>
             </div>
           </div>
