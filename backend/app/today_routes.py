@@ -41,7 +41,7 @@ class PlayResponse(BaseModel):
     ticker: str
     stock_name: str
     direction: str  # "BUY" or "SELL"
-    action_score: int  # 0 to 100
+    aura_score: int  # 0 to 100
     action_label: str  # "Strong Buy", "Buy", "Sell", "Strong Sell"
     consensus_sentiment: float
     avg_conviction: float
@@ -83,12 +83,18 @@ def parse_iso_datetime(dt_str: str) -> datetime:
 
 @router.get("/today", response_model=TodayPlaysResponse)
 async def get_today_plays(
-    days: int = Query(30, ge=1, le=90, description="Window of recommendations in days")
+    days: int = Query(30, ge=1, le=90, description="Window of recommendations in days"),
+    strategy: str = Query("aura_score", description="Filtering and sorting strategy")
 ):
-    """Retrieve top stock plays right now sorted by Action Score."""
+    """Retrieve top stock plays right now sorted by the requested strategy."""
     try:
+        # Normalize strategy
+        allowed_strategies = {"aura_score", "mentions", "conviction", "consensus_sentiment"}
+        if strategy not in allowed_strategies:
+            strategy = "aura_score"
+
         # Check cache first
-        cache_key = f"today_plays_{days}"
+        cache_key = f"aura_today_plays_{days}_{strategy}"
         cached_data = await get_cache(cache_key)
         latest_extraction = await get_latest_extraction_time()
 
@@ -131,10 +137,6 @@ async def get_today_plays(
 
         # Process each ticker
         for ticker, recs in ticker_groups.items():
-            # Apply filter: Must have >=2 recommendations within the 30-day window
-            if len(recs) < 2:
-                continue
-
             stock_name = recs[0].get("stock_name") or ticker
 
             # 1. Consensus Sentiment
@@ -172,6 +174,11 @@ async def get_today_plays(
 
             # Consensus direction
             direction = "BUY" if consensus_sentiment >= 0 else "SELL"
+
+            # Apply strict volume filter:
+            # Buyers need consensus (>=2). Sellers are rare, allow single high-conviction calls.
+            if direction == "BUY" and len(recs) < 2:
+                continue
 
             # 2. Avg Conviction
             avg_conviction = sum(convictions) / len(convictions)
@@ -236,7 +243,7 @@ async def get_today_plays(
                 # All recommendations are older -> negative momentum
                 momentum_score = 25.0
 
-            # --- Calculate Composite Action Score ---
+            # --- Calculate Composite Aura Score ---
             # Weights: Sentiment 25%, Conviction 20%, Agreement 20%, Recency 20%, Momentum 15%
             # Sentiment score is abs(consensus_sentiment)/2.0 * 100.0 (range 0-100)
             sentiment_score = (abs(consensus_sentiment) / 2.0) * 100.0
@@ -249,15 +256,38 @@ async def get_today_plays(
                 0.20 * recency_score +
                 0.15 * momentum_score
             )
-            action_score = int(max(0, min(100, action_score_raw)))
 
-            # --- Aggressive Filtering ---
-            # Stricter criteria: Only return plays with Action Score >= 60
-            if action_score < 60:
-                continue
+            # Calculate Analyst Count Early to apply penalty if < 5
+            analyst_names = list(set([
+                ((rec.get("videos") or {}).get("channels") or {}).get("channel_name", "Unknown Analyst")
+                for rec in recs
+            ]))
+            analyst_count = len(analyst_names)
+
+            # Penalize if fewer independent analysts. Sell side is more forgiving.
+            if direction == "SELL":
+                analyst_multiplier = min(1.0, 0.8 + 0.1 * analyst_count)
+            else:
+                analyst_multiplier = min(1.0, 0.5 + 0.1 * analyst_count)
+                
+            action_score_raw *= analyst_multiplier
+
+            aura_score = int(max(0, min(100, action_score_raw)))
+
+            # --- Dynamic Strategy Filtering ---
+            if strategy == "aura_score":
+                if aura_score < 60:
+                    continue
+            elif strategy == "conviction":
+                if avg_conviction < 7.5:
+                    continue
+            elif strategy == "consensus_sentiment":
+                if abs(consensus_sentiment) < 0.5:
+                    continue
+            # Note: "mentions" strategy has no minimum score threshold
 
             # --- Determine Action Label ---
-            if action_score >= 80:
+            if aura_score >= 80:
                 action_label = "Strong Buy" if direction == "BUY" else "Strong Sell"
             else:
                 action_label = "Buy" if direction == "BUY" else "Sell"
@@ -274,11 +304,6 @@ async def get_today_plays(
                 why_bullets.append(f"{len(recs)} mention{'s' if len(recs) > 1 else ''} in the last {days} days")
 
             # Bullet 2: Analyst agreement
-            analyst_names = list(set([
-                ((rec.get("videos") or {}).get("channels") or {}).get("channel_name", "Unknown Analyst")
-                for rec in recs
-            ]))
-            analyst_count = len(analyst_names)
             
             if agreement_pct >= 85 and analyst_count >= 2:
                 why_bullets.append(f"{analyst_count} analysts agree — consensus is {direction.lower()}ish")
@@ -335,7 +360,7 @@ async def get_today_plays(
                     ticker=ticker,
                     stock_name=stock_name,
                     direction=direction,
-                    action_score=action_score,
+                    aura_score=aura_score,
                     action_label=action_label,
                     consensus_sentiment=round(consensus_sentiment, 2),
                     avg_conviction=round(avg_conviction, 1),
@@ -350,8 +375,15 @@ async def get_today_plays(
                 )
             )
 
-        # Sort plays: highest Action Score first
-        plays.sort(key=lambda x: x.action_score, reverse=True)
+        # Sort plays according to strategy
+        if strategy == "mentions":
+            plays.sort(key=lambda x: x.recent_mentions, reverse=True)
+        elif strategy == "conviction":
+            plays.sort(key=lambda x: x.avg_conviction, reverse=True)
+        elif strategy == "consensus_sentiment":
+            plays.sort(key=lambda x: abs(x.consensus_sentiment), reverse=True)
+        else:  # default or "aura_score"
+            plays.sort(key=lambda x: x.aura_score, reverse=True)
 
         # Compute Market Mood
         buy_plays = sum(1 for p in plays if p.direction == "BUY")

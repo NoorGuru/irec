@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // --- Types ---
 
@@ -24,7 +25,7 @@ interface Play {
   ticker: string
   stock_name: string
   direction: 'BUY' | 'SELL'
-  action_score: number
+  aura_score: number
   action_label: string
   consensus_sentiment: number
   avg_conviction: number
@@ -107,15 +108,21 @@ function RadialScoreGauge({ score, direction }: { score: number; direction: 'BUY
 
 // --- Card Component ---
 
-function PlayCard({ play, index }: { play: Play; index: number }) {
+function PlayCard({ play, index, isAuraScore }: { play: Play; index: number; isAuraScore?: boolean }) {
+  const router = useRouter()
   const isBuy = play.direction === 'BUY'
-  const isStrong = play.action_score >= 80
+  const isStrong = play.aura_score >= 80
   const [expanded, setExpanded] = useState(false)
+
+  const handleCardClick = () => {
+    router.push(`/ticker?s=${play.ticker}`)
+  }
 
   return (
     <div
+      onClick={handleCardClick}
       className={`
-        relative group flex flex-col rounded-2xl border border-[#1E293B] bg-[#141B2D]/50 hover:bg-[#141B2D]/80 p-5 md:p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-black/40 animate-fade-up
+        relative group flex flex-col rounded-2xl border border-[#1E293B] bg-[#141B2D]/50 hover:bg-[#141B2D]/80 p-5 md:p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-black/40 cursor-pointer animate-fade-up
         ${isBuy ? 'hover:border-[#00D4AA]/30' : 'hover:border-[#FF4D6A]/30'}
       `}
       style={{
@@ -126,14 +133,14 @@ function PlayCard({ play, index }: { play: Play; index: number }) {
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
           {/* Ticker & Name */}
-          <Link href={`/ticker?s=${play.ticker}`} className={`flex items-center gap-2 transition-colors ${isBuy ? 'group-hover:text-[#00D4AA]' : 'group-hover:text-[#FF4D6A]'}`}>
+          <div className={`flex items-center gap-2 transition-colors ${isBuy ? 'group-hover:text-[#00D4AA]' : 'group-hover:text-[#FF4D6A]'}`}>
             <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold tracking-wider text-[#F1F5F9] leading-none">
               {play.ticker}
             </span>
             <span className="text-xs text-[#64748B] truncate max-w-[140px] md:max-w-[200px] mt-0.5" title={play.stock_name}>
               {play.stock_name}
             </span>
-          </Link>
+          </div>
 
           {/* Action Badge & Conviction */}
           <div className="flex items-center gap-2 mt-2">
@@ -157,7 +164,7 @@ function PlayCard({ play, index }: { play: Play; index: number }) {
         </div>
 
         {/* Gauge */}
-        <RadialScoreGauge score={play.action_score} direction={play.direction} />
+        <RadialScoreGauge score={play.aura_score} direction={play.direction} />
       </div>
 
       {/* Why bullets */}
@@ -188,8 +195,8 @@ function PlayCard({ play, index }: { play: Play; index: number }) {
           </span>
           {play.catalysts && play.catalysts.length > 0 && (
             <button
-              onClick={() => setExpanded(!expanded)}
-              className="text-[10px] text-[#00D4AA] hover:text-[#00FFD0] transition-colors font-semibold flex items-center gap-1 select-none"
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
+              className={`text-[10px] transition-colors font-semibold flex items-center gap-1 select-none ${isBuy ? 'text-[#00D4AA] hover:text-[#00FFD0]' : 'text-[#FF4D6A] hover:text-[#FF1744]'}`}
             >
               <span>{expanded ? 'Hide Opinions' : 'View All'}</span>
               <svg
@@ -212,7 +219,7 @@ function PlayCard({ play, index }: { play: Play; index: number }) {
             &ldquo;{play.top_catalyst}&rdquo;
           </p>
         ) : (
-          <div className="space-y-3 mt-2 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B]">
+          <div className="space-y-3 mt-2 max-h-[180px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#1E293B]" onClick={(e) => e.stopPropagation()}>
             {(play.catalysts || []).map((c, i) => {
               return (
                 <div key={i} className="text-xs border-l-2 border-[#1E293B] pl-2 py-0.5 space-y-1">
@@ -244,6 +251,7 @@ function PlayCard({ play, index }: { play: Play; index: number }) {
         <div className="flex items-center gap-2 shrink-0">
           <Link
             href={`/video?id=${play.latest_video.youtube_video_id}`}
+            onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 text-[#64748B] hover:text-[#00D4AA] transition-colors"
             title="View video details"
           >
@@ -258,6 +266,7 @@ function PlayCard({ play, index }: { play: Play; index: number }) {
             href={`https://youtube.com/watch?v=${play.latest_video.youtube_video_id}`}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 text-[#64748B] hover:text-red-400 transition-colors"
             title="Watch on YouTube"
           >
@@ -300,43 +309,94 @@ function SkeletonCard() {
 
 // --- Main Page Component ---
 
-type SortOption = 'action_score' | 'mentions' | 'conviction' | 'consensus_sentiment'
+type SortOption = 'aura_score' | 'mentions' | 'conviction' | 'consensus_sentiment'
 
 export default function TodayPlaysPage() {
   const [data, setData] = useState<TodayPlaysData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<SortOption>('action_score')
+  const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
 
   useEffect(() => {
+    let active = true
+
     async function fetchPlays() {
+      const cacheKey = `aura_today_plays_${sortBy}`
+      let hasCache = false
+
+      // 1. Attempt to load from localStorage cache first
+      try {
+        const cached = localStorage.getItem(cacheKey)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (parsed && parsed.plays) {
+            if (active) {
+              setData(parsed)
+              hasCache = true
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to read from localStorage cache:', e)
+      }
+
+      // 2. Only show loading skeletons if we don't have a cached version
+      if (!hasCache) {
+        if (active) {
+          setData(null) // Clear old data to prevent flashes of previous strategy values
+          setLoading(true)
+        }
+      }
+
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-        const res = await fetch(`${backendUrl}/api/v1/today`)
+        const res = await fetch(`${backendUrl}/api/v1/today?strategy=${sortBy}`)
 
         if (!res.ok) {
           throw new Error(`Server returned status ${res.status}`)
         }
 
         const json = await res.json()
-        setData(json)
+        
+        if (active) {
+          setData(json)
+          setError(null) // Clear any previous errors if fetch succeeds
+
+          // 3. Save fresh payload to localStorage
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(json))
+          } catch (e) {
+            console.warn('Failed to save to localStorage cache:', e)
+          }
+        }
       } catch (err: any) {
-        logger.error('Failed to fetch today\'s plays:', err)
-        setError(err.message || 'Unable to connect to the backend server.')
+        if (active) {
+          logger.error('Failed to fetch today\'s plays:', err)
+          // Only trigger full-screen offline error if we don't have cached data to display
+          if (!hasCache) {
+            setError(err.message || 'Unable to connect to the backend server.')
+          }
+        }
       } finally {
-        setLoading(false)
+        if (active) {
+          setLoading(false)
+        }
       }
     }
 
     fetchPlays()
-  }, [])
+
+    return () => {
+      active = false
+    }
+  }, [sortBy])
 
   // Client-side sorting logic
   const sortPlays = (playsList: Play[]) => {
     return [...playsList].sort((a, b) => {
-      if (sortBy === 'action_score') {
-        return b.action_score - a.action_score
+      if (sortBy === 'aura_score') {
+        return b.aura_score - a.aura_score
       } else if (sortBy === 'mentions') {
         return b.recent_mentions - a.recent_mentions
       } else if (sortBy === 'conviction') {
@@ -367,7 +427,7 @@ export default function TodayPlaysPage() {
   const activeGlowBg = isBuyTab ? 'bg-[#00D4AA]/5' : 'bg-[#FF4D6A]/5'
   const activeVia = isBuyTab ? 'via-[#00D4AA]' : 'via-[#FF4D6A]'
   
-  const isActionScore = sortBy === 'action_score'
+  const isAuraScore = sortBy === 'aura_score'
 
   // Market mood display details (Calculates a precise ratio and randomly selects a punchy description)
   const moodConfig = useMemo(() => {
@@ -456,8 +516,8 @@ export default function TodayPlaysPage() {
 
   return (
     <main className="flex-1 w-full mx-auto relative">
-      {/* 🚀 CRAZY GOD-MODE ACTION SCORE BACKGROUND 🚀 */}
-      {isActionScore && (
+      {/* 🚀 CRAZY GOD-MODE AURA SCORE BACKGROUND 🚀 */}
+      {isAuraScore && (
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden animate-fade-in mix-blend-screen opacity-80 transition-all duration-1000">
           {/* Moving Matrix-style Data Grid */}
           <div 
@@ -566,7 +626,7 @@ export default function TodayPlaysPage() {
               <span className="text-[#64748B] px-2 font-medium">Sort Strategy:</span>
               {(
                 [
-                  { key: 'action_score', label: 'Action Score' },
+                  { key: 'aura_score', label: 'Aura Score' },
                   { key: 'mentions', label: 'Mentions' },
                   { key: 'conviction', label: 'Conviction' },
                   { key: 'consensus_sentiment', label: 'Sentiment' },
@@ -590,10 +650,10 @@ export default function TodayPlaysPage() {
           </div>
 
           {/* Dynamic Sort Explanation Panel */}
-          <div className={`relative overflow-hidden rounded-xl border ${isActionScore ? `${activeColorBorderStrong} ${activeShadowStrong}` : 'border-[#1E293B]/60 hover:border-[#1E293B]'} bg-gradient-to-br from-[#141B2D]/80 to-[#0A0F1A]/80 p-4 md:p-5 transition-all duration-500`}>
+          <div className={`relative overflow-hidden rounded-xl border ${isAuraScore ? `${activeColorBorderStrong} ${activeShadowStrong}` : 'border-[#1E293B]/60 hover:border-[#1E293B]'} bg-gradient-to-br from-[#141B2D]/80 to-[#0A0F1A]/80 p-4 md:p-5 transition-all duration-500`}>
             
-            {/* Live Scanline & Glow Effects for Action Score */}
-            {isActionScore && (
+            {/* Live Scanline & Glow Effects for Aura Score */}
+            {isAuraScore && (
               <div className="absolute inset-0 pointer-events-none rounded-xl overflow-hidden">
                 <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${activeVia} to-transparent opacity-60`} />
                 <div className={`absolute -inset-x-[150%] top-0 bottom-0 bg-gradient-to-r from-transparent ${activeColorBgOpacity} to-transparent opacity-40 animate-pulse skew-x-12`} />
@@ -602,7 +662,7 @@ export default function TodayPlaysPage() {
 
             {/* Subtle glow effect behind the text */}
             <div className={`absolute top-0 left-1/4 w-[200px] h-full ${activeGlowBg} blur-3xl pointer-events-none transition-transform duration-700 ease-in-out`}
-              style={{ transform: `translateX(${['action_score', 'mentions', 'conviction', 'consensus_sentiment'].indexOf(sortBy) * 50}%)` }}
+              style={{ transform: `translateX(${['aura_score', 'mentions', 'conviction', 'consensus_sentiment'].indexOf(sortBy) * 50}%)` }}
             />
 
             <div className="relative flex items-start sm:items-center gap-3">
@@ -614,14 +674,14 @@ export default function TodayPlaysPage() {
               <div className="text-xs md:text-sm text-[#8B95A8] leading-relaxed transition-opacity duration-300 flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <div className="shrink-0 sm:w-32 border-b sm:border-b-0 sm:border-r border-[#1E293B] pb-1 sm:pb-0 sm:pr-4 flex items-center justify-between">
                   <strong className="text-[#F1F5F9] font-bold tracking-widest uppercase text-[11px] sm:text-xs">
-                    {sortBy === 'action_score' && "Action Score"}
+                    {sortBy === 'aura_score' && "Aura Score"}
                     {sortBy === 'mentions' && "Mentions"}
                     {sortBy === 'conviction' && "Conviction"}
                     {sortBy === 'consensus_sentiment' && "Pure Sentiment"}
                   </strong>
                 </div>
                 <span className="animate-fade-in flex-1">
-                  {sortBy === 'action_score' && (
+                  {sortBy === 'aura_score' && (
                     <span className="flex flex-col gap-1.5">
                       <span>Our exclusive rating blending {activeLabel} conviction, consensus, and momentum to give you the ultimate edge.</span>
                       <span className={`${activeColorText} font-semibold text-[10px] sm:text-[11px] tracking-wide transition-colors uppercase`}>Use this when: You want the ultimate, well-rounded &ldquo;{activeLabel} now&rdquo; signal.</span>
@@ -750,7 +810,7 @@ export default function TodayPlaysPage() {
             {activeTab === 'BUY' && (
               buyPlays.length > 0 ? (
                 buyPlays.map((play, idx) => (
-                  <PlayCard key={play.ticker} play={play} index={idx} />
+                  <PlayCard key={play.ticker} play={play} index={idx} isAuraScore={isAuraScore} />
                 ))
               ) : (
                 <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B]/60 bg-[#141B2D]/30 p-16 text-center animate-fade-in relative overflow-hidden group">
@@ -767,7 +827,7 @@ export default function TodayPlaysPage() {
             {activeTab === 'SELL' && (
               sellPlays.length > 0 ? (
                 sellPlays.map((play, idx) => (
-                  <PlayCard key={play.ticker} play={play} index={idx} />
+                  <PlayCard key={play.ticker} play={play} index={idx} isAuraScore={isAuraScore} />
                 ))
               ) : (
                 <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B]/60 bg-[#141B2D]/30 p-16 text-center animate-fade-in relative overflow-hidden group">
