@@ -46,10 +46,16 @@ export function Footer() {
           {/* Right: links — compact, mono */}
           <nav className="flex items-center gap-6" aria-label="Footer navigation">
             <Link
+              href="/today"
+              className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
+            >
+              today&apos;s plays
+            </Link>
+            <Link
               href="/"
               className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
             >
-              dashboard
+              explore
             </Link>
             <Link
               href="/channels"

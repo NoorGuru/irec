@@ -385,7 +385,7 @@ function PulseStream({
   setIndex
 }: {
   plays: Play[]
-  sortBy: string
+  sortBy: SortOption
   index: number
   setIndex: (idx: number) => void
 }) {
@@ -468,7 +468,7 @@ function PulseStream({
         </div>
         <div className="flex gap-2">
           <span className="uppercase text-[9px] border border-white/5 px-1.5 py-0.5 rounded tracking-widest text-[#94A3B8]">
-            {sortBy.replace('_', ' ')}
+            {sortLabel[sortBy]}
           </span>
         </div>
       </div>
@@ -522,7 +522,7 @@ function PulseStream({
                       ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
                       : 'opacity-70'
                     }`}>
-                    <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Buzz (Mentions)</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Buzz</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
                       {play.recent_mentions}x
                     </span>
@@ -590,8 +590,8 @@ function PulseStream({
         </AnimatePresence>
       </div>
 
-      {/* Stream Deck controls */}
-      <div className="flex items-center justify-center gap-8 mt-5 w-full">
+      {/* Stream Deck controls — hidden on mobile where dock provides navigation */}
+      <div className="hidden md:flex items-center justify-center gap-8 mt-5 w-full">
         <button
           onClick={handlePrev}
           disabled={activeIndex === 0}
@@ -649,6 +649,13 @@ function SkeletonCard() {
 // --- Main Page Component ---
 
 type SortOption = 'aura_score' | 'mentions' | 'conviction' | 'consensus_sentiment'
+
+const sortLabel: Record<SortOption, string> = {
+  aura_score: 'Aura',
+  mentions: 'Buzz',
+  conviction: 'Conviction',
+  consensus_sentiment: 'Sentiment',
+}
 
 export default function TodayPlaysPage() {
   const [data, setData] = useState<TodayPlaysData | null>(null)
@@ -1060,13 +1067,36 @@ export default function TodayPlaysPage() {
                 <Sparkles className={`w-4 h-4 shrink-0 ${activeColorText}`} />
                 <div className="text-xs text-[#8B95A8] leading-relaxed flex-1 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                   <span className="font-bold text-[#F1F5F9] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] text-[10px]">
-                    {sortBy.replace('_', ' ')}:
+                    {sortLabel[sortBy]}:
                   </span>
                   <span className="flex-1">
                     {sortBy === 'aura_score' && "Composite scoring balancing agreement, recency, and conviction parameters."}
                     {sortBy === 'mentions' && "Prioritized strictly by coverage volume and social buzz metrics."}
                     {sortBy === 'conviction' && "Focuses on absolute levels of certainty among elite market channels."}
                     {sortBy === 'consensus_sentiment' && "Pure polarity sorting, highlighting overall bullishness or bearishness."}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Strategy Explanation */}
+        {!loading && !error && data && (data.plays.length > 0) && (
+          <div className="md:hidden mb-4">
+            <div className={`relative overflow-hidden rounded-xl border ${isAuraScore ? 'border-[#00D4AA]/20' : 'border-[#1E293B]/70'} bg-[#141B2D]/50 px-3.5 py-3 transition-all duration-500`}>
+              <div className="relative flex items-start gap-2.5">
+                <Sparkles className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${activeColorText}`} />
+                <div className="text-[11px] text-[#8B95A8] leading-relaxed">
+                  <span className="font-bold text-[#F1F5F9] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] text-[9px]">
+                    {sortLabel[sortBy]}
+                  </span>
+                  <span className="mx-1.5 text-[#475569]">—</span>
+                  <span>
+                    {sortBy === 'aura_score' && "Composite score balancing agreement, recency & conviction."}
+                    {sortBy === 'mentions' && "Ranked by coverage volume and social buzz."}
+                    {sortBy === 'conviction' && "Sorted by analyst certainty levels."}
+                    {sortBy === 'consensus_sentiment' && "Pure polarity — bullishness vs bearishness."}
                   </span>
                 </div>
               </div>
@@ -1223,40 +1253,77 @@ export default function TodayPlaysPage() {
         )}
       </div>
 
-      {/* 📱 MOBILE FLOATING DOCK CONTROL BAR 📱 */}
+      {/* 📱 MOBILE FLOATING DOCK 📱 */}
       {!loading && !error && data && (
-        <div className="md:hidden fixed bottom-16 left-4 right-4 z-40 bg-[#0A0F1A]/85 backdrop-blur-lg border border-[#1E293B] shadow-2xl rounded-2xl p-2 select-none">
-          <div className="flex items-center justify-between gap-1">
-            {/* BUY/SELL Toggle Pill */}
-            <div className="flex items-center bg-[#0A0F1A] border border-[#1E293B] rounded-xl p-0.5 w-1/2">
+        <div className="md:hidden fixed bottom-16 left-4 right-4 z-40 bg-[#0A0F1A]/90 backdrop-blur-xl border border-[#1E293B] shadow-2xl rounded-2xl overflow-hidden select-none">
+
+          {/* Top row: Stream navigation — only visible in stream mode */}
+          {viewMode === 'stream' && activePlays.length > 1 && (
+            <div className="flex items-center justify-between px-4 py-2 border-b border-[#1E293B]/60">
+              <button
+                onClick={() => { if (streamIndex > 0) setStreamIndex(streamIndex - 1) }}
+                disabled={streamIndex === 0}
+                className={`p-1.5 rounded-lg transition-all ${streamIndex === 0
+                  ? 'opacity-20 text-[#475569]'
+                  : `${activeColorText} active:scale-90`
+                }`}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              {/* Position dots / counter */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#8B95A8] tabular-nums">
+                  {streamIndex + 1} <span className="text-[#475569]">/</span> {activePlays.length}
+                </span>
+              </div>
+
+              <button
+                onClick={() => { if (streamIndex < activePlays.length - 1) setStreamIndex(streamIndex + 1) }}
+                disabled={streamIndex === activePlays.length - 1}
+                className={`p-1.5 rounded-lg transition-all ${streamIndex === activePlays.length - 1
+                  ? 'opacity-20 text-[#475569]'
+                  : `${activeColorText} active:scale-90`
+                }`}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Bottom row: BUY/SELL + Sort */}
+          <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+            {/* BUY/SELL Toggle */}
+            <div className="flex items-center bg-[#0A0F1A] border border-[#1E293B] rounded-xl p-0.5 flex-1">
               <button
                 onClick={() => { setActiveTab('BUY'); setStreamIndex(0); }}
-                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${isBuyTab ? 'bg-[#00D4AA]/15 text-[#00D4AA]' : 'text-[#64748B]'
+                className={`w-1/2 py-2 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${isBuyTab ? 'bg-[#00D4AA]/15 text-[#00D4AA]' : 'text-[#64748B]'
                   }`}
               >
                 BUY ({buyPlays.length})
               </button>
               <button
                 onClick={() => { setActiveTab('SELL'); setStreamIndex(0); }}
-                className={`w-1/2 py-1.5 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${!isBuyTab ? 'bg-[#FF4D6A]/15 text-[#FF4D6A]' : 'text-[#64748B]'
+                className={`w-1/2 py-2 text-[10px] font-black rounded-lg transition-all duration-200 tracking-wider font-[family-name:var(--font-geist-mono)] ${!isBuyTab ? 'bg-[#FF4D6A]/15 text-[#FF4D6A]' : 'text-[#64748B]'
                   }`}
               >
                 SELL ({sellPlays.length})
               </button>
             </div>
 
-            {/* Layout and Info Dock */}
-            <div className="flex items-center gap-1 w-1/2 justify-end">
-              {/* Quick Layout Swap */}
+            {/* Sort Strategy Selector */}
+            <div className="flex items-center gap-1">
+              {/* Grid/Stream Toggle */}
               <button
                 onClick={() => setViewMode(viewMode === 'grid' ? 'stream' : 'grid')}
-                className="p-2 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] transition-colors"
+                className="p-2.5 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] active:scale-95 transition-all"
                 title="Toggle View Mode"
               >
                 {viewMode === 'grid' ? <Layers className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
               </button>
-              {/* Interactive Sort Strategy Selector */}
-              <div className="relative text-[10px] font-black font-[family-name:var(--font-geist-mono)] px-2.5 py-2 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] flex items-center gap-1 active:scale-95 transition-all">
+
+              {/* Sort Selector */}
+              <div className="relative text-[10px] font-black font-[family-name:var(--font-geist-mono)] px-3 py-2.5 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] flex items-center gap-1.5 active:scale-95 transition-all">
                 <Sparkles className={`w-3.5 h-3.5 ${isBuyTab ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`} />
                 <select
                   value={sortBy}
@@ -1264,14 +1331,14 @@ export default function TodayPlaysPage() {
                     setSortBy(e.target.value as SortOption)
                     setStreamIndex(0)
                   }}
-                  className="bg-transparent text-[#F1F5F9] uppercase outline-none cursor-pointer appearance-none pr-3.5 font-bold"
+                  className="bg-transparent text-[#F1F5F9] uppercase outline-none cursor-pointer appearance-none pr-4 font-bold"
                 >
                   <option value="aura_score" className="bg-[#0A0F1A] text-[#F1F5F9]">Aura</option>
                   <option value="mentions" className="bg-[#0A0F1A] text-[#F1F5F9]">Buzz</option>
                   <option value="conviction" className="bg-[#0A0F1A] text-[#F1F5F9]">Conviction</option>
                   <option value="consensus_sentiment" className="bg-[#0A0F1A] text-[#F1F5F9]">Sentiment</option>
                 </select>
-                <span className="absolute right-2 pointer-events-none text-[7px] text-[#64748B]">▼</span>
+                <span className="absolute right-2.5 pointer-events-none text-[7px] text-[#64748B]">▼</span>
               </div>
             </div>
           </div>
