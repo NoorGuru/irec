@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://noorguru.github.io/irec'),
   title: "aura — Stock Sentiment from YouTube Analysts",
   description: "Aggregated stock recommendations extracted from YouTube financial analysts.",
 };
