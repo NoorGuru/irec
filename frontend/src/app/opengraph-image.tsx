@@ -90,7 +90,7 @@ export default async function Image() {
                 color: 'transparent',
               }}
             >
-              AURA.
+              AURA
             </div>
           </div>
 
