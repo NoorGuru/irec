@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-export const alt = 'aura — Stock Sentiment from YouTube Analysts';
+export const alt = 'Aura — Every stock analyst. One clear signal.';
 export const dynamic = 'force-static';
 export const size = {
   width: 1200,
@@ -117,7 +117,7 @@ export default async function Image() {
                 textTransform: 'uppercase',
               }}
             >
-              YouTube Sentiment Engine
+              Every stock analyst. One clear signal.
             </span>
           </div>
         </div>

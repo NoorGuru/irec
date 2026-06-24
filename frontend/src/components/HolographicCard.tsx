@@ -7,7 +7,7 @@ interface HolographicCardProps {
   children: React.ReactNode
   className?: string
   onClick?: () => void
-  direction?: 'BUY' | 'SELL'
+  direction?: 'BUY' | 'SELL' | 'NEUTRAL'
   isStrong?: boolean
 }
 
@@ -129,6 +129,7 @@ export default function HolographicCard({
   }
 
   const isBuy = direction === 'BUY'
+  const isNeutral = direction === 'NEUTRAL'
   
   const shadowValue = useTransform(
     [rotateX, rotateY, glareOpacity],
@@ -136,13 +137,23 @@ export default function HolographicCard({
       if (shouldReduceMotion || !hovered) return `0 4px 20px rgba(0, 0, 0, 0.4)`
       const shadowX = -Number(ry) * 1.5
       const shadowY = Number(rx) * 1.5
-      return `${shadowX}px ${shadowY}px 30px rgba(${isBuy ? '0, 212, 170' : '255, 77, 106'}, ${0.15 + Number(gOpacity) * 0.3})`
+      const colorStr = isNeutral ? '139, 149, 168' : isBuy ? '0, 212, 170' : '255, 77, 106'
+      return `${shadowX}px ${shadowY}px 30px rgba(${colorStr}, ${0.15 + Number(gOpacity) * 0.3})`
     }
   )
 
-  const borderStyle = isBuy 
-    ? (isStrong ? 'border-[#00FFD0]/15' : 'border-white/5')
-    : (isStrong ? 'border-[#FF1744]/15' : 'border-white/5')
+  const borderStyle = isNeutral 
+    ? (isStrong ? 'border-[#8B95A8]/30' : 'border-[#1E293B]')
+    : isBuy 
+      ? (isStrong ? 'border-[#00FFD0]/15' : 'border-white/5')
+      : (isStrong ? 'border-[#FF1744]/15' : 'border-white/5')
+
+  const glareBackground = useTransform(
+    [glareX, glareY, glareOpacity],
+    ([x, y, op]) =>
+      `radial-gradient(circle at ${x}% ${y}%, rgba(255, 255, 255, ${op}) 0%, rgba(255, 255, 255, 0) 50%), 
+       linear-gradient(${Number(x) + Number(y)}deg, rgba(255,255,255,0) 0%, rgba(255,255,255,${Number(op) * 0.4}) 50%, rgba(255,255,255,0) 100%)`
+  )
 
   return (
     <motion.div
@@ -166,9 +177,9 @@ export default function HolographicCard({
       }}
       className={`
         relative group flex flex-col rounded-2xl border bg-[#0A0F1A]/20 backdrop-blur-xl p-5 md:p-6 transition-all duration-300 cursor-pointer overflow-hidden
-        outline-none focus-visible:ring-2 ${isBuy ? 'focus-visible:ring-[#00D4AA]/70 focus-visible:border-[#00D4AA]' : 'focus-visible:ring-[#FF4D6A]/70 focus-visible:border-[#FF4D6A]'}
+        outline-none focus-visible:ring-2 ${isNeutral ? 'focus-visible:ring-[#8B95A8]/70 focus-visible:border-[#8B95A8]' : isBuy ? 'focus-visible:ring-[#00D4AA]/70 focus-visible:border-[#00D4AA]' : 'focus-visible:ring-[#FF4D6A]/70 focus-visible:border-[#FF4D6A]'}
         ${borderStyle}
-        ${isBuy ? 'hover:border-[#00D4AA]/30' : 'hover:border-[#FF4D6A]/30'}
+        ${isNeutral ? 'hover:border-[#8B95A8]/40' : isBuy ? 'hover:border-[#00D4AA]/30' : 'hover:border-[#FF4D6A]/30'}
         ${className}
       `}
     >
@@ -193,12 +204,7 @@ export default function HolographicCard({
         <motion.div
           className="absolute inset-0 pointer-events-none mix-blend-color-dodge z-20"
           style={{
-            background: useTransform(
-              [glareX, glareY, glareOpacity],
-              ([x, y, op]) =>
-                `radial-gradient(circle at ${x}% ${y}%, rgba(255, 255, 255, ${op}) 0%, rgba(255, 255, 255, 0) 50%), 
-                 linear-gradient(${Number(x) + Number(y)}deg, rgba(255,255,255,0) 0%, rgba(255,255,255,${Number(op) * 0.4}) 50%, rgba(255,255,255,0) 100%)`
-            ),
+            background: glareBackground,
             opacity: glareOpacity,
           }}
         />
@@ -208,7 +214,7 @@ export default function HolographicCard({
       <div 
         className={`
           absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0
-          bg-[radial-gradient(circle_at_center,${isBuy ? 'rgba(0,212,170,0.06)' : 'rgba(255,77,106,0.06)'}_0%,transparent_75%)]
+          bg-[radial-gradient(circle_at_center,${isNeutral ? 'rgba(139,149,168,0.06)' : isBuy ? 'rgba(0,212,170,0.06)' : 'rgba(255,77,106,0.06)'}_0%,transparent_75%)]
         `}
       />
     </motion.div>

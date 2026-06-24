@@ -2,7 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import HolographicCard from '@/components/HolographicCard'
+import EKGHeartbeat from '@/components/EKGHeartbeat'
 
 // ─── Types ───
 
@@ -16,23 +20,6 @@ interface RecommendationRow {
     channel_id: string
     channels: {
       trust_weight: number
-    }
-  }
-}
-
-interface RecentSignal {
-  ticker: string
-  stock_name: string
-  sentiment: number
-  conviction_level: number
-  target_price: number | null
-  catalyst_notes: string
-  videos: {
-    youtube_video_id: string
-    published_at: string
-    extracted_at: string
-    channels: {
-      channel_name: string
     }
   }
 }
@@ -199,15 +186,59 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   if (aggregated.length === 0) return null
 
   const totalMentions = aggregated.reduce((s, t) => s + t.mention_count, 0)
-
-  // Weighted average across all tickers (by mention count)
   const overallSentiment = totalMentions > 0
     ? aggregated.reduce((s, t) => s + t.consensus_sentiment * t.mention_count, 0) / totalMentions
     : 0
 
-  const lean = getMarketLeanLabel(overallSentiment)
+  const moodConfig = useMemo(() => {
+    if (overallSentiment >= 1.0) {
+      return {
+        color: 'text-[#00D4AA] drop-shadow-[0_0_10px_rgba(0,212,170,0.3)]',
+        glow: 'from-[#00D4AA]/20 to-[#00FFD0]/5',
+        title: 'Extreme Bullish',
+        byline: "Unwavering upside consensus. Analyst pipelines are loaded with green indicators.",
+        scoreText: 'Very Bullish Bias',
+        direction: 'BUY' as const
+      }
+    } else if (overallSentiment >= 0.3) {
+      return {
+        color: 'text-[#00D4AA]',
+        glow: 'from-[#00D4AA]/15 to-[#00D4AA]/5',
+        title: 'Bullish Momentum',
+        byline: "Clear buy bias. Market sentiment leans towards growth indicators today.",
+        scoreText: 'Bullish Bias',
+        direction: 'BUY' as const
+      }
+    } else if (overallSentiment <= -1.0) {
+      return {
+        color: 'text-[#FF4D6A] drop-shadow-[0_0_10px_rgba(255,77,106,0.3)]',
+        glow: 'from-[#FF4D6A]/20 to-[#FF1744]/5',
+        title: 'Extreme Bearish',
+        byline: "Severe downside conviction. Defensive hedging is highly recommended.",
+        scoreText: 'Very Bearish Bias',
+        direction: 'SELL' as const
+      }
+    } else if (overallSentiment <= -0.3) {
+      return {
+        color: 'text-[#FF4D6A]',
+        glow: 'from-[#FF4D6A]/15 to-[#FF4D6A]/5',
+        title: 'Bearish Bias',
+        byline: "Under pressure. Sellers outpace buyers in latest transcripts.",
+        scoreText: 'Bearish Bias',
+        direction: 'SELL' as const
+      }
+    } else {
+      return {
+        color: 'text-[#8B95A8]',
+        glow: 'from-[#8B95A8]/10 to-[#141B2D]/5',
+        title: 'Mixed Signals',
+        byline: "Tug-of-war. Bulls and Bears are divided on short term direction.",
+        scoreText: 'Neutral State',
+        direction: 'NEUTRAL' as const
+      }
+    }
+  }, [overallSentiment])
 
-  // Distribution buckets
   const buckets = { strongBuy: 0, buy: 0, neutral: 0, sell: 0, strongSell: 0 }
   for (const t of aggregated) {
     if (t.consensus_sentiment >= 1.5) buckets.strongBuy++
@@ -216,65 +247,57 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
     else if (t.consensus_sentiment > -1.5) buckets.sell++
     else buckets.strongSell++
   }
-
   const total = aggregated.length
 
   return (
-    <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/60 p-6 md:p-8 animate-fade-up stagger-1">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
-        <span className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">Market Pulse</span>
-        <button
-          type="button"
-          className="group relative ml-auto cursor-help focus:outline-none"
-          aria-label="Market pulse info"
-          onClick={(e) => {
-            const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
-            if (tooltip) tooltip.classList.toggle('opacity-0')
-          }}
-          onBlur={(e) => {
-            const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
-            if (tooltip) tooltip.classList.add('opacity-0')
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569] hover:text-[#64748B] transition-colors">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <span role="tooltip" className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[11px] text-[#8B95A8] leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-            Weighted average of all ticker consensus scores, weighted by mention count. Each ticker&apos;s consensus is trust-weighted and dampened until 3+ mentions.
-          </span>
-        </button>
-      </div>
+    <section className="relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-8 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30 animate-fade-up stagger-1">
+      <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig.glow} opacity-60 transition-all duration-1000`} />
+      
+      <EKGHeartbeat overallMood={moodConfig.title} direction={moodConfig.direction} />
 
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        {/* Overall lean */}
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <p className={`text-4xl md:text-5xl font-bold tracking-tight ${lean.color}`}>
-            {lean.label}
-          </p>
-          <p className="mt-1 font-[family-name:var(--font-geist-mono)] text-sm text-[#64748B]">
-            Overall sentiment: {overallSentiment.toFixed(2)}
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <Activity className={`w-3.5 h-3.5 ${moodConfig.direction === 'SELL' ? 'text-[#FF4D6A]' : moodConfig.direction === 'BUY' ? 'text-[#00D4AA]' : 'text-[#8B95A8]'} animate-pulse`} />
+            <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+              Market Pulse
+            </h1>
+          </div>
+          
+          <div className="mt-3">
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span className={`text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter ${moodConfig.color} transition-all duration-1000`}>
+                {moodConfig.title}
+              </span>
+              <span className="text-xs text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-2 py-1 rounded">
+                {moodConfig.scoreText}
+              </span>
+            </div>
+            <p className="text-xs md:text-sm text-[#8B95A8] mt-3 max-w-xl leading-relaxed">
+              {moodConfig.byline}
+            </p>
+          </div>
         </div>
 
-        {/* Distribution bar */}
-        <div className="flex-1 max-w-xs">
-          <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#1E293B]">
-            {buckets.strongBuy > 0 && <div className="h-full bg-[#00FFD0]" style={{ width: `${(buckets.strongBuy / total) * 100}%` }} />}
-            {buckets.buy > 0 && <div className="h-full bg-[#00D4AA]" style={{ width: `${(buckets.buy / total) * 100}%` }} />}
-            {buckets.neutral > 0 && <div className="h-full bg-[#475569]" style={{ width: `${(buckets.neutral / total) * 100}%` }} />}
-            {buckets.sell > 0 && <div className="h-full bg-[#FF4D6A]" style={{ width: `${(buckets.sell / total) * 100}%` }} />}
-            {buckets.strongSell > 0 && <div className="h-full bg-[#FF1744]" style={{ width: `${(buckets.strongSell / total) * 100}%` }} />}
-          </div>
-          <div className="flex justify-between mt-1.5 text-[10px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
-            <span>{buckets.strongBuy + buckets.buy} bullish</span>
-            <span>{buckets.neutral} neutral</span>
-            <span>{buckets.sell + buckets.strongSell} bearish</span>
-          </div>
+        <div className="flex flex-col gap-4 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl p-4 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-inner min-w-[200px]">
+           <div className="flex justify-between text-[9px] uppercase tracking-wider text-[#64748B] mb-1">
+             <span>Bullish</span>
+             <span>Bearish</span>
+           </div>
+           <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#1E293B]">
+             {buckets.strongBuy > 0 && <div className="h-full bg-[#00FFD0]" style={{ width: `${(buckets.strongBuy / total) * 100}%` }} />}
+             {buckets.buy > 0 && <div className="h-full bg-[#00D4AA]" style={{ width: `${(buckets.buy / total) * 100}%` }} />}
+             {buckets.neutral > 0 && <div className="h-full bg-[#475569]" style={{ width: `${(buckets.neutral / total) * 100}%` }} />}
+             {buckets.sell > 0 && <div className="h-full bg-[#FF4D6A]" style={{ width: `${(buckets.sell / total) * 100}%` }} />}
+             {buckets.strongSell > 0 && <div className="h-full bg-[#FF1744]" style={{ width: `${(buckets.strongSell / total) * 100}%` }} />}
+           </div>
+           <div className="flex justify-between text-[10px] text-[#64748B] mt-1">
+             <span className="text-[#00D4AA] font-bold">{buckets.strongBuy + buckets.buy} signals</span>
+             <span className="text-[#FF4D6A] font-bold">{buckets.sell + buckets.strongSell} signals</span>
+           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -312,90 +335,39 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
 
   return (
     <div className={`grid gap-3 ${cards.length === 3 ? 'md:grid-cols-3' : cards.length === 2 ? 'md:grid-cols-2' : ''} animate-fade-up stagger-2`}>
-      {cards.map(({ label, icon, ticker, accent }) => (
-        <Link
-          key={ticker.ticker}
-          href={`/ticker?s=${ticker.ticker}`}
-          className={`group rounded-xl border ${accent} bg-[#141B2D]/40 p-5 hover:bg-[#141B2D] hover:border-[#2D3A4F] transition-all duration-200`}
-        >
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm text-[#475569]">{icon}</span>
-            <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B]">{label}</span>
-          </div>
-          <p className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors tracking-wide">
-            {ticker.ticker}
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <span className={getSentimentBadgeClass(ticker.consensus_sentiment)}>
-              {getSentimentLabel(ticker.consensus_sentiment)}
-            </span>
-            <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#64748B]">
-              {ticker.mention_count} mentions
-            </span>
-          </div>
-        </Link>
-      ))}
+      {cards.map(({ label, icon, ticker, accent }) => {
+        const direction = ticker.consensus_sentiment >= 0.5 ? 'BUY' : ticker.consensus_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL'
+        const isStrong = Math.abs(ticker.consensus_sentiment) >= 1.5
+        return (
+          <HolographicCard key={ticker.ticker} direction={direction} isStrong={isStrong} className="p-0 overflow-hidden">
+            <Link
+              href={`/ticker?s=${ticker.ticker}`}
+              className="group block p-5 w-full h-full"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm text-[#475569]">{icon}</span>
+                <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B]">{label}</span>
+              </div>
+              <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors tracking-wide`}>
+                {ticker.ticker}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={getSentimentBadgeClass(ticker.consensus_sentiment)}>
+                  {getSentimentLabel(ticker.consensus_sentiment)}
+                </span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#64748B]">
+                  {ticker.mention_count} mentions
+                </span>
+              </div>
+            </Link>
+          </HolographicCard>
+        )
+      })}
     </div>
   )
 }
 
-// ─── Recent Signals Feed ───
 
-function RecentSignalsFeed({ signals }: { signals: RecentSignal[] }) {
-  if (signals.length === 0) return null
-
-  return (
-    <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 p-6 animate-fade-up stagger-3">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569]">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-[#64748B] font-medium">Latest Signals</span>
-        </div>
-        <span className="text-[10px] text-[#475569]">
-          Last ingested <TimeAgo dateStr={signals[0].videos.extracted_at} />
-        </span>
-      </div>
-
-      <div className="space-y-3">
-        {signals.map((signal, i) => (
-          <div
-            key={`${signal.ticker}-${i}`}
-            className="group flex items-center gap-4 py-2 px-3 -mx-3 rounded-lg hover:bg-[#0A0F1A]/60 transition-colors"
-          >
-            <Link
-              href={`/ticker?s=${signal.ticker}`}
-              className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9] hover:text-[#00D4AA] transition-colors w-16 shrink-0"
-            >
-              {signal.ticker}
-            </Link>
-            <span className={getSentimentBadgeClass(signal.sentiment)}>
-              {getSentimentLabel(signal.sentiment)}
-            </span>
-            <span className="hidden sm:inline text-xs text-[#64748B] truncate flex-1">
-              {signal.videos.channels.channel_name}
-            </span>
-            <Link
-              href={`/video?id=${signal.videos.youtube_video_id}`}
-              className="shrink-0 text-[#475569] hover:text-[#00D4AA] transition-colors"
-              title="View video analysis"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7"/>
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-              </svg>
-            </Link>
-            <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569] shrink-0">
-              <TimeAgo dateStr={signal.videos.extracted_at} />
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ─── Sort & Filter Controls ───
 
@@ -543,128 +515,130 @@ function TickerRow({
 }) {
   const staggerClass = `stagger-${Math.min(index + 1, 10)}`
   const isLowConfidence = row.mention_count < 3
+  
+  const direction = row.consensus_sentiment >= 0.5 ? 'BUY' : row.consensus_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL'
+  const isStrong = Math.abs(row.consensus_sentiment) >= 1.5
 
   return (
-    <Link
-      href={`/ticker?s=${row.ticker}`}
-      className={`
-        group block rounded-xl border p-5 md:p-6 transition-all duration-200
-        ${isTop
-          ? 'border-[#00D4AA]/30 bg-[#141B2D] animate-glow'
-          : isLowConfidence
-            ? 'border-[#1E293B]/60 bg-[#141B2D]/30 hover:border-[#2D3A4F] hover:bg-[#141B2D]'
-            : 'border-[#1E293B] bg-[#141B2D]/60 hover:border-[#2D3A4F] hover:bg-[#141B2D]'
-        }
-        animate-fade-up ${staggerClass}
-      `}
-    >
-      {/* Desktop layout */}
-      <div className="hidden md:grid md:grid-cols-[1.2fr_2fr_auto_auto_auto] md:items-center md:gap-5">
-        {/* Ticker + meta */}
-        <div>
-          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
-            {row.ticker}
-          </span>
-          {row.stock_name && (
-            <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
-          )}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] text-[#64748B]">
-              {row.mention_count} mention{row.mention_count !== 1 ? 's' : ''}
-            </span>
-            <span className="text-[#1E293B]" aria-hidden="true">·</span>
-            <span className="text-[11px] text-[#64748B]">
-              {row.analyst_count} analyst{row.analyst_count !== 1 ? 's' : ''}
-            </span>
-            {isLowConfidence && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1.5 py-0.5">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                  <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                low data
+    <div className={`animate-fade-up ${staggerClass}`}>
+      <HolographicCard
+        direction={direction}
+        isStrong={isStrong || isTop}
+        className={`w-full p-0 overflow-hidden mb-3 ${isLowConfidence ? 'opacity-70 hover:opacity-100' : ''}`}
+      >
+        <Link
+          href={`/ticker?s=${row.ticker}`}
+          className="group block p-5 md:p-6 w-full h-full"
+        >
+          {/* Desktop layout */}
+          <div className="hidden md:grid md:grid-cols-[1.2fr_2fr_auto_auto_auto] md:items-center md:gap-5">
+            {/* Ticker + meta */}
+            <div>
+              <span className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors`}>
+                {row.ticker}
               </span>
-            )}
-          </div>
-        </div>
+              {row.stock_name && (
+                <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
+              )}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[11px] text-[#64748B]">
+                  {row.mention_count} mention{row.mention_count !== 1 ? 's' : ''}
+                </span>
+                <span className="text-[#1E293B]" aria-hidden="true">·</span>
+                <span className="text-[11px] text-[#64748B]">
+                  {row.analyst_count} analyst{row.analyst_count !== 1 ? 's' : ''}
+                </span>
+                {isLowConfidence && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1.5 py-0.5">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                      <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    low data
+                  </span>
+                )}
+              </div>
+            </div>
 
-        {/* Pulse bar + sentiment */}
-        <div className="flex flex-col gap-1.5">
-          <PulseBar value={row.consensus_sentiment} isTop={isTop} />
-          <div className="flex items-center justify-between">
-            <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
-              <SentimentArrow value={row.consensus_sentiment} />
-              {getSentimentLabel(row.consensus_sentiment)}
-            </span>
-            <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B]">
-              {row.consensus_sentiment.toFixed(2)}
-            </span>
-          </div>
-        </div>
+            {/* Pulse bar + sentiment */}
+            <div className="flex flex-col gap-1.5">
+              <PulseBar value={row.consensus_sentiment} isTop={isTop} />
+              <div className="flex items-center justify-between">
+                <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
+                  <SentimentArrow value={row.consensus_sentiment} />
+                  {getSentimentLabel(row.consensus_sentiment)}
+                </span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B]">
+                  {row.consensus_sentiment.toFixed(2)}
+                </span>
+              </div>
+            </div>
 
-        {/* Conviction */}
-        <ConvictionMini level={row.avg_conviction} />
-
-        {/* Target price */}
-        <div className="text-right min-w-[4rem]">
-          {row.avg_target_price !== null ? (
-            <span className="font-[family-name:var(--font-geist-mono)] text-lg font-semibold text-[#F1F5F9]">
-              ${row.avg_target_price.toFixed(0)}
-            </span>
-          ) : (
-            <span className="text-sm text-[#64748B]">—</span>
-          )}
-        </div>
-
-        {/* Arrow */}
-        <div className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transform group-hover:translate-x-0.5 transition-transform">
-            <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-      </div>
-
-      {/* Mobile layout */}
-      <div className="md:hidden space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-[family-name:var(--font-geist-mono)] text-3xl font-bold tracking-wide text-[#F1F5F9]">
-              {row.ticker}
-            </span>
-            {row.stock_name && (
-              <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
-            )}
-            {isLowConfidence && (
-              <span className="ml-2 inline-flex items-center gap-0.5 text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1 py-0.5 align-middle">
-                low data
-              </span>
-            )}
-          </div>
-          {row.avg_target_price !== null && (
-            <span className="font-[family-name:var(--font-geist-mono)] text-xl font-semibold text-[#F1F5F9]">
-              ${row.avg_target_price.toFixed(0)}
-            </span>
-          )}
-        </div>
-
-        <PulseBar value={row.consensus_sentiment} isTop={isTop} />
-
-        <div className="flex items-center justify-between">
-          <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
-            <SentimentArrow value={row.consensus_sentiment} />
-            {getSentimentLabel(row.consensus_sentiment)}
-            <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B] ml-1">
-              {row.consensus_sentiment.toFixed(2)}
-            </span>
-          </span>
-          <div className="flex items-center gap-3">
+            {/* Conviction */}
             <ConvictionMini level={row.avg_conviction} />
-            <span className="text-[11px] text-[#64748B]">
-              {row.analyst_count} analyst{row.analyst_count !== 1 ? 's' : ''}
-            </span>
+
+            {/* Target price */}
+            <div className="text-right min-w-[4rem]">
+              {row.avg_target_price !== null ? (
+                <span className="font-[family-name:var(--font-geist-mono)] text-lg font-semibold text-[#F1F5F9]">
+                  ${row.avg_target_price.toFixed(0)}
+                </span>
+              ) : (
+                <span className="text-sm text-[#64748B]">—</span>
+              )}
+            </div>
+
+            {/* Arrow */}
+            <div className={`text-[#64748B] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors`}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transform group-hover:translate-x-0.5 transition-transform">
+                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </div>
-        </div>
-      </div>
-    </Link>
+
+          {/* Mobile layout */}
+          <div className="md:hidden space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className={`font-[family-name:var(--font-geist-mono)] text-3xl font-bold tracking-wide text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors`}>
+                  {row.ticker}
+                </span>
+                {row.stock_name && (
+                  <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
+                )}
+                {isLowConfidence && (
+                  <span className="mt-1 inline-flex items-center gap-0.5 text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1 py-0.5 align-middle">
+                    low data
+                  </span>
+                )}
+              </div>
+              {row.avg_target_price !== null && (
+                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-semibold text-[#F1F5F9]">
+                  ${row.avg_target_price.toFixed(0)}
+                </span>
+              )}
+            </div>
+
+            <PulseBar value={row.consensus_sentiment} isTop={isTop} />
+
+            <div className="flex items-center justify-between">
+              <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
+                <SentimentArrow value={row.consensus_sentiment} />
+                {getSentimentLabel(row.consensus_sentiment)}
+                <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B] ml-1">
+                  {row.consensus_sentiment.toFixed(2)}
+                </span>
+              </span>
+              <div className="flex items-center gap-3">
+                <ConvictionMini level={row.avg_conviction} />
+                <span className="text-[11px] text-[#64748B]">
+                  {row.analyst_count} analyst{row.analyst_count !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Link>
+      </HolographicCard>
+    </div>
   )
 }
 
@@ -672,7 +646,6 @@ function TickerRow({
 
 export default function Home() {
   const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
-  const [recentSignals, setRecentSignals] = useState<RecentSignal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('mentions')
@@ -684,7 +657,7 @@ export default function Home() {
     async function fetchData() {
       const supabase = createClient()
 
-      const [recsRes, recentRes] = await Promise.all([
+      const [recsRes] = await Promise.all([
         supabase
           .from("recommendations")
           .select(`
@@ -698,31 +671,12 @@ export default function Home() {
               channels!inner(trust_weight)
             )
           `),
-        supabase
-          .from("recommendations")
-          .select(`
-            ticker,
-            stock_name,
-            sentiment,
-            conviction_level,
-            target_price,
-            catalyst_notes,
-            videos!inner(
-              youtube_video_id,
-              published_at,
-              extracted_at,
-              channels!inner(channel_name)
-            )
-          `)
-          .order('videos(extracted_at)', { ascending: false })
-          .limit(5),
       ])
 
       const agg = recsRes.data
         ? aggregateRecommendations(recsRes.data as unknown as RecommendationRow[])
         : []
       setAggregated(agg)
-      setRecentSignals((recentRes.data as unknown as RecentSignal[]) || [])
       setLoading(false)
     }
     fetchData()
@@ -838,8 +792,16 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
-      <div className="max-w-4xl mx-auto">
+    <div className="relative min-h-screen px-4 py-8 md:px-8 md:py-12 bg-[#0A0F1A] overflow-hidden">
+      {/* Noise overlay */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] mix-blend-overlay" 
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
+        }}
+      />
+      
+      <div className="relative z-10 w-full max-w-[1400px] mx-auto">
         {/* Hero Section */}
         <header className="mb-16 md:mb-20 pt-8 md:pt-16">
           <div className="relative flex flex-col items-center mb-8 md:mb-10">
@@ -874,9 +836,12 @@ export default function Home() {
             </a>
           </div>
 
-          <div className="text-center animate-hero-rise" style={{ animationDelay: '900ms' }}>
-            <p className="text-xl md:text-2xl text-[#8B95A8] font-light leading-relaxed">
-              Every analyst. One signal.
+          <div className="text-center animate-hero-rise flex flex-col items-center gap-4 mt-2" style={{ animationDelay: '900ms' }}>
+            <h2 className="text-2xl md:text-4xl font-medium tracking-tight text-[#E2E8F0]">
+              Every stock analyst. One clear signal.
+            </h2>
+            <p className="text-lg md:text-xl text-[#8B95A8] font-light leading-relaxed max-w-2xl">
+              Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.
             </p>
           </div>
 
@@ -902,12 +867,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Recent Signals */}
-        {recentSignals.length > 0 && (
-          <div className="mb-10">
-            <RecentSignalsFeed signals={recentSignals} />
-          </div>
-        )}
 
         {/* Separator before ticker list */}
         {aggregated.length > 0 && (

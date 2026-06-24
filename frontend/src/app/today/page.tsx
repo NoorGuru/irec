@@ -25,6 +25,7 @@ function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 import HolographicCard from '@/components/HolographicCard'
 import TextScramble from '@/components/TextScramble'
+import EKGHeartbeat from '@/components/EKGHeartbeat'
 
 // --- Types ---
 
@@ -141,71 +142,7 @@ function AuraReactor({ score, direction }: { score: number; direction: 'BUY' | '
   )
 }
 
-// --- Animated SVG EKG/Heartbeat Wave ---
 
-function EKGHeartbeat({ overallMood, direction }: { overallMood: string; direction: 'BUY' | 'SELL' }) {
-  const isBuy = direction === 'BUY'
-  const strokeColor = isBuy ? '#00D4AA' : '#FF4D6A'
-
-  // Heart rate speed based on sentiment mood
-  let duration = '2s'
-  if (overallMood === 'Bullish' || overallMood.includes('Bull')) {
-    duration = '1.3s'
-  } else if (overallMood === 'Bearish' || overallMood.includes('Bear')) {
-    duration = '3.5s'
-  }
-
-  return (
-    <div className="absolute inset-x-0 bottom-0 h-20 overflow-hidden pointer-events-none opacity-25 z-0">
-      <svg className="w-full h-full" viewBox="0 0 1000 100" preserveAspectRatio="none">
-        <defs>
-          <pattern id="ekgGrid" width="30" height="30" patternUnits="userSpaceOnUse">
-            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#1E293B" strokeWidth="0.5" opacity="0.4" />
-          </pattern>
-          <linearGradient id="ekgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity="0" />
-            <stop offset="35%" stopColor={strokeColor} stopOpacity="0.1" />
-            <stop offset="48%" stopColor={strokeColor} stopOpacity="0.4" />
-            <stop offset="50%" stopColor={strokeColor} stopOpacity="1" />
-            <stop offset="52%" stopColor={strokeColor} stopOpacity="0.4" />
-            <stop offset="65%" stopColor={strokeColor} stopOpacity="0.1" />
-            <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-
-        {/* Grid lines */}
-        <rect width="100%" height="100%" fill="url(#ekgGrid)" />
-
-        {/* Static Background Guide */}
-        <path
-          d="M 0 50 L 150 50 L 160 40 L 170 60 L 180 15 L 195 90 L 205 45 L 215 53 L 230 50 L 450 50 L 460 40 L 470 60 L 480 15 L 495 90 L 505 45 L 515 53 L 530 50 L 750 50 L 760 40 L 770 60 L 780 15 L 795 90 L 805 45 L 815 53 L 830 50 L 1000 50"
-          fill="none"
-          stroke="#1E293B"
-          strokeWidth="1.5"
-          opacity="0.3"
-        />
-
-        {/* Animated Heartbeat scanning glow */}
-        <motion.path
-          d="M 0 50 L 150 50 L 160 40 L 170 60 L 180 15 L 195 90 L 205 45 L 215 53 L 230 50 L 450 50 L 460 40 L 470 60 L 480 15 L 495 90 L 505 45 L 515 53 L 530 50 L 750 50 L 760 40 L 770 60 L 780 15 L 795 90 L 805 45 L 815 53 L 830 50 L 1000 50"
-          fill="none"
-          stroke="url(#ekgGradient)"
-          strokeWidth="2.5"
-          strokeDasharray="1000"
-          animate={{ strokeDashoffset: [1000, -1000] }}
-          transition={{
-            repeat: Infinity,
-            duration: parseFloat(duration),
-            ease: "linear",
-          }}
-          style={{
-            filter: `drop-shadow(0 0 6px ${strokeColor})`,
-          }}
-        />
-      </svg>
-    </div>
-  )
-}
 
 // --- HUD PlayCard Component ---
 
@@ -745,6 +682,7 @@ export default function TodayPlaysPage() {
     async function fetchPlays() {
       const cacheKey = `aura_today_plays_${sortBy}`
       let hasCache = false
+      let localEtag: string | null = null
 
       try {
         const cached = localStorage.getItem(cacheKey)
@@ -755,6 +693,9 @@ export default function TodayPlaysPage() {
               setData(parsed)
               setLoading(false)
               hasCache = true
+              if (parsed.generated_at) {
+                localEtag = parsed.generated_at
+              }
             }
           }
         }
@@ -771,7 +712,17 @@ export default function TodayPlaysPage() {
 
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-        const res = await fetch(`${backendUrl}/api/v1/today?strategy=${sortBy}`)
+        
+        const headers: HeadersInit = {}
+        if (localEtag) {
+          headers['If-None-Match'] = `W/"${localEtag}"`
+        }
+        
+        const res = await fetch(`${backendUrl}/api/v1/today?strategy=${sortBy}`, { headers })
+
+        if (res.status === 304) {
+          return // Cache is perfectly fresh, no need to parse or update
+        }
 
         if (!res.ok) {
           throw new Error(`Server status ${res.status}`)
@@ -942,7 +893,7 @@ export default function TodayPlaysPage() {
               <div className="flex items-center gap-2 mb-2">
                 <Activity className={`w-3.5 h-3.5 ${activeColorText} animate-pulse`} />
                 <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
-                  Consensus Pulse Rate
+                  Market Pulse
                 </h1>
               </div>
 

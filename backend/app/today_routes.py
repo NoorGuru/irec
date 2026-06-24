@@ -10,7 +10,7 @@ import statistics
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from app.database import _get_client, get_cache, set_cache, get_latest_extraction_time
@@ -94,6 +94,8 @@ async def clear_cache():
 
 @router.get("/today", response_model=TodayPlaysResponse)
 async def get_today_plays(
+    request: Request,
+    response: Response,
     days: int = Query(30, ge=1, le=90, description="Window of recommendations in days"),
     strategy: str = Query("aura_score", description="Filtering and sorting strategy")
 ):
@@ -116,7 +118,14 @@ async def get_today_plays(
             # If cache is newer than or equal to latest video extraction, use cache
             if cache_updated >= latest_ext_dt:
                 logger.info("Serving Today's Plays from database cache")
-                return cached_data["payload"]
+                payload = cached_data["payload"]
+                
+                etag = f'W/"{payload.get("generated_at")}"'
+                if request.headers.get("if-none-match") == etag:
+                    return Response(status_code=304)
+                    
+                response.headers["ETag"] = etag
+                return payload
 
         # Cache miss or stale -> calculate
         client = _get_client()
@@ -436,6 +445,8 @@ async def get_today_plays(
 
         # Save to database cache
         await set_cache(cache_key, result.dict())
+        
+        response.headers["ETag"] = f'W/"{now.isoformat()}"'
 
         return result
 
