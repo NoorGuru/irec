@@ -23,16 +23,7 @@ export const metadata: Metadata = {
     title: "Aura — Every stock analyst. One clear signal.",
     description: "Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.",
     url: "https://aura.bynoor.io",
-    type: "website",
-    images: [
-      {
-        url: '/og.png',
-        width: 1200,
-        height: 630,
-        alt: 'Aura — Every stock analyst. One clear signal.',
-        type: 'image/png',
-      }
-    ]
+    type: "website"
   }
 };
 
