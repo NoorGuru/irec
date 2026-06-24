@@ -265,11 +265,11 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
           </div>
           
           <div className="mt-3">
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <span className={`text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter ${moodConfig.color} transition-all duration-1000`}>
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter ${moodConfig.color} transition-all duration-1000 leading-none`}>
                 {moodConfig.title}
               </span>
-              <span className="text-xs text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-2 py-1 rounded">
+              <span className="text-sm md:text-lg text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-4 py-2 md:px-5 md:py-2.5 rounded-xl">
                 {moodConfig.scoreText}
               </span>
             </div>
@@ -279,21 +279,22 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl p-4 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-inner min-w-[200px]">
-           <div className="flex justify-between text-[9px] uppercase tracking-wider text-[#64748B] mb-1">
+        <div className="flex flex-col gap-4 md:gap-5 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-3xl p-6 md:p-8 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full md:w-[450px] lg:w-[500px]">
+           <div className="flex justify-between text-[11px] md:text-sm uppercase tracking-widest text-[#64748B] mb-1">
              <span>Bullish</span>
              <span>Bearish</span>
            </div>
-           <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#1E293B]">
-             {buckets.strongBuy > 0 && <div className="h-full bg-[#00FFD0]" style={{ width: `${(buckets.strongBuy / total) * 100}%` }} />}
-             {buckets.buy > 0 && <div className="h-full bg-[#00D4AA]" style={{ width: `${(buckets.buy / total) * 100}%` }} />}
-             {buckets.neutral > 0 && <div className="h-full bg-[#475569]" style={{ width: `${(buckets.neutral / total) * 100}%` }} />}
-             {buckets.sell > 0 && <div className="h-full bg-[#FF4D6A]" style={{ width: `${(buckets.sell / total) * 100}%` }} />}
-             {buckets.strongSell > 0 && <div className="h-full bg-[#FF1744]" style={{ width: `${(buckets.strongSell / total) * 100}%` }} />}
+           <div className="flex w-full h-6 md:h-8 rounded-full overflow-hidden bg-[#1E293B] shadow-inner">
+             {buckets.strongBuy > 0 && <div className="h-full bg-[#00FFD0] transition-all duration-1000" style={{ width: `${(buckets.strongBuy / total) * 100}%` }} />}
+             {buckets.buy > 0 && <div className="h-full bg-[#00D4AA] transition-all duration-1000" style={{ width: `${(buckets.buy / total) * 100}%` }} />}
+             {buckets.neutral > 0 && <div className="h-full bg-[#475569] transition-all duration-1000" style={{ width: `${(buckets.neutral / total) * 100}%` }} />}
+             {buckets.sell > 0 && <div className="h-full bg-[#FF4D6A] transition-all duration-1000" style={{ width: `${(buckets.sell / total) * 100}%` }} />}
+             {buckets.strongSell > 0 && <div className="h-full bg-[#FF1744] transition-all duration-1000" style={{ width: `${(buckets.strongSell / total) * 100}%` }} />}
            </div>
-           <div className="flex justify-between text-[10px] text-[#64748B] mt-1">
-             <span className="text-[#00D4AA] font-bold">{buckets.strongBuy + buckets.buy} signals</span>
-             <span className="text-[#FF4D6A] font-bold">{buckets.sell + buckets.strongSell} signals</span>
+           <div className="flex justify-between items-center text-sm md:text-base mt-2">
+             <span className="text-[#00D4AA] font-black tracking-wide">{buckets.strongBuy + buckets.buy} <span className="text-[#64748B] font-bold text-xs md:text-sm">signals</span></span>
+             <span className="text-[#8B95A8] font-black tracking-wide">{buckets.neutral} <span className="text-[#64748B] font-bold text-xs md:text-sm">neutral</span></span>
+             <span className="text-[#FF4D6A] font-black tracking-wide">{buckets.sell + buckets.strongSell} <span className="text-[#64748B] font-bold text-xs md:text-sm">signals</span></span>
            </div>
         </div>
       </div>
@@ -337,30 +338,37 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
     <div className={`grid gap-3 ${cards.length === 3 ? 'md:grid-cols-3' : cards.length === 2 ? 'md:grid-cols-2' : ''} animate-fade-up stagger-2`}>
       {cards.map(({ label, icon, ticker, accent }) => {
         const direction = ticker.consensus_sentiment >= 0.5 ? 'BUY' : ticker.consensus_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL'
-        const isStrong = Math.abs(ticker.consensus_sentiment) >= 1.5
+        const borderGlowClass = direction === 'BUY' 
+          ? 'hover:border-[#00D4AA]/50 hover:shadow-[0_0_15px_-3px_rgba(0,212,170,0.15)]' 
+          : direction === 'SELL' 
+            ? 'hover:border-[#FF4D6A]/50 hover:shadow-[0_0_15px_-3px_rgba(255,77,106,0.15)]'
+            : 'hover:border-[#8B95A8]/50 hover:shadow-[0_0_15px_-3px_rgba(139,149,168,0.15)]'
+
         return (
-          <HolographicCard key={ticker.ticker} direction={direction} isStrong={isStrong} className="p-0 overflow-hidden">
-            <Link
-              href={`/ticker?s=${ticker.ticker}`}
-              className="group block p-5 w-full h-full"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm text-[#475569]">{icon}</span>
-                <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B]">{label}</span>
-              </div>
-              <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors tracking-wide`}>
-                {ticker.ticker}
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={getSentimentBadgeClass(ticker.consensus_sentiment)}>
-                  {getSentimentLabel(ticker.consensus_sentiment)}
-                </span>
-                <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#64748B]">
-                  {ticker.mention_count} mentions
-                </span>
-              </div>
-            </Link>
-          </HolographicCard>
+          <Link
+            key={ticker.ticker}
+            href={`/ticker?s=${ticker.ticker}`}
+            className={`group block p-5 rounded-2xl border ${accent} bg-[#141B2D]/40 ${borderGlowClass} transition-all duration-300 relative overflow-hidden`}
+          >
+            {/* Subtle glow highlight on hover */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03)_0%,transparent_70%)]" />
+
+            <div className="flex items-center gap-2 mb-3 relative z-10">
+              <span className="text-sm text-[#475569]">{icon}</span>
+              <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B]">{label}</span>
+            </div>
+            <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors tracking-wide relative z-10`}>
+              {ticker.ticker}
+            </p>
+            <div className="mt-2 flex items-center gap-2 relative z-10">
+              <span className={getSentimentBadgeClass(ticker.consensus_sentiment)}>
+                {getSentimentLabel(ticker.consensus_sentiment)}
+              </span>
+              <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#64748B]">
+                {ticker.mention_count} mentions
+              </span>
+            </div>
+          </Link>
         )
       })}
     </div>
@@ -517,127 +525,133 @@ function TickerRow({
   const isLowConfidence = row.mention_count < 3
   
   const direction = row.consensus_sentiment >= 0.5 ? 'BUY' : row.consensus_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL'
-  const isStrong = Math.abs(row.consensus_sentiment) >= 1.5
+
+  const borderGlowClass = direction === 'BUY' 
+    ? 'border-l-[#00D4AA] group-hover:shadow-[-4px_0_15px_-3px_rgba(0,212,170,0.3)]' 
+    : direction === 'SELL' 
+      ? 'border-l-[#FF4D6A] group-hover:shadow-[-4px_0_15px_-3px_rgba(255,77,106,0.3)]'
+      : 'border-l-[#8B95A8] group-hover:shadow-[-4px_0_15px_-3px_rgba(139,149,168,0.3)]'
+
+  const textHoverClass = direction === 'BUY' ? 'group-hover:text-[#00D4AA]' : direction === 'SELL' ? 'group-hover:text-[#FF4D6A]' : 'group-hover:text-[#8B95A8]'
 
   return (
     <div className={`animate-fade-up ${staggerClass}`}>
-      <HolographicCard
-        direction={direction}
-        isStrong={isStrong || isTop}
-        className={`w-full p-0 overflow-hidden mb-3 ${isLowConfidence ? 'opacity-70 hover:opacity-100' : ''}`}
+      <Link
+        href={`/ticker?s=${row.ticker}`}
+        className={`
+          group block relative w-full mb-3 rounded-r-xl rounded-l-sm bg-[#141B2D]/40 hover:bg-[#1E293B]/40 
+          border border-transparent border-l-4 ${borderGlowClass}
+          transition-all duration-300
+          ${isLowConfidence ? 'opacity-70 hover:opacity-100' : ''}
+          ${isTop ? 'bg-[#141B2D]/60' : ''}
+        `}
       >
-        <Link
-          href={`/ticker?s=${row.ticker}`}
-          className="group block p-5 md:p-6 w-full h-full"
-        >
-          {/* Desktop layout */}
-          <div className="hidden md:grid md:grid-cols-[1.2fr_2fr_auto_auto_auto] md:items-center md:gap-5">
-            {/* Ticker + meta */}
-            <div>
-              <span className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors`}>
+        {/* Inner subtle top/bottom border for definition */}
+        <div className="absolute inset-0 rounded-r-xl border-y border-r border-[#1E293B]/50 pointer-events-none transition-colors group-hover:border-white/5" />
+        
+        <div className="p-4 md:p-5 w-full">
+          {/* Desktop Layout - Dense Data Row */}
+          <div className="hidden md:grid md:grid-cols-[1.5fr_2fr_1.5fr_1fr_auto] md:items-center md:gap-6 relative z-10">
+            {/* 1. Ticker & Name */}
+            <div className="flex items-baseline gap-3 overflow-hidden">
+              <span className={`font-[family-name:var(--font-geist-mono)] text-xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
                 {row.ticker}
               </span>
-              {row.stock_name && (
-                <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
-              )}
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[11px] text-[#64748B]">
-                  {row.mention_count} mention{row.mention_count !== 1 ? 's' : ''}
-                </span>
-                <span className="text-[#1E293B]" aria-hidden="true">·</span>
-                <span className="text-[11px] text-[#64748B]">
-                  {row.analyst_count} analyst{row.analyst_count !== 1 ? 's' : ''}
-                </span>
-                {isLowConfidence && (
-                  <span className="inline-flex items-center gap-0.5 text-[10px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1.5 py-0.5">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                      <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    low data
-                  </span>
-                )}
-              </div>
+              <span className="text-xs text-[#64748B] truncate max-w-[140px]">{row.stock_name}</span>
             </div>
 
-            {/* Pulse bar + sentiment */}
-            <div className="flex flex-col gap-1.5">
-              <PulseBar value={row.consensus_sentiment} isTop={isTop} />
-              <div className="flex items-center justify-between">
+            {/* 2. Pulse Bar & Sentiment */}
+            <div className="flex flex-col justify-center max-w-[200px] w-full">
+              <div className="flex justify-between items-end mb-1">
                 <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
-                  <SentimentArrow value={row.consensus_sentiment} />
                   {getSentimentLabel(row.consensus_sentiment)}
                 </span>
-                <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B]">
+                <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B]">
                   {row.consensus_sentiment.toFixed(2)}
                 </span>
               </div>
+              <PulseBar value={row.consensus_sentiment} isTop={isTop} />
             </div>
 
-            {/* Conviction */}
-            <ConvictionMini level={row.avg_conviction} />
+            {/* 3. Mentions & Analysts (Density) */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#8B95A8] font-medium w-16">Mentions</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9]">{row.mention_count}</span>
+                {isLowConfidence && (
+                  <span className="ml-1 inline-flex items-center text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1 py-0.5 rounded">low data</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#64748B] font-medium w-16">Analysts</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#8B95A8]">{row.analyst_count}</span>
+              </div>
+            </div>
 
-            {/* Target price */}
-            <div className="text-right min-w-[4rem]">
+            {/* 4. Conviction & Target */}
+            <div className="flex flex-col justify-center gap-1.5 border-l border-[#1E293B]/60 pl-6 h-full">
+              <ConvictionMini level={row.avg_conviction} />
               {row.avg_target_price !== null ? (
-                <span className="font-[family-name:var(--font-geist-mono)] text-lg font-semibold text-[#F1F5F9]">
-                  ${row.avg_target_price.toFixed(0)}
-                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[10px] text-[#64748B] uppercase tracking-wider">PT</span>
+                  <span className="font-[family-name:var(--font-geist-mono)] text-sm font-semibold text-[#F1F5F9]">
+                    ${row.avg_target_price.toFixed(0)}
+                  </span>
+                </div>
               ) : (
-                <span className="text-sm text-[#64748B]">—</span>
+                <span className="text-xs text-[#64748B]">No Target</span>
               )}
             </div>
 
-            {/* Arrow */}
-            <div className={`text-[#64748B] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors`}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="transform group-hover:translate-x-0.5 transition-transform">
-                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* 5. Chevron */}
+            <div className={`text-[#64748B] ${textHoverClass} transition-colors justify-self-end`}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover:translate-x-1 transition-transform">
+                <path d="M9 18l6-6-6-6" />
               </svg>
             </div>
           </div>
 
           {/* Mobile layout */}
-          <div className="md:hidden space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="md:hidden flex flex-col gap-3 relative z-10">
+            <div className="flex items-start justify-between">
               <div>
-                <span className={`font-[family-name:var(--font-geist-mono)] text-3xl font-bold tracking-wide text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors`}>
+                <span className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
                   {row.ticker}
                 </span>
                 {row.stock_name && (
-                  <p className="text-xs text-[#64748B] mt-0.5">{row.stock_name}</p>
+                  <p className="text-xs text-[#64748B] mt-0.5 truncate max-w-[200px]">{row.stock_name}</p>
                 )}
                 {isLowConfidence && (
-                  <span className="mt-1 inline-flex items-center gap-0.5 text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 border border-[#F59E0B]/10 rounded px-1 py-0.5 align-middle">
+                  <span className="mt-1 inline-flex items-center text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1 py-0.5 rounded">
                     low data
                   </span>
                 )}
               </div>
-              {row.avg_target_price !== null && (
-                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-semibold text-[#F1F5F9]">
-                  ${row.avg_target_price.toFixed(0)}
-                </span>
-              )}
+              <div className="text-right flex flex-col items-end gap-1">
+                {row.avg_target_price !== null && (
+                  <div className="font-[family-name:var(--font-geist-mono)] text-lg font-semibold text-[#F1F5F9]">
+                    ${row.avg_target_price.toFixed(0)}
+                  </div>
+                )}
+                <ConvictionMini level={row.avg_conviction} />
+              </div>
             </div>
 
-            <PulseBar value={row.consensus_sentiment} isTop={isTop} />
-
-            <div className="flex items-center justify-between">
-              <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
-                <SentimentArrow value={row.consensus_sentiment} />
-                {getSentimentLabel(row.consensus_sentiment)}
-                <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B] ml-1">
-                  {row.consensus_sentiment.toFixed(2)}
+            <div className="flex flex-col gap-1.5 mt-2">
+              <PulseBar value={row.consensus_sentiment} isTop={isTop} />
+              <div className="flex items-center justify-between">
+                <span className={getSentimentBadgeClass(row.consensus_sentiment)}>
+                  {getSentimentLabel(row.consensus_sentiment)}
                 </span>
-              </span>
-              <div className="flex items-center gap-3">
-                <ConvictionMini level={row.avg_conviction} />
-                <span className="text-[11px] text-[#64748B]">
-                  {row.analyst_count} analyst{row.analyst_count !== 1 ? 's' : ''}
-                </span>
+                <div className="flex gap-3 text-[10px] text-[#64748B]">
+                  <span>{row.mention_count} mentions</span>
+                  <span>{row.analyst_count} analysts</span>
+                </div>
               </div>
             </div>
           </div>
-        </Link>
-      </HolographicCard>
+        </div>
+      </Link>
     </div>
   )
 }

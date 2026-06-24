@@ -80,16 +80,10 @@ export default async function Image() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              textShadow: '0px 30px 60px rgba(0,0,0,0.7)',
+              color: '#00FFD0',
             }}
           >
-            <div
-              style={{
-                backgroundImage: 'linear-gradient(135deg, #00FFD0 0%, #00D4AA 50%, #0088AA 100%)',
-                backgroundClip: 'text',
-                color: 'transparent',
-              }}
-            >
+            <div>
               AURA
             </div>
           </div>
@@ -119,6 +113,21 @@ export default async function Image() {
             >
               Every stock analyst. One clear signal.
             </span>
+          </div>
+
+          {/* Sub-headline */}
+          <div
+            style={{
+              marginTop: 40,
+              fontSize: 32,
+              color: '#8B95A8',
+              fontWeight: 400,
+              textAlign: 'center',
+              maxWidth: '900px',
+              lineHeight: 1.4,
+            }}
+          >
+            Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.
           </div>
         </div>
       </div>

@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://noorguru.github.io/irec'),
   title: "Aura — Every stock analyst. One clear signal.",
   description: "Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.",
+  openGraph: {
+    siteName: "Aura",
+    title: "Aura — Every stock analyst. One clear signal.",
+    description: "Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.",
+  }
 };
 
 export default function RootLayout({

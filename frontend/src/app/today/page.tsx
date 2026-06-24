@@ -913,11 +913,11 @@ export default function TodayPlaysPage() {
                 </div>
               ) : (
                 <div className="mt-3">
-                  <div className="flex items-baseline gap-3 flex-wrap">
-                    <span className={`text-3xl md:text-5xl lg:text-6xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000`}>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000 leading-none`}>
                       {moodConfig?.title}
                     </span>
-                    <span className="text-xs text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-2 py-1 rounded">
+                    <span className="text-sm md:text-lg text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-4 py-2 md:px-5 md:py-2.5 rounded-xl">
                       {moodConfig?.scoreText}
                     </span>
                   </div>
@@ -930,23 +930,20 @@ export default function TodayPlaysPage() {
 
             {/* Quick Metrics Bar */}
             {!loading && !error && data && (
-              <div className="flex items-center gap-5 divide-x divide-[#1E293B]/60 rounded-xl border border-[#1E293B] bg-[#0A0F1A]/80 p-4 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-inner">
-                <div className="flex flex-col">
-                  <span className="text-xl font-black text-[#00D4AA] tracking-wide">{buyPlays.length}</span>
-                  <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Buys</span>
+              <div className="flex items-center justify-between divide-x divide-[#1E293B]/60 rounded-3xl border border-[#1E293B] bg-[#0A0F1A]/80 p-6 md:p-8 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full md:w-[450px] lg:w-[500px]">
+                <div className="flex flex-col flex-1 items-center">
+                  <span className="text-4xl md:text-5xl font-black text-[#00D4AA] tracking-wide">{buyPlays.length}</span>
+                  <span className="text-xs md:text-sm uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Signals</span>
                 </div>
-                <div className="flex flex-col pl-5">
-                  <span className="text-xl font-black text-[#FF4D6A] tracking-wide">{sellPlays.length}</span>
-                  <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Sells</span>
+                <div className="flex flex-col flex-1 items-center">
+                  <span className="text-4xl md:text-5xl font-black text-[#FF4D6A] tracking-wide">{sellPlays.length}</span>
+                  <span className="text-xs md:text-sm uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Signals</span>
                 </div>
-                <div className="flex flex-col pl-5">
-                  <span className="text-xs text-[#8B95A8] font-bold">
-                    {new Date(data.generated_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                <div className="flex flex-col flex-1 items-center">
+                  <span className="text-xl md:text-2xl text-[#8B95A8] font-black tracking-wide">
+                    {new Date(data.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
-                  <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Sync Clock</span>
+                  <span className="text-xs md:text-sm uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sync Clock</span>
                 </div>
               </div>
             )}
