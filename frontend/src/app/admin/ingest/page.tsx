@@ -193,7 +193,6 @@ function JobCard({
   const [workerUrl, setWorkerUrl] = useState<string | null>(null)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const hasStartedRef = useRef(false)
 
   const handleTranscriptChange = useCallback((text: string) => {
     let cleanText = text
@@ -411,6 +410,8 @@ function JobCard({
         return prev
       })
     } catch (e: any) {
+      if (abortControllerRef.current !== controller) return // Superceded by a newer run
+      
       if (e.name === 'AbortError') {
         setPipelineError('Ingestion cancelled by user.')
         setTotalCompletedAt(Date.now())
@@ -422,16 +423,15 @@ function JobCard({
         setTotalCompletedAt(Date.now())
       }
     } finally {
-      setIsLoading(false)
-      setAbortController(null)
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false)
+        setAbortController(null)
+      }
     }
   }
 
   // start on mount
   useEffect(() => {
-    if (hasStartedRef.current) return
-    hasStartedRef.current = true
-
     startExtraction(config.mode, config.manualTranscriptText)
     
     return () => {

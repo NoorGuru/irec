@@ -307,66 +307,113 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
 function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
   if (aggregated.length < 2) return null
 
-  // Only consider tickers with 2+ mentions for spotlights
-  const qualified = aggregated.filter(t => t.mention_count >= 2)
+  // Dynamic qualification
+  let qualified = aggregated.filter(t => t.mention_count >= 4)
+  if (qualified.length < 3) {
+    qualified = aggregated.filter(t => t.mention_count >= 3)
+  }
+  if (qualified.length < 3) {
+    qualified = aggregated.filter(t => t.mention_count >= 2)
+  }
   if (qualified.length === 0) return null
 
-  const highestConviction = [...qualified].sort((a, b) => b.avg_conviction - a.avg_conviction)[0]
-  const mostMentioned = qualified[0] // already sorted by mentions
-  const mostBearish = [...qualified].sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
+  const bullishGroup = qualified.filter(t => t.consensus_sentiment > 0.5)
+  const bearishGroup = qualified.filter(t => t.consensus_sentiment < -0.5)
+
+  // Categories
+  const highestConviction = [...bullishGroup].sort((a, b) => b.avg_conviction - a.avg_conviction)[0]
+  const trendingNow = [...qualified].sort((a, b) => b.mention_count - a.mention_count)[0]
+  const highAgreement = [...bullishGroup].sort((a, b) => b.analyst_count - a.analyst_count)[0]
+  const bearTarget = [...bearishGroup].sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
 
   // Avoid duplicates
-  const cards: { label: string; icon: string; ticker: AggregatedTicker; accent: string }[] = []
+  const cards: { label: string; icon: string; ticker: AggregatedTicker; glowTheme: string; textTheme: string; gradient: string }[] = []
   const seen = new Set<string>()
 
   if (highestConviction && !seen.has(highestConviction.ticker)) {
-    cards.push({ label: 'Highest Conviction', icon: '◎', ticker: highestConviction, accent: 'border-[#00D4AA]/20' })
+    cards.push({ 
+      label: 'Highest Conviction', 
+      icon: '◎', 
+      ticker: highestConviction, 
+      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(0,212,170,0.3)] hover:border-[#00D4AA]/40',
+      textTheme: 'text-[#00D4AA]',
+      gradient: 'from-[#00D4AA]/10 via-transparent to-transparent'
+    })
     seen.add(highestConviction.ticker)
   }
-  if (mostMentioned && !seen.has(mostMentioned.ticker)) {
-    cards.push({ label: 'Most Discussed', icon: '◉', ticker: mostMentioned, accent: 'border-[#8B95A8]/20' })
-    seen.add(mostMentioned.ticker)
+  if (trendingNow && !seen.has(trendingNow.ticker)) {
+    cards.push({ 
+      label: 'Trending Now', 
+      icon: '◉', 
+      ticker: trendingNow, 
+      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(241,245,249,0.2)] hover:border-[#F1F5F9]/30',
+      textTheme: 'text-[#F1F5F9]',
+      gradient: 'from-[#F1F5F9]/5 via-transparent to-transparent'
+    })
+    seen.add(trendingNow.ticker)
   }
-  if (mostBearish && mostBearish.consensus_sentiment < 0 && !seen.has(mostBearish.ticker)) {
-    cards.push({ label: 'Most Bearish', icon: '◌', ticker: mostBearish, accent: 'border-[#FF4D6A]/20' })
-    seen.add(mostBearish.ticker)
+  if (highAgreement && !seen.has(highAgreement.ticker)) {
+    cards.push({ 
+      label: 'High Agreement', 
+      icon: '◈', 
+      ticker: highAgreement, 
+      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(0,255,208,0.2)] hover:border-[#00FFD0]/30',
+      textTheme: 'text-[#00FFD0]',
+      gradient: 'from-[#00FFD0]/10 via-transparent to-transparent'
+    })
+    seen.add(highAgreement.ticker)
+  }
+  if (bearTarget && !seen.has(bearTarget.ticker)) {
+    cards.push({ 
+      label: 'Bear Target', 
+      icon: '◌', 
+      ticker: bearTarget, 
+      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(255,77,106,0.3)] hover:border-[#FF4D6A]/40',
+      textTheme: 'text-[#FF4D6A]',
+      gradient: 'from-[#FF4D6A]/10 via-transparent to-transparent'
+    })
+    seen.add(bearTarget.ticker)
   }
 
+  // If we couldn't find 4, we just render what we have.
   if (cards.length === 0) return null
 
-  return (
-    <div className={`grid gap-3 ${cards.length === 3 ? 'md:grid-cols-3' : cards.length === 2 ? 'md:grid-cols-2' : ''} animate-fade-up stagger-2`}>
-      {cards.map(({ label, icon, ticker, accent }) => {
-        const direction = ticker.consensus_sentiment >= 0.5 ? 'BUY' : ticker.consensus_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL'
-        const borderGlowClass = direction === 'BUY' 
-          ? 'hover:border-[#00D4AA]/50 hover:shadow-[0_0_15px_-3px_rgba(0,212,170,0.15)]' 
-          : direction === 'SELL' 
-            ? 'hover:border-[#FF4D6A]/50 hover:shadow-[0_0_15px_-3px_rgba(255,77,106,0.15)]'
-            : 'hover:border-[#8B95A8]/50 hover:shadow-[0_0_15px_-3px_rgba(139,149,168,0.15)]'
+  // Ensure grid fits beautifully
+  const gridCols = cards.length === 4 ? 'lg:grid-cols-4 md:grid-cols-2' : cards.length === 3 ? 'lg:grid-cols-3 md:grid-cols-3' : 'md:grid-cols-2'
 
+  return (
+    <div className={`grid gap-4 ${gridCols} animate-fade-up stagger-2 mb-8`}>
+      {cards.map(({ label, icon, ticker, glowTheme, textTheme, gradient }) => {
         return (
           <Link
             key={ticker.ticker}
             href={`/ticker?s=${ticker.ticker}`}
-            className={`group block p-5 rounded-2xl border ${accent} bg-[#141B2D]/40 ${borderGlowClass} transition-all duration-300 relative overflow-hidden`}
+            className={`group relative flex flex-col p-5 rounded-2xl bg-[#141B2D]/40 backdrop-blur-md border border-[#ffffff]/5 ${glowTheme} transition-all duration-500 ease-out hover:-translate-y-1 overflow-hidden`}
           >
-            {/* Subtle glow highlight on hover */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03)_0%,transparent_70%)]" />
-
+            {/* Soft Ambient Mesh Background */}
+            <div className={`absolute -inset-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] ${gradient} pointer-events-none`} />
+            
             <div className="flex items-center gap-2 mb-3 relative z-10">
-              <span className="text-sm text-[#475569]">{icon}</span>
-              <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B]">{label}</span>
+              <span className={`text-sm ${textTheme} opacity-80 group-hover:opacity-100 transition-opacity`}>{icon}</span>
+              <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B] font-medium">{label}</span>
             </div>
-            <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9] group-hover:${direction === 'BUY' ? 'text-[#00D4AA]' : direction === 'SELL' ? 'text-[#FF4D6A]' : 'text-[#8B95A8]'} transition-colors tracking-wide relative z-10`}>
-              {ticker.ticker}
-            </p>
-            <div className="mt-2 flex items-center gap-2 relative z-10">
+
+            <div className="flex items-baseline gap-3 mb-2 relative z-10">
+              <h2 className={`font-[family-name:var(--font-geist-mono)] text-3xl font-bold ${textTheme} tracking-wide group-hover:scale-105 transform origin-left transition-transform duration-500`}>
+                {ticker.ticker}
+              </h2>
+            </div>
+            
+            <div className="flex items-center gap-3 mt-auto pt-2 relative z-10">
               <span className={getSentimentBadgeClass(ticker.consensus_sentiment)}>
                 {getSentimentLabel(ticker.consensus_sentiment)}
               </span>
-              <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#64748B]">
-                {ticker.mention_count} mentions
-              </span>
+              <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                <span className="w-1 h-1 rounded-full bg-[#64748B]" />
+                <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8]">
+                  {ticker.mention_count} Mentions
+                </span>
+              </div>
             </div>
           </Link>
         )
