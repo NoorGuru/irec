@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://aura.bynoor.io'),
-  title: "Aura — Every stock analyst. One clear signal.",
+  title: "Aura | Every stock analyst. One clear signal.",
   description: "Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.",
   openGraph: {
     siteName: "Aura",
-    title: "Aura — Every stock analyst. One clear signal.",
+    title: "Aura | Every stock analyst. One clear signal.",
     description: "Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.",
     url: "https://aura.bynoor.io",
     type: "website",
@@ -29,14 +29,14 @@ export const metadata: Metadata = {
         url: "https://aura.bynoor.io/og.png",
         width: 1200,
         height: 630,
-        alt: "Aura — Every stock analyst. One clear signal.",
+        alt: "Aura | Every stock analyst. One clear signal.",
         type: "image/png"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aura — Every stock analyst. One clear signal.",
+    title: "Aura | Every stock analyst. One clear signal.",
     description: "Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.",
     images: ["https://aura.bynoor.io/og.png"]
   }
