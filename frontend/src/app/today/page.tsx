@@ -600,7 +600,7 @@ export default function TodayPlaysPage() {
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
-  const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'stream'>('stream')
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
 
@@ -632,6 +632,7 @@ export default function TodayPlaysPage() {
 
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setViewMode('stream')
+        sessionStorage.setItem('today_viewMode', 'stream') // Fix strict mode race condition
       }
     } else {
       // Restore from sessionStorage for client-side navigation (e.g. Back button)
