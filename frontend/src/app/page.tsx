@@ -307,79 +307,55 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
 function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
   if (aggregated.length < 2) return null
 
-  // Dynamic qualification
-  let qualified = aggregated.filter(t => t.mention_count >= 4)
-  if (qualified.length < 3) {
-    qualified = aggregated.filter(t => t.mention_count >= 3)
-  }
-  if (qualified.length < 3) {
-    qualified = aggregated.filter(t => t.mention_count >= 2)
-  }
+  // Base qualification: at least 2 mentions
+  const qualified = aggregated.filter(t => t.mention_count >= 2)
   if (qualified.length === 0) return null
 
-  const bullishGroup = qualified.filter(t => t.consensus_sentiment > 0.5)
-  const bearishGroup = qualified.filter(t => t.consensus_sentiment < -0.5)
-
-  // Categories
-  const highestConviction = [...bullishGroup].sort((a, b) => b.avg_conviction - a.avg_conviction)[0]
-  const trendingNow = [...qualified].sort((a, b) => b.mention_count - a.mention_count)[0]
-  const highAgreement = [...bullishGroup].sort((a, b) => b.analyst_count - a.analyst_count)[0]
-  const bearTarget = [...bearishGroup].sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
-
-  // Avoid duplicates
   const cards: { label: string; icon: string; ticker: AggregatedTicker; glowTheme: string; textTheme: string; gradient: string }[] = []
   const seen = new Set<string>()
 
-  if (highestConviction && !seen.has(highestConviction.ticker)) {
-    cards.push({ 
-      label: 'Highest Conviction', 
-      icon: '◎', 
-      ticker: highestConviction, 
-      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(0,212,170,0.3)] hover:border-[#00D4AA]/40',
-      textTheme: 'text-[#00D4AA]',
-      gradient: 'from-[#00D4AA]/10 via-transparent to-transparent'
-    })
-    seen.add(highestConviction.ticker)
-  }
-  if (trendingNow && !seen.has(trendingNow.ticker)) {
-    cards.push({ 
-      label: 'Trending Now', 
-      icon: '◉', 
-      ticker: trendingNow, 
-      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(241,245,249,0.2)] hover:border-[#F1F5F9]/30',
-      textTheme: 'text-[#F1F5F9]',
-      gradient: 'from-[#F1F5F9]/5 via-transparent to-transparent'
-    })
-    seen.add(trendingNow.ticker)
-  }
-  if (highAgreement && !seen.has(highAgreement.ticker)) {
-    cards.push({ 
-      label: 'High Agreement', 
-      icon: '◈', 
-      ticker: highAgreement, 
-      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(0,255,208,0.2)] hover:border-[#00FFD0]/30',
-      textTheme: 'text-[#00FFD0]',
-      gradient: 'from-[#00FFD0]/10 via-transparent to-transparent'
-    })
-    seen.add(highAgreement.ticker)
-  }
-  if (bearTarget && !seen.has(bearTarget.ticker)) {
-    cards.push({ 
-      label: 'Bear Target', 
-      icon: '◌', 
-      ticker: bearTarget, 
-      glowTheme: 'hover:shadow-[0_10px_30px_-10px_rgba(255,77,106,0.3)] hover:border-[#FF4D6A]/40',
-      textTheme: 'text-[#FF4D6A]',
-      gradient: 'from-[#FF4D6A]/10 via-transparent to-transparent'
-    })
-    seen.add(bearTarget.ticker)
+  const addCard = (label: string, icon: string, ticker: AggregatedTicker) => {
+    if (!ticker || seen.has(ticker.ticker)) return false
+    
+    let glowTheme, textTheme, gradient
+    if (ticker.consensus_sentiment >= 0.5) {
+      glowTheme = 'hover:shadow-[0_10px_30px_-10px_rgba(0,212,170,0.3)] hover:border-[#00D4AA]/40'
+      textTheme = 'text-[#00D4AA]'
+      gradient = 'from-[#00D4AA]/10 via-transparent to-transparent'
+    } else if (ticker.consensus_sentiment <= -0.5) {
+      glowTheme = 'hover:shadow-[0_10px_30px_-10px_rgba(255,77,106,0.3)] hover:border-[#FF4D6A]/40'
+      textTheme = 'text-[#FF4D6A]'
+      gradient = 'from-[#FF4D6A]/10 via-transparent to-transparent'
+    } else {
+      glowTheme = 'hover:shadow-[0_10px_30px_-10px_rgba(241,245,249,0.2)] hover:border-[#F1F5F9]/30'
+      textTheme = 'text-[#F1F5F9]'
+      gradient = 'from-[#F1F5F9]/5 via-transparent to-transparent'
+    }
+
+    cards.push({ label, icon, ticker, glowTheme, textTheme, gradient })
+    seen.add(ticker.ticker)
+    return true
   }
 
-  // If we couldn't find 4, we just render what we have.
+  // 1. Top Bullish Pick
+  const bestBull = [...qualified].filter(t => t.consensus_sentiment > 0.5).sort((a, b) => b.avg_conviction - a.avg_conviction)[0]
+  if (bestBull) addCard('Highest Conviction', '◎', bestBull)
+
+  // 2. Top Bearish Pick
+  const bestBear = [...qualified].filter(t => t.consensus_sentiment < -0.5).sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
+  if (bestBear) addCard('Most Bearish', '◌', bestBear)
+
+  // 3. Fill the remaining slots up to 3 with Most Discussed
+  const mostMentioned = [...qualified].sort((a, b) => b.mention_count - a.mention_count)
+  for (const t of mostMentioned) {
+    if (cards.length >= 3) break
+    addCard(cards.length === 1 ? 'Viral Momentum' : 'Trending Now', '◉', t)
+  }
+
   if (cards.length === 0) return null
 
-  // Ensure grid fits beautifully
-  const gridCols = cards.length === 4 ? 'lg:grid-cols-4 md:grid-cols-2' : cards.length === 3 ? 'lg:grid-cols-3 md:grid-cols-3' : 'md:grid-cols-2'
+  // Ensure grid fits beautifully and prevents massive stretching if there's only 1 or 2 cards
+  const gridCols = cards.length === 3 ? 'md:grid-cols-3' : cards.length === 2 ? 'md:grid-cols-2 max-w-4xl' : 'max-w-md'
 
   return (
     <div className={`grid gap-4 ${gridCols} animate-fade-up stagger-2 mb-8`}>
