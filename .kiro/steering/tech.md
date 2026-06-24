@@ -59,6 +59,17 @@ npm run build        # production build (static export)
 npm run lint         # ESLint
 ```
 
+## OpenGraph Image Generation
+
+Because the project uses Next.js static export (`output: "export"`) with `trailingSlash: true`, Next.js's automated `<meta>` tag injection for OpenGraph images is highly incompatible with Facebook's strict validators (which reject URLs ending in a slash). 
+
+**The Solution Workflow:**
+1. The OpenGraph design template is maintained as a React component in a hidden API route: `src/app/api/generate-og/route.tsx`.
+2. Do **NOT** name this file `opengraph-image.tsx` in the root `app/` folder, otherwise Next.js will auto-inject broken trailing-slash meta tags.
+3. When the design needs to be updated, run the dev server and execute:
+   `curl -s http://localhost:3000/api/generate-og -o public/og.png`
+4. The `app/layout.tsx` file is hardcoded to serve `https://aura.bynoor.io/og.png` directly, completely bypassing Next.js edge bugs and guaranteeing a flawless, pixel-perfect PNG fallback for all social platforms.
+
 ## Environment Variables
 
 - Backend: configured via `backend/.env` (see `.env.example`)

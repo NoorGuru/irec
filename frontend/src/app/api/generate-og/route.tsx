@@ -2,15 +2,9 @@ import { ImageResponse } from 'next/og';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-export const alt = 'Aura — Every stock analyst. One clear signal.';
 export const dynamic = 'force-static';
-export const size = {
-  width: 1200,
-  height: 630,
-};
-export const contentType = 'image/png';
 
-export default async function Image() {
+export async function GET() {
   // Load the stunning, generated AI background image
   let bgBase64 = '';
   try {
@@ -133,7 +127,8 @@ export default async function Image() {
       </div>
     ),
     {
-      ...size,
+      width: 1200,
+      height: 630,
     }
   );
 }

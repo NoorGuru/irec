@@ -600,54 +600,54 @@ export default function TodayPlaysPage() {
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
-  const [viewMode, setViewMode] = useState<'grid' | 'stream'>('stream')
+  const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
 
   // Restore user session tab preferences & handle mobile responsiveness
   useEffect(() => {
-    let isFreshDocumentLoad = false
-    if (typeof window !== 'undefined') {
-      const win = window as any
-      if (win.__firstLoad === undefined) {
-        win.__firstLoad = false
-        isFreshDocumentLoad = true
-      }
-    }
-
-    let isBackNavigation = false
+    let savedViewMode = sessionStorage.getItem('today_viewMode') as 'grid' | 'stream' | null
+    
+    // Check if this is a hard refresh to clear session data (if that's the intended behavior)
+    let isReload = false
     if (typeof window !== 'undefined' && window.performance) {
       const navs = window.performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
       if (navs && navs.length > 0) {
-        isBackNavigation = navs[0].type === 'back_forward'
+        isReload = navs[0].type === 'reload'
       }
     }
 
-    if (isFreshDocumentLoad && !isBackNavigation) {
-      // Clear previous session settings on direct URL load or page refresh
+    if (isReload) {
       sessionStorage.removeItem('today_sortBy')
       sessionStorage.removeItem('today_activeTab')
       sessionStorage.removeItem('today_viewMode')
       sessionStorage.removeItem('today_streamIndex')
+      savedViewMode = null
+    }
 
+    if (savedViewMode) {
+      setViewMode(savedViewMode)
+    } else {
+      // Default behavior when no preference is saved
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setViewMode('stream')
-        sessionStorage.setItem('today_viewMode', 'stream') // Fix strict mode race condition
+        sessionStorage.setItem('today_viewMode', 'stream')
+      } else {
+        setViewMode('grid')
+        sessionStorage.setItem('today_viewMode', 'grid')
       }
-    } else {
-      // Restore from sessionStorage for client-side navigation (e.g. Back button)
-      const savedViewMode = sessionStorage.getItem('today_viewMode') as 'grid' | 'stream'
-      const savedSortBy = sessionStorage.getItem('today_sortBy') as SortOption
-      const savedActiveTab = sessionStorage.getItem('today_activeTab') as 'BUY' | 'SELL'
-      const savedStreamIndex = sessionStorage.getItem('today_streamIndex')
+    }
 
-      if (savedViewMode) setViewMode(savedViewMode)
-      if (savedSortBy) setSortBy(savedSortBy)
-      if (savedActiveTab) setActiveTab(savedActiveTab)
-      if (savedStreamIndex) {
-        const parsed = parseInt(savedStreamIndex, 10)
-        if (!isNaN(parsed)) setStreamIndex(parsed)
-      }
+    // Restore other saved settings
+    const savedSortBy = sessionStorage.getItem('today_sortBy') as SortOption
+    const savedActiveTab = sessionStorage.getItem('today_activeTab') as 'BUY' | 'SELL'
+    const savedStreamIndex = sessionStorage.getItem('today_streamIndex')
+
+    if (savedSortBy) setSortBy(savedSortBy)
+    if (savedActiveTab) setActiveTab(savedActiveTab)
+    if (savedStreamIndex) {
+      const parsed = parseInt(savedStreamIndex, 10)
+      if (!isNaN(parsed)) setStreamIndex(parsed)
     }
 
     setSessionRestored(true)
