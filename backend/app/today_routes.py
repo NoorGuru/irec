@@ -81,6 +81,17 @@ def parse_iso_datetime(dt_str: str) -> datetime:
 
 # --- API Route ---
 
+@router.post("/admin/cache/clear")
+async def clear_cache():
+    """Clear the API cache so users get fresh data."""
+    try:
+        client = _get_client()
+        client.table("api_cache").delete().neq("cache_key", "").execute()
+        return {"status": "success", "message": "Cache cleared successfully"}
+    except Exception as e:
+        logger.error(f"Error clearing cache: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to clear cache")
+
 @router.get("/today", response_model=TodayPlaysResponse)
 async def get_today_plays(
     days: int = Query(30, ge=1, le=90, description="Window of recommendations in days"),
@@ -245,8 +256,15 @@ async def get_today_plays(
 
             # --- Calculate Composite Aura Score ---
             # Weights: Sentiment 25%, Conviction 20%, Agreement 20%, Recency 20%, Momentum 15%
-            # Sentiment score is abs(consensus_sentiment)/2.0 * 100.0 (range 0-100)
-            sentiment_score = (abs(consensus_sentiment) / 2.0) * 100.0
+            
+            # Map sentiment 1.0 -> 75, 2.0 -> 100
+            abs_sentiment = abs(consensus_sentiment)
+            if abs_sentiment <= 1.0:
+                sentiment_score = 50.0 + (abs_sentiment * 25.0)
+            else:
+                sentiment_score = 75.0 + ((abs_sentiment - 1.0) * 25.0)
+            sentiment_score = min(100.0, max(0.0, sentiment_score))
+            
             conviction_score = avg_conviction * 10.0 # conviction level is 1-10
 
             action_score_raw = (
@@ -265,10 +283,18 @@ async def get_today_plays(
             analyst_count = len(analyst_names)
 
             # Penalize if fewer independent analysts. Sell side is more forgiving.
+            # Strong penalty for <= 3 analysts.
             if direction == "SELL":
                 analyst_multiplier = min(1.0, 0.8 + 0.1 * analyst_count)
             else:
-                analyst_multiplier = min(1.0, 0.5 + 0.1 * analyst_count)
+                if analyst_count >= 4:
+                    analyst_multiplier = 1.0
+                elif analyst_count == 3:
+                    analyst_multiplier = 0.8
+                elif analyst_count == 2:
+                    analyst_multiplier = 0.6
+                else:
+                    analyst_multiplier = 0.5
                 
             action_score_raw *= analyst_multiplier
 

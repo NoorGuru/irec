@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, TrendingUp, Tv2, MessageSquareText, Brain, AlertCircle } from 'lucide-react'
+import { Loader2, TrendingUp, Tv2, MessageSquareText, Brain, AlertCircle, RefreshCw } from 'lucide-react'
 
 // ─── Types ───
 
@@ -21,6 +21,21 @@ interface Stats {
 export function StatsTab() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [clearingCache, setClearingCache] = useState(false)
+
+  const handleClearCache = async () => {
+    setClearingCache(true)
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+      const res = await fetch(`${backendUrl}/api/v1/admin/cache/clear`, { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to clear cache')
+      alert('Cache cleared! Users will see fresh data immediately on their next visit.')
+    } catch (err) {
+      alert('Failed to clear cache: ' + err)
+    } finally {
+      setClearingCache(false)
+    }
+  }
 
   const fetchStats = useCallback(async () => {
     const supabase = createClient()
@@ -150,9 +165,19 @@ export function StatsTab() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold tracking-tight">System Health</h2>
-        <p className="text-sm text-[#8B95A8] mt-1">Ingestion pipeline performance at a glance</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">System Health</h2>
+          <p className="text-sm text-[#8B95A8] mt-1">Ingestion pipeline performance at a glance</p>
+        </div>
+        <button
+          onClick={handleClearCache}
+          disabled={clearingCache}
+          className="flex items-center gap-2 bg-[#141B2D] hover:bg-[#1E293B] border border-[#1E293B] text-[#F1F5F9] px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          {clearingCache ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4 text-[#00D4AA]" />}
+          Force Recalculate Cache
+        </button>
       </div>
 
       {/* Stat Cards */}

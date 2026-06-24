@@ -1,171 +1,28 @@
-'use client'
+import re
 
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
-import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Clock, Zap, RotateCcw, Sparkles, AlertTriangle, Trash2, Play, X } from 'lucide-react'
+with open("frontend/src/app/admin/ingest/page.tsx", "r") as f:
+    content = f.read()
 
-const YOUTUBE_URL_REGEX =
-  /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
+# We need to split the file before "function IngestContent()"
+parts = content.split("function IngestContent() {")
+top_part = parts[0]
 
-const TRANSCRIPT_WORKER_URL = process.env.NEXT_PUBLIC_TRANSCRIPT_WORKER_URL || 'https://yt-transcript-proxy.abukhleif94.workers.dev'
+# Add X to imports
+top_part = top_part.replace("Sparkles, AlertTriangle, Trash2, Play }", "Sparkles, AlertTriangle, Trash2, Play, X }")
 
-function extractVideoId(urlStr: string): string | null {
-  try {
-    const trimmed = urlStr.trim()
-    if (!trimmed) return null
-    
-    // Check standard watch?v=
-    if (trimmed.includes('youtube.com/watch')) {
-      const parts = trimmed.split('v=')
-      if (parts[1]) {
-        const id = parts[1].split('&')[0]
-        if (id.length === 11) return id
-      }
-    }
-    // Check youtu.be/
-    if (trimmed.includes('youtu.be/')) {
-      const parts = trimmed.split('youtu.be/')
-      if (parts[1]) {
-        const id = parts[1].split('?')[0].split('/')[0]
-        if (id.length === 11) return id
-      }
-    }
-    // Check shorts
-    if (trimmed.includes('youtube.com/shorts/')) {
-      const parts = trimmed.split('youtube.com/shorts/')
-      if (parts[1]) {
-        const id = parts[1].split('?')[0].split('/')[0]
-        if (id.length === 11) return id
-      }
-    }
-  } catch (e) {
-    // ignore
-  }
-  return null
-}
-
-type StepStatus = 'pending' | 'running' | 'done' | 'error' | 'retrying'
-
-interface PipelineStep {
-  id: string
-  label: string
-  status: StepStatus
-  detail?: string
-  startedAt?: number
-  completedAt?: number
-}
-
-interface ExtractionResult {
-  channel_name: string
-  channel_id?: string | null
-  video_id: string
-  title?: string | null
-  published_at: string
-  tickers_extracted: string[]
-  recommendation_count: number
-  video_summary?: string | null
-}
-
-interface FailedIngestion {
-  url: string
-  error: string
-  timestamp: number
-}
-
-const INITIAL_STEPS: PipelineStep[] = [
-  { id: 'url_parse', label: 'Parse URL', status: 'pending' },
-  { id: 'duplicate_check', label: 'Duplicate Check', status: 'pending' },
-  { id: 'metadata', label: 'Fetch Metadata', status: 'pending' },
-  { id: 'transcript', label: 'Fetch Transcript', status: 'pending' },
-  { id: 'llm_parse', label: 'AI Extraction', status: 'pending' },
-  { id: 'database', label: 'Save to Database', status: 'pending' },
-]
-
-// --- Demo mode ---
-const DEMO_EVENTS: { step: string; status: string; detail: string; delay: number }[] = [
-  { step: 'url_parse', status: 'running', detail: 'Parsing YouTube URL...', delay: 0 },
-  { step: 'url_parse', status: 'done', detail: 'Video ID: dQw4w9WgXcQ', delay: 400 },
-  { step: 'duplicate_check', status: 'running', detail: 'Checking for duplicates...', delay: 200 },
-  { step: 'duplicate_check', status: 'done', detail: 'New video confirmed', delay: 600 },
-  { step: 'metadata', status: 'running', detail: 'Fetching video metadata...', delay: 200 },
-  { step: 'metadata', status: 'done', detail: 'Channel: Financial Analysis TV', delay: 900 },
-  { step: 'transcript', status: 'running', detail: 'Fetching transcript via worker...', delay: 200 },
-  { step: 'transcript', status: 'retrying', detail: 'Retry 1/3 — Proxy blocked, rotating...', delay: 1500 },
-  { step: 'transcript', status: 'done', detail: '~4,230 words', delay: 1200 },
-  { step: 'llm_parse', status: 'running', detail: 'Extracting recommendations via Claude...', delay: 300 },
-  { step: 'llm_parse', status: 'done', detail: 'Found 3 ticker(s): AAPL, NVDA, MSFT', delay: 2500 },
-  { step: 'database', status: 'running', detail: 'Persisting to Supabase...', delay: 200 },
-  { step: 'database', status: 'done', detail: 'Saved successfully', delay: 500 },
-]
-
-const DEMO_RESULT: ExtractionResult = {
-  channel_name: 'Financial Analysis TV',
-  channel_id: 'demo-channel-id',
-  video_id: 'dQw4w9WgXcQ',
-  title: 'Top 3 Stocks to Watch in 2025 — AAPL, NVDA & MSFT Deep Dive',
-  published_at: '2025-06-10T14:30:00Z',
-  tickers_extracted: ['AAPL', 'NVDA', 'MSFT'],
-  recommendation_count: 3,
-  video_summary: 'The analyst is strongly bullish on AI infrastructure plays, citing record data center capex as a secular tailwind. NVDA leads with a dominant GPU moat; AAPL is favored for its services flywheel and upcoming AI integration cycle; MSFT is a conviction buy for enterprise AI adoption through Azure and Copilot.',
-}
-
-/** Formats elapsed ms into a readable string */
-function formatElapsed(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  const seconds = ms / 1000
-  if (seconds < 60) return `${seconds.toFixed(1)}s`
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.round(seconds % 60)
-  return `${mins}m ${secs}s`
-}
-
-/** Live elapsed timer component */
-function ElapsedTimer({ startedAt, completedAt }: { startedAt: number; completedAt?: number }) {
-  const spanRef = useRef<HTMLSpanElement>(null)
-
-  useEffect(() => {
-    if (completedAt) {
-      if (spanRef.current) {
-        spanRef.current.textContent = formatElapsed(completedAt - startedAt)
-      }
-      return
-    }
-    // Initial render
-    if (spanRef.current) {
-      spanRef.current.textContent = formatElapsed(Date.now() - startedAt)
-    }
-    const interval = setInterval(() => {
-      if (spanRef.current) {
-        spanRef.current.textContent = formatElapsed(Date.now() - startedAt)
-      }
-    }, 100)
-    return () => clearInterval(interval)
-  }, [startedAt, completedAt])
-
-  const initialElapsed = completedAt ? completedAt - startedAt : 0
-
-  return (
-    <span
-      ref={spanRef}
-      className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8]/60 tabular-nums"
-    >
-      {formatElapsed(initialElapsed)}
-    </span>
-  )
-}
-
-
+# Add JobConfig interface
+job_config = """
 export interface JobConfig {
   id: string
   url: string
   mode: 'normal' | 'reextract' | 'force_reingest'
   manualTranscriptText?: string
 }
+"""
+top_part += job_config + "\n\n"
 
-
-
+# The new JobCard component
+job_card = """
 function JobCard({
   config,
   onDismiss,
@@ -192,8 +49,6 @@ function JobCard({
   const [manualVideoId, setManualVideoId] = useState<string | null>(null)
   const [workerUrl, setWorkerUrl] = useState<string | null>(null)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const hasStartedRef = useRef(false)
 
   const handleTranscriptChange = useCallback((text: string) => {
     let cleanText = text
@@ -311,7 +166,6 @@ function JobCard({
 
     const controller = new AbortController()
     setAbortController(controller)
-    abortControllerRef.current = controller
 
     try {
       const supabase = createClient()
@@ -368,7 +222,7 @@ function JobCard({
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
+        const lines = buffer.split('\\n')
         buffer = lines.pop() || ''
 
         for (const line of lines) {
@@ -429,14 +283,10 @@ function JobCard({
 
   // start on mount
   useEffect(() => {
-    if (hasStartedRef.current) return
-    hasStartedRef.current = true
-
     startExtraction(config.mode, config.manualTranscriptText)
-    
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
+      if (abortController) {
+        abortController.abort()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -620,9 +470,10 @@ function JobCard({
     </div>
   )
 }
+"""
 
-
-
+# New IngestContent component
+ingest_content = """
 function IngestContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -949,21 +800,13 @@ function IngestContent() {
     </div>
   )
 }
+"""
 
+# Find the end of IngestContent and start of IngestPage
+bottom_part = parts[1].split("export default function IngestPage() {")[1]
+bottom_part = "export default function IngestPage() {" + bottom_part
 
-export default function IngestPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0A0F1A]">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-5 w-5 animate-spin text-[#00D4AA]/60" />
-            <p className="text-xs text-[#64748B] tracking-wide">Loading...</p>
-          </div>
-        </div>
-      }
-    >
-      <IngestContent />
-    </Suspense>
-  )
-}
+final_content = top_part + job_card + "\n\n" + ingest_content + "\n\n" + bottom_part
+
+with open("frontend/src/app/admin/ingest/page.tsx", "w") as f:
+    f.write(final_content)

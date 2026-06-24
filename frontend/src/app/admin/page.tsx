@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Play,
   Clock,
+  RefreshCw,
 } from 'lucide-react'
 
 // ─── Types ───
@@ -259,6 +260,22 @@ export default function AdminHubPage() {
   const [infraOpen, setInfraOpen] = useState(false)
   const healthChecked = useRef(false)
 
+  const [clearingCache, setClearingCache] = useState(false)
+
+  const handleClearCache = async () => {
+    setClearingCache(true)
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+      const res = await fetch(`${backendUrl}/api/v1/admin/cache/clear`, { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to clear cache')
+      alert('Cache cleared! Users will see fresh data immediately on their next visit.')
+    } catch (err) {
+      alert('Failed to clear cache: ' + err)
+    } finally {
+      setClearingCache(false)
+    }
+  }
+
   // Auth check
   useEffect(() => {
     const checkAuth = async () => {
@@ -473,34 +490,63 @@ export default function AdminHubPage() {
             </div>
           </div>
 
-          {/* ─── Primary CTA: Ingest ─── */}
-          <Link
-            href="/admin/ingest"
-            className="group relative block rounded-2xl border border-[#00D4AA]/15 bg-gradient-to-br from-[#141B2D] to-[#0F1623] p-6 sm:p-8 hover:border-[#00D4AA]/35 transition-all duration-500 animate-fade-up stagger-1 overflow-hidden"
-          >
-            {/* Warm background glow */}
-            <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-              style={{
-                background: 'radial-gradient(ellipse at 20% 50%, rgba(0, 212, 170, 0.05) 0%, transparent 60%)',
-              }}
-              aria-hidden="true"
-            />
-            <div className="relative flex items-center gap-4 sm:gap-6">
-              <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-[#00D4AA]/8 border border-[#00D4AA]/15 group-hover:bg-[#00D4AA]/12 group-hover:border-[#00D4AA]/25 transition-all duration-500">
-                <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-[#00D4AA]" />
+          {/* ─── Primary CTAs ─── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link
+              href="/admin/ingest"
+              className="group relative block rounded-2xl border border-[#00D4AA]/15 bg-gradient-to-br from-[#141B2D] to-[#0F1623] p-6 sm:p-8 hover:border-[#00D4AA]/35 transition-all duration-500 animate-fade-up stagger-1 overflow-hidden"
+            >
+              {/* Warm background glow */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(ellipse at 20% 50%, rgba(0, 212, 170, 0.05) 0%, transparent 60%)',
+                }}
+                aria-hidden="true"
+              />
+              <div className="relative flex items-center gap-4 sm:gap-6">
+                <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-[#00D4AA]/8 border border-[#00D4AA]/15 group-hover:bg-[#00D4AA]/12 group-hover:border-[#00D4AA]/25 transition-all duration-500">
+                  <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-[#00D4AA]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-semibold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors duration-300">
+                    Ingest a video
+                  </h2>
+                  <p className="mt-1 text-sm text-[#8B95A8] group-hover:text-[#8B95A8]/80 transition-colors">
+                    Extract plays in seconds
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-[#475569] group-hover:text-[#00D4AA] group-hover:translate-x-1 transition-all duration-300 shrink-0 hidden sm:block" />
               </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg sm:text-xl font-semibold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors duration-300">
-                  Ingest a video
-                </h2>
-                <p className="mt-1 text-sm text-[#8B95A8] group-hover:text-[#8B95A8]/80 transition-colors">
-                  Paste a URL, get recommendations extracted in seconds
-                </p>
+            </Link>
+
+            <button
+              onClick={handleClearCache}
+              disabled={clearingCache}
+              className="group relative text-left block w-full rounded-2xl border border-[#FF4D6A]/15 bg-gradient-to-br from-[#141B2D] to-[#0F1623] p-6 sm:p-8 hover:border-[#FF4D6A]/35 transition-all duration-500 animate-fade-up stagger-1 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(ellipse at 20% 50%, rgba(255, 77, 106, 0.05) 0%, transparent 60%)',
+                }}
+                aria-hidden="true"
+              />
+              <div className="relative flex items-center gap-4 sm:gap-6">
+                <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-[#FF4D6A]/8 border border-[#FF4D6A]/15 group-hover:bg-[#FF4D6A]/12 group-hover:border-[#FF4D6A]/25 transition-all duration-500">
+                  {clearingCache ? <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin text-[#FF4D6A]" /> : <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6 text-[#FF4D6A]" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-semibold text-[#F1F5F9] group-hover:text-[#FF4D6A] transition-colors duration-300">
+                    Force Recalculate
+                  </h2>
+                  <p className="mt-1 text-sm text-[#8B95A8] group-hover:text-[#8B95A8]/80 transition-colors">
+                    Wipe cache & enforce updates
+                  </p>
+                </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-[#475569] group-hover:text-[#00D4AA] group-hover:translate-x-1 transition-all duration-300 shrink-0 hidden sm:block" />
-            </div>
-          </Link>
+            </button>
+          </div>
 
           {/* ─── Service health ─── */}
           <div className="flex items-center justify-end gap-4 animate-fade-up stagger-1">
