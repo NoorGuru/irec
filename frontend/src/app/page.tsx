@@ -307,8 +307,8 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
 function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
   if (aggregated.length < 2) return null
 
-  // Base qualification: at least 2 mentions
-  const qualified = aggregated.filter(t => t.mention_count >= 2)
+  // Base qualification: at least 3 mentions to avoid low-signal noise
+  const qualified = aggregated.filter(t => t.mention_count >= 3)
   if (qualified.length === 0) return null
 
   const cards: { label: string; icon: string; ticker: AggregatedTicker; glowTheme: string; textTheme: string; gradient: string }[] = []
@@ -341,8 +341,11 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
   const bestBull = [...qualified].filter(t => t.consensus_sentiment > 0.5).sort((a, b) => b.avg_conviction - a.avg_conviction)[0]
   if (bestBull) addCard('Highest Conviction', '◎', bestBull)
 
-  // 2. Top Bearish Pick
-  const bestBear = [...qualified].filter(t => t.consensus_sentiment < -0.5).sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
+  // 2. Top Bearish Pick (If no highly discussed bear exists, fall back to ANY bear to ensure market diversity)
+  let bestBear = [...qualified].filter(t => t.consensus_sentiment <= -0.5).sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
+  if (!bestBear) {
+    bestBear = [...aggregated].filter(t => t.consensus_sentiment <= -0.5).sort((a, b) => a.consensus_sentiment - b.consensus_sentiment)[0]
+  }
   if (bestBear) addCard('Most Bearish', '◌', bestBear)
 
   // 3. Fill the remaining slots up to 3 with Most Discussed
