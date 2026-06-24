@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Activity, Grid, Layers, ChevronLeft, ChevronRight, Info, AlertTriangle, Sparkles,
-  ArrowRight, ArrowLeft
+  ArrowRight, ArrowLeft, Maximize
 } from 'lucide-react'
 
 // Custom Youtube Icon SVG
@@ -393,7 +393,7 @@ function PulseStream({
     : (play.catalysts?.[0]?.youtube_video_id || play.latest_video.youtube_video_id)
 
   return (
-    <div className="w-full max-w-2xl mx-auto flex flex-col items-center px-2 animate-fade-up">
+    <div id="pulse-stream-container" className="w-full max-w-2xl mx-auto flex flex-col items-center px-2 animate-fade-up">
       {/* Top micro stats */}
       <div className="flex items-center justify-between w-full mb-3 px-2 text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B]">
         <div className="flex items-center gap-1.5">
@@ -1220,10 +1220,19 @@ export default function TodayPlaysPage() {
               </button>
 
               {/* Position dots / counter */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#8B95A8] tabular-nums">
                   {streamIndex + 1} <span className="text-[#475569]">/</span> {activePlays.length}
                 </span>
+                <button
+                  onClick={() => {
+                    document.getElementById('pulse-stream-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all active:scale-95 ${isBuyTab ? 'text-[#00D4AA] bg-[#00D4AA]/10 border border-[#00D4AA]/20' : 'text-[#FF4D6A] bg-[#FF4D6A]/10 border border-[#FF4D6A]/20'}`}
+                >
+                  <Maximize className="w-3 h-3" />
+                  <span className="text-[9px] font-bold uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Focus</span>
+                </button>
               </div>
 
               <button
