@@ -698,31 +698,38 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchData() {
-      const supabase = createClient()
+      try {
+        const supabase = createClient()
 
-      const [recsRes, radarsRes] = await Promise.all([
-        supabase
-          .from("recommendations")
-          .select(`
-            ticker,
-            stock_name,
-            sentiment,
-            target_price,
-            conviction_level,
-            videos!inner(
-              channel_id,
-              channels!inner(trust_weight)
-            )
-          `),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`).then(res => res.ok ? res.json() : [])
-      ])
+        const [recsRes, radarsRes] = await Promise.all([
+          supabase
+            .from("recommendations")
+            .select(`
+              ticker,
+              stock_name,
+              sentiment,
+              target_price,
+              conviction_level,
+              videos!inner(
+                channel_id,
+                channels!inner(trust_weight)
+              )
+            `),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+        ])
 
-      const agg = recsRes.data
-        ? aggregateRecommendations(recsRes.data as unknown as RecommendationRow[])
-        : []
-      setAggregated(agg)
-      setRadars(radarsRes)
-      setLoading(false)
+        const agg = recsRes.data
+          ? aggregateRecommendations(recsRes.data as unknown as RecommendationRow[])
+          : []
+        setAggregated(agg)
+        setRadars(radarsRes)
+      } catch (error) {
+        console.error("Failed to fetch data:", error)
+      } finally {
+        setLoading(false)
+      }
     }
     fetchData()
   }, [])

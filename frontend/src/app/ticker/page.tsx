@@ -130,42 +130,49 @@ function TickerContent() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!symbol || isInvalid) {
+      if (isInvalid) {
         setLoading(false)
         return
       }
 
-      const supabase = createClient()
-      const [recsRes, radarsRes] = await Promise.all([
-        supabase
-          .from("recommendations")
-          .select(`
-            id,
-            sentiment,
-            target_price,
-            conviction_level,
-            catalyst_notes,
-            stock_name,
-            videos!inner(
-              title,
-              youtube_video_id,
-              video_url,
-              published_at,
-              channel_id,
-              channels!inner(channel_name, trust_weight)
-            )
-          `)
-          .ilike("ticker", symbol),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`).then(res => res.ok ? res.json() : [])
-      ])
+      try {
+        const supabase = createClient()
+        const [recsRes, radarsRes] = await Promise.all([
+          supabase
+            .from("recommendations")
+            .select(`
+              id,
+              sentiment,
+              target_price,
+              conviction_level,
+              catalyst_notes,
+              stock_name,
+              videos!inner(
+                title,
+                youtube_video_id,
+                video_url,
+                published_at,
+                channel_id,
+                channels!inner(channel_name, trust_weight)
+              )
+            `)
+            .ilike("ticker", symbol),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+        ])
 
-      const sorted = ((recsRes.data as unknown as Recommendation[]) || []).sort((a, b) => {
-        return new Date(b.videos.published_at).getTime() - new Date(a.videos.published_at).getTime()
-      })
+        const sorted = ((recsRes.data as unknown as Recommendation[]) || []).sort((a, b) => {
+          return new Date(b.videos.published_at).getTime() - new Date(a.videos.published_at).getTime()
+        })
 
-      setRecommendations(sorted)
-      setRadars(radarsRes)
-      setLoading(false)
+        setRecommendations(sorted)
+        setRadars(radarsRes)
+      } catch (error) {
+        console.error("Failed to fetch data:", error)
+      } finally {
+        setLoading(false)
+      }
     }
     fetchData()
   }, [symbol, isInvalid])
