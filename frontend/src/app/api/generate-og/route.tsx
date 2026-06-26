@@ -1,10 +1,15 @@
 import { ImageResponse } from 'next/og';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-
 export const dynamic = 'force-static';
 
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return new Response('OG generation bypassed in production build', {
+      headers: { 'Content-Type': 'text/plain' },
+    });
+  }
+
   // Load the stunning, generated AI background image
   let bgBase64 = '';
   try {

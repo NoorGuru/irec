@@ -7,9 +7,8 @@ import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import HolographicCard from '@/components/HolographicCard'
 import EKGHeartbeat from '@/components/EKGHeartbeat'
-import { RADARS } from '@/lib/radars'
 import RadarCard from '@/components/ui/radar-card'
-import { RecommendationRow, AggregatedTicker } from '@/lib/types'
+import { RecommendationRow, AggregatedTicker, RadarResponse } from '@/lib/types'
 
 // ─── Types ───
 
@@ -381,8 +380,8 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
 }
 // ─── Trending Radars ───
 
-function TrendingRadars({ aggregated }: { aggregated: AggregatedTicker[] }) {
-  if (aggregated.length === 0) return null
+function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
+  if (!radars || radars.length === 0) return null
 
   return (
     <div className="mb-8 animate-fade-up stagger-3">
@@ -392,9 +391,11 @@ function TrendingRadars({ aggregated }: { aggregated: AggregatedTicker[] }) {
           Trending Radars
         </h2>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {RADARS.map(radar => (
-          <RadarCard key={radar.slug} config={radar} tickers={aggregated} />
+      
+      {/* Mobile: Horizontal scroll snap. Desktop: Grid */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
+        {radars.map(radar => (
+          <RadarCard key={radar.slug} radar={radar} />
         ))}
       </div>
     </div>
@@ -687,6 +688,7 @@ function TickerRow({
 
 export default function Home() {
   const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
+  const [radars, setRadars] = useState<RadarResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortKey>('mentions')
@@ -698,7 +700,7 @@ export default function Home() {
     async function fetchData() {
       const supabase = createClient()
 
-      const [recsRes] = await Promise.all([
+      const [recsRes, radarsRes] = await Promise.all([
         supabase
           .from("recommendations")
           .select(`
@@ -712,12 +714,14 @@ export default function Home() {
               channels!inner(trust_weight)
             )
           `),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`).then(res => res.ok ? res.json() : [])
       ])
 
       const agg = recsRes.data
         ? aggregateRecommendations(recsRes.data as unknown as RecommendationRow[])
         : []
       setAggregated(agg)
+      setRadars(radarsRes)
       setLoading(false)
     }
     fetchData()
@@ -909,8 +913,10 @@ export default function Home() {
         )}
 
         {/* Trending Radars */}
-        {aggregated.length > 0 && (
-          <TrendingRadars aggregated={aggregated} />
+        {radars.length > 0 && (
+          <div className="mb-6">
+            <TrendingRadars radars={radars} />
+          </div>
         )}
 
 

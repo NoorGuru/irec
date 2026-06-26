@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from app.admin_routes import router as admin_router
 from app.today_routes import router as today_router
+from app.radars_routes import router as radars_router
 from app.auth import verify_owner
 from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, save_llm_response, _get_client
 from app.llm_parser import parse_recommendations, LLMParseError
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 # Register admin routes
+app.include_router(radars_router)
 app.include_router(admin_router)
 app.include_router(today_router)
 

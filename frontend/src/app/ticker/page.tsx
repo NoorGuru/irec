@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { getRadarsForTicker } from '@/lib/radars'
+import { RadarResponse } from '@/lib/types'
 
 interface Recommendation {
   ticker: string
@@ -119,45 +119,52 @@ function VideoThumbnailLink({ youtubeVideoId }: { youtubeVideoId: string }) {
 
 function TickerContent() {
   const searchParams = useSearchParams()
-  const symbol = searchParams.get('s') || ''
+  const symbol = searchParams.get('s')
+  
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
+  const [radars, setRadars] = useState<RadarResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [showMoreLinks, setShowMoreLinks] = useState(false)
 
-  const isInvalid = !symbol || symbol.length > 5 || /[^a-zA-Z]/.test(symbol)
+  const isInvalid = !symbol || symbol.length > 8 || !/^[a-zA-Z.-]+$/.test(symbol)
 
   useEffect(() => {
-    if (isInvalid) {
-      setLoading(false)
-      return
-    }
-
     async function fetchData() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from("recommendations")
-        .select(`
-          ticker,
-          stock_name,
-          sentiment,
-          target_price,
-          conviction_level,
-          catalyst_notes,
-          videos!inner(
-            video_url,
-            youtube_video_id,
-            published_at,
-            channel_id,
-            channels!inner(channel_name, trust_weight)
-          )
-        `)
-        .ilike("ticker", symbol)
+      if (!symbol || isInvalid) {
+        setLoading(false)
+        return
+      }
 
-      const sorted = ((data as unknown as Recommendation[]) || []).sort((a, b) => {
+      const supabase = createClient()
+      const [recsRes, radarsRes] = await Promise.all([
+        supabase
+          .from("recommendations")
+          .select(`
+            id,
+            sentiment,
+            target_price,
+            conviction_level,
+            catalyst_notes,
+            stock_name,
+            videos!inner(
+              title,
+              youtube_video_id,
+              video_url,
+              published_at,
+              channel_id,
+              channels!inner(channel_name, trust_weight)
+            )
+          `)
+          .ilike("ticker", symbol),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`).then(res => res.ok ? res.json() : [])
+      ])
+
+      const sorted = ((recsRes.data as unknown as Recommendation[]) || []).sort((a, b) => {
         return new Date(b.videos.published_at).getTime() - new Date(a.videos.published_at).getTime()
       })
 
       setRecommendations(sorted)
+      setRadars(radarsRes)
       setLoading(false)
     }
     fetchData()
@@ -202,7 +209,7 @@ function TickerContent() {
   const confidence = Math.min(recommendations.length / 3, 1)
   const consensusSentiment = Math.round(rawWeightedSentiment * confidence * 100) / 100
 
-  const activeRadars = getRadarsForTicker(symbol.toUpperCase())
+  const activeRadars = radars.filter(r => r.tickers.includes(symbol.toUpperCase()))
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
@@ -224,9 +231,12 @@ function TickerContent() {
                     <Link
                       key={radar.slug}
                       href={`/radars/${radar.slug}`}
-                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 hover:bg-[#1E293B]/40 transition-all duration-300"
+                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
+                      style={{ 
+                        boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
+                      }}
                     >
-                      <span className="text-[#00D4AA] text-xs">✦</span>
+                      <span className="text-xs font-bold" style={{ color: radar.theme_color }}>✦</span>
                       <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
                         Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
                       </span>

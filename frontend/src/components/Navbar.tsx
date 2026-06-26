@@ -298,6 +298,7 @@ export function Navbar() {
   const links = [
     { href: '/today', label: "Today's Plays", icon: TodayPlaysIcon },
     { href: '/', label: 'Explore', icon: DashboardIcon },
+    { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
@@ -508,6 +509,18 @@ function TodayPlaysIcon({ active }: { active: boolean }) {
       `}
     >
       <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill={active ? 'currentColor' : 'none'} />
+    </svg>
+  )
+}
+
+function RadarsIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path d="M12 2L12 6M12 18L12 22M2 12L6 12M18 12L22 12" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+      <path d="M12 12L18 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   )
 }

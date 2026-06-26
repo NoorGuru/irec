@@ -20,9 +20,9 @@ export const RADARS: RadarConfig[] = [
     slug: 'mangos',
     name: 'MANGOS',
     description: 'The new AI frontier and next-gen tech leadership.',
-    aura: 'from-[#FF1744]/20 to-[#7B1FA2]/5',
-    gradient: 'from-[#FF1744]/10 via-transparent to-transparent',
-    tickers: ['META', 'ANTHROPIC', 'NVDA', 'GOOGL', 'OPENAI', 'SPACEX'],
+    aura: 'from-[#F59E0B]/20 to-[#7B1FA2]/5',
+    gradient: 'from-[#F59E0B]/10 via-transparent to-transparent',
+    tickers: ['META', 'ANTH', 'NVDA', 'GOOGL', 'OAI', 'SPCX'],
   },
   {
     slug: 'ai-infrastructure',
@@ -36,8 +36,8 @@ export const RADARS: RadarConfig[] = [
     slug: 'glp-1',
     name: 'GLP-1 & Bio',
     description: 'The massive biotech wave driven by weight-loss drugs.',
-    aura: 'from-[#00E676]/20 to-[#1DE9B6]/5',
-    gradient: 'from-[#00E676]/10 via-transparent to-transparent',
+    aura: 'from-[#6366F1]/20 to-[#1DE9B6]/5',
+    gradient: 'from-[#6366F1]/10 via-transparent to-transparent',
     tickers: ['LLY', 'NVO', 'AMGN', 'VKTX'],
   },
   {
