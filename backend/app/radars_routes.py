@@ -15,57 +15,76 @@ router = APIRouter(
     tags=["radars"],
 )
 
-# --- Curated Radars Definition ---
-RADARS = [
-    RadarDefinition(
-        name="The Mag 7",
-        slug="mag-7",
-        description="The mega-cap tech giants driving major index movements.",
-        tickers=["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NVDA"],
-        theme_color="#FFD700", # Golden/Purple Aura
-        icon="crown"
-    ),
-    RadarDefinition(
-        name="MANGOS",
-        slug="mangos",
-        description="The new AI frontier and next-gen tech leadership.",
-        tickers=["META", "ANTH", "NVDA", "GOOGL", "OAI", "SPCX"],
-        theme_color="#F59E0B", # Amber Aura
-        icon="spark"
-    ),
-    RadarDefinition(
-        name="AI Infrastructure",
-        slug="ai-infrastructure",
-        description="The hardware and foundry backbone of artificial intelligence.",
-        tickers=["AMD", "SMCI", "TSM", "ASML", "ARM", "PLTR", "MU"],
-        theme_color="#00FFFF", # Electric Blue Aura
-        icon="microchip"
-    ),
-    RadarDefinition(
-        name="GLP-1 & Bio",
-        slug="glp-1",
-        description="The massive biotech wave driven by weight-loss drugs.",
-        tickers=["LLY", "NVO", "AMGN", "VKTX"],
-        theme_color="#6366F1", # Indigo Aura
-        icon="dna"
-    ),
-    RadarDefinition(
-        name="Bitcoin Proxies",
-        slug="crypto-proxies",
-        description="Public companies acting as high-beta plays on cryptocurrency.",
-        tickers=["MSTR", "COIN", "MARA", "RIOT", "IBIT"],
-        theme_color="#F7931A", # Crypto Orange Aura
-        icon="bitcoin"
-    ),
-    RadarDefinition(
-        name="Defense & Aero",
-        slug="defense",
-        description="Aerospace and tactical contractors amidst global rearmament.",
-        tickers=["LMT", "RTX", "NOC", "GD"],
-        theme_color="#FFBF00", # Tactical Amber Aura
-        icon="shield"
+# Fetch Radars from DB dynamically
+async def get_radars_from_db() -> List[RadarDefinition]:
+    from app.database import _get_client
+    client = _get_client()
+    
+    # Fetch radars
+    radars_res = client.table("radars").select("*").execute()
+    if not radars_res.data:
+        return []
+        
+    radars_data = radars_res.data
+    
+    # Fetch all tickers
+    tickers_res = client.table("radar_tickers").select("*").execute()
+    tickers_map = {}
+    for row in tickers_res.data:
+        rid = row["radar_id"]
+        if rid not in tickers_map:
+            tickers_map[rid] = []
+        tickers_map[rid].append(row["ticker"])
+        
+    radar_defs = []
+    for r in radars_data:
+        rid = r["id"]
+        tickers = tickers_map.get(rid, [])
+        radar_defs.append(RadarDefinition(
+            name=r["name"],
+            slug=r["slug"],
+            description=r.get("description", ""),
+            theme_color=r.get("theme_color", "#00D4AA"),
+            icon=r.get("icon", "activity"),
+            tickers=tickers
+        ))
+        
+    return radar_defs
+
+async def get_radar_history(radar_slug: str) -> List[RadarTrendPoint]:
+    """Fetch the historical daily snapshots for a radar."""
+    from app.database import _get_client
+    client = _get_client()
+    
+    # First get the radar ID
+    r_res = client.table("radars").select("id").eq("slug", radar_slug).execute()
+    if not r_res.data:
+        return []
+        
+    radar_id = r_res.data[0]["id"]
+    
+    # Fetch history for last 30 days
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    
+    hist_res = (
+        client.table("radar_history")
+        .select("*")
+        .eq("radar_id", radar_id)
+        .gte("date", thirty_days_ago)
+        .order("date", desc=False)
+        .execute()
     )
-]
+    
+    trend = []
+    for row in hist_res.data:
+        trend.append(RadarTrendPoint(
+            date=row["date"],
+            aura_score=row["aura_score"]
+        ))
+        
+    return trend
+
 
 async def get_all_plays_data() -> dict:
     """Fetch all today's plays from cache or compute them."""
@@ -90,7 +109,7 @@ async def get_all_plays_data() -> dict:
     return payload
 
 
-def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict]) -> RadarResponse:
+def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_trend: List[RadarTrendPoint] = None) -> RadarResponse:
     radar_tickers = [t.upper() for t in radar_def.tickers]
     
     radar_plays = []
@@ -155,20 +174,21 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict]) -> Ra
     avg_aura = int(total_aura_score / count) if count > 0 else 0
     avg_omni = int(total_omni_score / count) if count > 0 else 0
     
-    # For now, generate a synthetic 30-day trend based on the current aura score 
-    # since we don't have historical daily snapshots yet. 
-    # We will simulate a slight fluctuation around the average to populate the chart.
-    trend = []
-    now = datetime.now(timezone.utc)
-    for i in range(30, -1, -5):  # 7 data points
-        dt = now - timedelta(days=i)
-        # Add some random noise for visualization based on the slug hash
-        noise = (hash(radar_def.slug + str(i)) % 10) - 5 
-        simulated_score = max(0, min(100, avg_aura + noise))
-        trend.append(RadarTrendPoint(
-            date=dt.strftime("%Y-%m-%d"),
-            aura_score=simulated_score
-        ))
+    # Use database history if available, otherwise fallback to synthetic (or empty)
+    trend = db_trend
+    if not trend:
+        # Generate synthetic 30-day trend for legacy support during migration
+        trend = []
+        now = datetime.now(timezone.utc)
+        for i in range(30, -1, -5):  # 7 data points
+            dt = now - timedelta(days=i)
+            # Add some random noise for visualization based on the slug hash
+            noise = (hash(radar_def.slug + str(i)) % 10) - 5 
+            simulated_score = max(0, min(100, avg_aura + noise))
+            trend.append(RadarTrendPoint(
+                date=dt.strftime("%Y-%m-%d"),
+                aura_score=simulated_score
+            ))
         
     return RadarResponse(
         name=radar_def.name,
@@ -191,8 +211,12 @@ async def get_radars(request: Request, response: Response):
     try:
         plays_data = await get_all_plays_data()
         all_plays = plays_data.get("plays", [])
+        radars_defs = await get_radars_from_db()
         
-        radars = [compute_radar_stats(r, all_plays) for r in RADARS]
+        radars = []
+        for r_def in radars_defs:
+            trend = await get_radar_history(r_def.slug)
+            radars.append(compute_radar_stats(r_def, all_plays, trend))
         
         # Sort radars by aura score
         radars.sort(key=lambda r: r.aura_score, reverse=True)
@@ -209,14 +233,17 @@ async def get_radars(request: Request, response: Response):
 async def get_radar(slug: str, request: Request, response: Response):
     """Retrieve a specific radar by slug."""
     try:
-        radar_def = next((r for r in RADARS if r.slug == slug), None)
+        radars_defs = await get_radars_from_db()
+        radar_def = next((r for r in radars_defs if r.slug == slug), None)
         if not radar_def:
             raise HTTPException(status_code=404, detail="Radar not found")
             
         plays_data = await get_all_plays_data()
         all_plays = plays_data.get("plays", [])
         
-        return compute_radar_stats(radar_def, all_plays)
+        trend = await get_radar_history(radar_def.slug)
+        
+        return compute_radar_stats(radar_def, all_plays, trend)
         
     except HTTPException:
         raise
