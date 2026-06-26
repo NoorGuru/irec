@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { getRadarsForTicker } from '@/lib/radars'
 
 interface Recommendation {
   ticker: string
@@ -201,6 +202,8 @@ function TickerContent() {
   const confidence = Math.min(recommendations.length / 3, 1)
   const consensusSentiment = Math.round(rawWeightedSentiment * confidence * 100) / 100
 
+  const activeRadars = getRadarsForTicker(symbol.toUpperCase())
+
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
       <div className="max-w-4xl mx-auto">
@@ -214,7 +217,25 @@ function TickerContent() {
               {recommendations[0]?.stock_name && (
                 <p className="mt-1 text-lg text-[#8B95A8]">{recommendations[0].stock_name}</p>
               )}
-              <p className="mt-2 text-sm text-[#64748B]">
+              
+              {activeRadars.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {activeRadars.map(radar => (
+                    <Link
+                      key={radar.slug}
+                      href={`/radars/${radar.slug}`}
+                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 hover:bg-[#1E293B]/40 transition-all duration-300"
+                    >
+                      <span className="text-[#00D4AA] text-xs">✦</span>
+                      <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
+                        Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              <p className="mt-4 text-sm text-[#64748B]">
                 {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} from YouTube analysts
               </p>
             </div>

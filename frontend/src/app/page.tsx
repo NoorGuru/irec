@@ -7,32 +7,11 @@ import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import HolographicCard from '@/components/HolographicCard'
 import EKGHeartbeat from '@/components/EKGHeartbeat'
+import { RADARS } from '@/lib/radars'
+import RadarCard from '@/components/ui/radar-card'
+import { RecommendationRow, AggregatedTicker } from '@/lib/types'
 
 // ─── Types ───
-
-interface RecommendationRow {
-  ticker: string
-  stock_name: string
-  sentiment: number
-  target_price: number | null
-  conviction_level: number
-  videos: {
-    channel_id: string
-    channels: {
-      trust_weight: number
-    }
-  }
-}
-
-interface AggregatedTicker {
-  ticker: string
-  stock_name: string
-  consensus_sentiment: number
-  avg_target_price: number | null
-  avg_conviction: number
-  mention_count: number
-  analyst_count: number
-}
 
 type SortKey = 'mentions' | 'sentiment' | 'conviction' | 'alpha'
 
@@ -400,6 +379,28 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
     </div>
   )
 }
+// ─── Trending Radars ───
+
+function TrendingRadars({ aggregated }: { aggregated: AggregatedTicker[] }) {
+  if (aggregated.length === 0) return null
+
+  return (
+    <div className="mb-8 animate-fade-up stagger-3">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="w-4 h-4 text-[#F59E0B]" />
+        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[#E2E8F0] font-[family-name:var(--font-geist-mono)]">
+          Trending Radars
+        </h2>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {RADARS.map(radar => (
+          <RadarCard key={radar.slug} config={radar} tickers={aggregated} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 
 
 
@@ -905,6 +906,11 @@ export default function Home() {
           <div className="mb-6">
             <SpotlightCards aggregated={aggregated} />
           </div>
+        )}
+
+        {/* Trending Radars */}
+        {aggregated.length > 0 && (
+          <TrendingRadars aggregated={aggregated} />
         )}
 
 
