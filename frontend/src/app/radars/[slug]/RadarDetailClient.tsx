@@ -97,7 +97,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars/${slug}`)
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars/${slug}`)
         if (res.ok) {
           const data = await res.json()
           setRadar(data)
