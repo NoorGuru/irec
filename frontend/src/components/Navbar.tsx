@@ -267,7 +267,7 @@ export function Navbar() {
   const mobilePrimaryLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
-    { href: '/today', label: "Today's", icon: TodayPlaysIcon },
+    { href: '/today', label: "Today", icon: TodayPlaysIcon },
   ]
   const mobileMoreLinks = [
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
@@ -350,16 +350,16 @@ export function Navbar() {
 
       {/* Mobile Backdrop for More Menu */}
       {moreOpen && (
-        <div 
-          className="md:hidden fixed inset-0 z-40 bg-black/5 backdrop-blur-[2px]" 
-          onClick={() => setMoreOpen(false)} 
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/5 backdrop-blur-[2px]"
+          onClick={() => setMoreOpen(false)}
           aria-hidden="true"
         />
       )}
 
       {/* Mobile Bottom Navigation Area */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-[#0A0F1A]/95 backdrop-blur-xl border-t border-[#1E293B]/60 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all duration-300" role="navigation" aria-label="Mobile navigation">
-        
+
         {/* Secondary Navigation Row (More Menu) */}
         {moreOpen && (
           <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200">

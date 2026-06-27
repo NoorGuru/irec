@@ -120,7 +120,7 @@ export default function RadarCard({
   return (
     <Link
       href={`/radars/${radar.slug}`}
-      className="group relative flex flex-col min-w-[280px] w-full p-8 rounded-3xl bg-[#141B2D]/60 backdrop-blur-xl border border-white/5 transition-all duration-500 hover:-translate-y-1 hover:border-white/10 hover:shadow-2xl overflow-hidden snap-start"
+      className="group relative flex flex-col min-w-[280px] w-full p-5 sm:p-6 md:p-8 rounded-[24px] bg-[#141B2D]/60 backdrop-blur-xl border border-white/5 transition-all duration-500 hover:-translate-y-1 hover:border-white/10 hover:shadow-2xl overflow-hidden snap-start"
       style={{ viewTransitionName: vtName } as any}
     >
       {/* Ambient Aura Background */}
@@ -133,29 +133,29 @@ export default function RadarCard({
 
       <div className="relative z-10 flex flex-col h-full">
         {/* Header */}
-        <div className="flex flex-col mb-6 relative">
-          <div className="flex items-center gap-3 mb-3 pr-8">
-            <div className="p-3 rounded-2xl bg-[#1E293B]/50 border border-white/5" style={{ color: radar.theme_color }}>
-              <Icon size={24} strokeWidth={2.5} />
+        <div className="flex flex-col mb-5 md:mb-6 relative">
+          <div className="flex items-center gap-3 mb-2 md:mb-3 pr-8">
+            <div className="p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-[#1E293B]/50 border border-white/5" style={{ color: radar.theme_color }}>
+              <Icon className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.5} />
             </div>
-            <h2 className="text-3xl tracking-tight font-black text-[#F1F5F9] font-[family-name:var(--font-geist-sans)]">
+            <h2 className="text-2xl md:text-3xl tracking-tight font-black text-[#F1F5F9] font-[family-name:var(--font-geist-sans)]">
               {radar.name}
             </h2>
           </div>
-          <p className="text-sm text-[#8B95A8] leading-relaxed line-clamp-2 max-w-[90%]">
+          <p className="text-xs md:text-sm text-[#8B95A8] leading-relaxed line-clamp-2 max-w-[90%]">
             {radar.description}
           </p>
           <div className="absolute top-0 right-0 text-[#64748B] group-hover:text-[#F1F5F9] transition-colors">
             <svg
-              width="24"
-              height="24"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"
+              className="transform group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform md:w-6 md:h-6"
             >
               <path d="M7 17l9.2-9.2M17 17V7H7" />
             </svg>
@@ -163,66 +163,98 @@ export default function RadarCard({
         </div>
 
         {/* Stats Row */}
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex justify-between items-end gap-4">
+        <div className="flex flex-col gap-3 md:gap-4 mb-5 md:mb-6">
+          <div className="flex justify-between items-end gap-3 md:gap-4">
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
+              <div className="text-[9px] md:text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
-                Aura Score (30 days signal)
+                <span className="truncate">Aura Score (30d Signal)</span>
               </div>
-              <div className="text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
+              <div className="text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
                 {radar.aura_score}
               </div>
             </div>
 
-            <div className="border-l border-white/5 pl-4 text-left shrink-0">
-              <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 whitespace-nowrap">
+            <div className="border-l border-white/5 pl-3 md:pl-4 text-left shrink-0">
+              <div className="text-[9px] md:text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 whitespace-nowrap">
                 Omni (All-Time)
               </div>
-              <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
+              <div className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
                 {radar.omni_score}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/5 pt-4">
-            <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">30 Days Trend</div>
+          <div className="flex items-center justify-between border-t border-white/5 pt-3 md:pt-4">
+            <div className="text-[9px] md:text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">30 Days Trend</div>
             <Sparkline data={trendData} color={radar.theme_color} />
           </div>
         </div>
 
         {/* Top Pick Highlight */}
         {topPlay && topPlay.recent_mentions > 0 && (
-          <div className="mb-6 bg-[#0A0F1A]/50 rounded-xl p-3 border border-white/5 flex items-center gap-3">
-            <div className="text-xs font-bold text-[#F1F5F9] px-2 py-1 bg-[#1E293B] rounded-md border border-[#2D3A4F] font-[family-name:var(--font-geist-mono)]">
-              {topPlay.ticker}
-            </div>
-            <div className="text-xs text-[#8B95A8] truncate flex-1">
-              Top Pick &middot; {topPlay.recent_mentions} mentions
-            </div>
-            <div className="text-sm font-bold text-[#00D4AA] font-[family-name:var(--font-geist-mono)]">
-              {topPlay.aura_score}
+          <div className="mb-5 md:mb-6 relative group/pick">
+            {/* Extremely subtle ambient background glow */}
+            <div 
+              className="absolute top-0 left-0 bottom-0 w-1/2 rounded-xl opacity-[0.03] blur-[15px] transition-opacity duration-500 group-hover/pick:opacity-[0.08] pointer-events-none"
+              style={{ backgroundColor: radar.theme_color }}
+            />
+            
+            {/* Card surface */}
+            <div 
+              className="relative bg-[#0A0F1A]/40 backdrop-blur-md rounded-xl p-2.5 md:p-3 border flex items-center gap-2 md:gap-3 transition-all duration-300 group-hover/pick:bg-[#0A0F1A]/60"
+              style={{ borderColor: 'rgba(255,255,255,0.04)' }}
+            >
+              {/* Refined Ticker Badge */}
+              <div className="relative shrink-0 overflow-hidden rounded-md border border-white/5">
+                <div 
+                  className="absolute inset-0 opacity-20"
+                  style={{ backgroundColor: radar.theme_color }}
+                />
+                <div className="relative text-[10px] md:text-xs font-bold px-2 py-1 flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
+                  <Sparkles size={12} strokeWidth={2} style={{ color: radar.theme_color }} className="hidden sm:block" />
+                  {topPlay.ticker}
+                </div>
+              </div>
+
+              {/* Mentions */}
+              <div className="text-[10px] md:text-xs text-[#8B95A8] truncate flex-1 flex items-center gap-1.5">
+                <span className="hidden sm:inline font-medium text-[#CBD5E1]">Top Pick</span>
+                <span className="sm:hidden font-medium text-[#CBD5E1]">Pick</span>
+                <span className="w-1 h-1 rounded-full bg-[#334155] shrink-0" /> 
+                <span className="truncate">{topPlay.recent_mentions}x <span className="hidden sm:inline">mentions</span></span>
+              </div>
+
+              {/* Score Badge */}
+              <div className="relative shrink-0 text-xs md:text-sm font-bold text-[#00D4AA] font-[family-name:var(--font-geist-mono)] bg-[#00D4AA]/5 px-2.5 py-0.5 rounded-md border border-[#00D4AA]/20">
+                {topPlay.aura_score}
+              </div>
             </div>
           </div>
         )}
 
         {/* Constituents Preview */}
-        <div className="mb-6 flex flex-wrap gap-1.5">
-          {radar.tickers.map((tickerSymbol) => {
-            // Find if this ticker is in the actual plays (meaning it has data)
-            const hasData = radar.plays.some(p => p.ticker === tickerSymbol)
-            return (
-              <span
-                key={tickerSymbol}
-                className={`text-[10px] font-[family-name:var(--font-geist-mono)] px-2 py-1 rounded-md border transition-colors ${hasData
-                    ? 'bg-[#1E293B]/50 border-[#2D3A4F] text-[#F1F5F9] group-hover:border-white/10'
-                    : 'bg-transparent border-white/5 text-[#475569]'
-                  }`}
-              >
-                {tickerSymbol}
-              </span>
-            )
-          })}
+        <div className="mb-5 md:mb-6">
+          <div 
+            className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+            style={{ maskImage: 'linear-gradient(to right, black 90%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 90%, transparent 100%)' }}
+          >
+            {radar.tickers.map((tickerSymbol) => {
+              // Find if this ticker is in the actual plays (meaning it has data)
+              const hasData = radar.plays.some(p => p.ticker === tickerSymbol)
+              return (
+                <span
+                  key={tickerSymbol}
+                  className={`text-[9px] md:text-[10px] font-[family-name:var(--font-geist-mono)] px-2 py-1 rounded-md border transition-colors shrink-0 ${hasData
+                      ? 'bg-[#1E293B]/50 border-[#2D3A4F] text-[#F1F5F9] group-hover:border-white/10'
+                      : 'bg-transparent border-white/5 text-[#475569]'
+                    }`}
+                >
+                  {tickerSymbol}
+                </span>
+              )
+            })}
+          </div>
         </div>
 
         {/* Pulse Bar Footer */}
@@ -231,8 +263,8 @@ export default function RadarCard({
             <span className={getSentimentBadgeClass(radar.sentiment_pulse)}>
               {getSentimentLabel(radar.sentiment_pulse)}
             </span>
-            <div className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
-              {radar.volume} Mentions
+            <div className="text-[9px] md:text-[10px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
+              {radar.volume}x Mentions
             </div>
           </div>
           <PulseBar value={radar.sentiment_pulse} />

@@ -880,74 +880,89 @@ export default function TodayPlaysPage() {
 
       <div className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 relative z-10">
 
-        {/* Living EKG Verdict Header */}
-        <section className="relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-10 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30">
-          {data && (
-            <>
-              <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig?.glow} opacity-60 transition-all duration-1000`} />
-              <EKGHeartbeat overallMood={data.market_mood.overall} direction={activeTab} />
-            </>
-          )}
+        {/* Unified Dashboard Header */}
+        <section className="mb-10 relative overflow-hidden rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 backdrop-blur-md shadow-xl shadow-black/30 group">
+          
+          {/* Primary: Living EKG Verdict Header (Market Pulse) */}
+          <div className="relative p-6 md:px-10 md:py-8 z-10">
+            {data && (
+              <>
+                <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig?.glow} opacity-60 transition-all duration-1000`} />
+                <EKGHeartbeat overallMood={data.market_mood.overall} direction={activeTab} />
+              </>
+            )}
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className={`w-3.5 h-3.5 ${activeColorText} animate-pulse`} />
-                <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
-                  Market Pulse
-                </h1>
+            <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className={`w-3.5 h-3.5 ${activeColorText} animate-pulse`} />
+                  <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+                    Market Pulse
+                  </h1>
+                </div>
+
+                {loading ? (
+                  <div className="space-y-2 mt-3">
+                    <div className="h-8 w-52 bg-[#1E293B] rounded animate-pulse" />
+                    <div className="h-2.5 w-80 bg-[#1E293B]/60 rounded animate-pulse" />
+                  </div>
+                ) : error ? (
+                  <div className="mt-3">
+                    <h2 className="text-lg font-bold text-[#FF4D6A] flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" /> Off-grid Node
+                    </h2>
+                    <p className="text-xs text-[#64748B] mt-1">
+                      Failed to synchronise with feed data. {error}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2.5">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className={`text-4xl md:text-6xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000 leading-none`}>
+                        {moodConfig?.title}
+                      </span>
+                      <span className="text-xs md:text-sm text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">
+                        {moodConfig?.scoreText}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#8B95A8] mt-3 max-w-xl leading-relaxed">
+                      {moodConfig?.byline}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {loading ? (
-                <div className="space-y-2 mt-4">
-                  <div className="h-10 w-52 bg-[#1E293B] rounded animate-pulse" />
-                  <div className="h-3 w-80 bg-[#1E293B]/60 rounded animate-pulse" />
-                </div>
-              ) : error ? (
-                <div className="mt-4">
-                  <h2 className="text-xl font-bold text-[#FF4D6A] flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5" /> Off-grid Node
-                  </h2>
-                  <p className="text-xs text-[#64748B] mt-1">
-                    Failed to synchronise with feed data. {error}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-3">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <span className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000 leading-none`}>
-                      {moodConfig?.title}
-                    </span>
-                    <span className="text-sm md:text-lg text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-4 py-2 md:px-5 md:py-2.5 rounded-xl">
-                      {moodConfig?.scoreText}
-                    </span>
+              {/* Quick Metrics Bar */}
+              {!loading && !error && data && (
+                <div className="flex items-center justify-between divide-x divide-[#1E293B]/60 rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/80 p-4 shrink-0 self-start xl:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full xl:w-[380px]">
+                  <div className="flex flex-col flex-1 items-center">
+                    <span className="text-2xl md:text-3xl font-black text-[#00D4AA] tracking-wide">{buyPlays.length}</span>
+                    <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy</span>
                   </div>
-                  <p className="text-xs md:text-sm text-[#8B95A8] mt-3 max-w-xl leading-relaxed">
-                    {moodConfig?.byline}
-                  </p>
+                  <div className="flex flex-col flex-1 items-center">
+                    <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] tracking-wide">{sellPlays.length}</span>
+                    <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell</span>
+                  </div>
+                  <div className="flex flex-col flex-1 items-center">
+                    <span className="text-sm md:text-base text-[#8B95A8] font-black tracking-wide">
+                      {new Date(data.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sync</span>
+                  </div>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Quick Metrics Bar */}
-            {!loading && !error && data && (
-              <div className="flex items-center justify-between divide-x divide-[#1E293B]/60 rounded-3xl border border-[#1E293B] bg-[#0A0F1A]/80 p-6 md:p-8 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full md:w-[450px] lg:w-[500px]">
-                <div className="flex flex-col flex-1 items-center">
-                  <span className="text-4xl md:text-5xl font-black text-[#00D4AA] tracking-wide">{buyPlays.length}</span>
-                  <span className="text-xs md:text-sm uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Signals</span>
-                </div>
-                <div className="flex flex-col flex-1 items-center">
-                  <span className="text-4xl md:text-5xl font-black text-[#FF4D6A] tracking-wide">{sellPlays.length}</span>
-                  <span className="text-xs md:text-sm uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Signals</span>
-                </div>
-                <div className="flex flex-col flex-1 items-center">
-                  <span className="text-xl md:text-2xl text-[#8B95A8] font-black tracking-wide">
-                    {new Date(data.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                  <span className="text-xs md:text-sm uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sync Clock</span>
-                </div>
-              </div>
-            )}
+          {/* Secondary: Explainer Strip */}
+          <div className="border-t border-[#1E293B]/60 bg-[#0A0F1A]/50 px-6 py-3.5 md:px-10">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-4 h-4 text-[#475569] shrink-0" />
+              <p className="text-xs text-[#64748B] leading-relaxed max-w-none font-sans">
+                <span className="font-bold text-[#8B95A8] mr-1">30-Day Trailing Lookback.</span> 
+                This feed aggregates and quantifies conviction signals from elite finance channels, filtering noise to surface actionable insights where analyst consensus is strongest.
+              </p>
+            </div>
           </div>
         </section>
 
