@@ -174,16 +174,16 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
     avg_aura = int(total_aura_score / count) if count > 0 else 0
     avg_omni = int(total_omni_score / count) if count > 0 else 0
     
-    # Use database history if available, otherwise fallback to synthetic (or empty)
+    # Use database history if available and has enough data points, otherwise fallback to synthetic
     trend = db_trend
-    if not trend:
+    if not trend or len(trend) < 2:  # If less than 2 points, chart is flat, so use synthetic
         # Generate synthetic 30-day trend for legacy support during migration
         trend = []
         now = datetime.now(timezone.utc)
         for i in range(30, -1, -5):  # 7 data points
             dt = now - timedelta(days=i)
             # Add some random noise for visualization based on the slug hash
-            noise = (hash(radar_def.slug + str(i)) % 10) - 5 
+            noise = (hash(radar_def.slug + str(i)) % 10) - 5
             simulated_score = max(0, min(100, avg_aura + noise))
             trend.append(RadarTrendPoint(
                 date=dt.strftime("%Y-%m-%d"),
@@ -213,9 +213,39 @@ async def get_radars(request: Request, response: Response):
         all_plays = plays_data.get("plays", [])
         radars_defs = await get_radars_from_db()
         
+        # Batch fetch history to avoid N+1 queries
+        from app.database import _get_client
+        client = _get_client()
+        
+        radars_res = client.table("radars").select("id", "slug").execute()
+        radar_id_to_slug = {r["id"]: r["slug"] for r in radars_res.data} if radars_res.data else {}
+        
+        history_by_slug = {}
+        if radar_id_to_slug:
+            now = datetime.now(timezone.utc)
+            thirty_days_ago = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+            hist_res = (
+                client.table("radar_history")
+                .select("*")
+                .in_("radar_id", list(radar_id_to_slug.keys()))
+                .gte("date", thirty_days_ago)
+                .order("date", desc=False)
+                .execute()
+            )
+            for row in (hist_res.data or []):
+                r_id = row["radar_id"]
+                slug = radar_id_to_slug.get(r_id)
+                if slug:
+                    if slug not in history_by_slug:
+                        history_by_slug[slug] = []
+                    history_by_slug[slug].append(RadarTrendPoint(
+                        date=row["date"],
+                        aura_score=row["aura_score"]
+                    ))
+        
         radars = []
         for r_def in radars_defs:
-            trend = await get_radar_history(r_def.slug)
+            trend = history_by_slug.get(r_def.slug, [])
             radars.append(compute_radar_stats(r_def, all_plays, trend))
         
         # Sort radars by aura score
