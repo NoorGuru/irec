@@ -40,7 +40,7 @@ export default function RadarsIndexPage() {
   }, [radars, selectedCategory])
 
   if (loading) {
-    return <Loading title="Radars" />
+    return <Loading title="Radars" subtitle="Loading curated radars..." />
   }
 
   return (

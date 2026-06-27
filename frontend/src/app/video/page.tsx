@@ -306,7 +306,7 @@ function VideoContent() {
   }, [videoId])
 
   if (loading) {
-    return <Loading title="Video" />
+    return <Loading title="Video" subtitle="Loading video analysis..." />
   }
 
   if (!videoId || !video) {

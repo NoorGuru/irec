@@ -131,7 +131,8 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
   }, [radar])
 
   if (loading) {
-    return <Loading title="Radar" />
+    const formattedTitle = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    return <Loading title={formattedTitle} subtitle="Loading radar details..." />
   }
 
   if (!radar) {

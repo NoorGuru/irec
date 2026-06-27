@@ -283,7 +283,7 @@ export default function Explore() {
   }, [search, sort, filter, hasTargetOnly, highDataOnly])
 
   if (loading) {
-    return <Loading title="Explore" />
+    return <Loading title="Explore" subtitle="Scanning market data..." />
   }
 
   return (

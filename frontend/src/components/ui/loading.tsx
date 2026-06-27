@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 
 interface LoadingProps {
   title?: string // Page-specific title (e.g., "Radars", "Explore")
+  subtitle?: string // Page-specific subtitle (e.g., "Loading analyst profiles...")
   isHome?: boolean // Special case for home page with full logo
 }
 
-export default function Loading({ title, isHome = false }: LoadingProps) {
+export default function Loading({ title, subtitle, isHome = false }: LoadingProps) {
   const [ellipsis, setEllipsis] = useState('')
 
   useEffect(() => {
@@ -60,24 +61,45 @@ export default function Loading({ title, isHome = false }: LoadingProps) {
       <div className="relative flex items-center justify-center">
         <div
           className="absolute glow-emerge"
-          style={{ width: '320px', height: '320px', animationDelay: '600ms' }}
+          style={{ width: '200px', height: '200px', animationDelay: '300ms' }}
         >
           <div className="aura-glow" />
-          <div className="aura-glow-inner" />
         </div>
         <div className="relative text-center">
           {title ? (
-            <div className="text-4xl md:text-5xl font-extralight tracking-[0.25em] text-white mb-4">
-              {title}<span className="text-[#00D4AA]">{ellipsis}</span>
+            <div className="text-5xl font-extralight tracking-[0.2em] logo-sweep">
+              {title.split('').map((letter, i) => (
+                <span
+                  key={i}
+                  className="logo-letter letter-materialize"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  {letter}
+                </span>
+              ))}
             </div>
           ) : (
-            <div className="text-4xl md:text-5xl font-extralight tracking-[0.25em] text-white mb-4">
-              LOADING<span className="text-[#00D4AA]">{ellipsis}</span>
+            <div className="text-5xl font-extralight tracking-[0.2em] logo-sweep">
+              {'LOADING'.split('').map((letter, i) => (
+                <span
+                  key={i}
+                  className="logo-letter letter-materialize"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  {letter}
+                </span>
+              ))}
             </div>
           )}
-          <div className="text-sm text-[#64748B] tracking-[0.15em]">
-            INITIALIZING SYSTEM...
-          </div>
+          {subtitle ? (
+            <p className="mt-3 text-xs text-[#64748B] byline-appear" style={{ animationDelay: `${title ? title.length * 80 + 300 : 600}ms` }}>
+              {subtitle}
+            </p>
+          ) : (
+            <p className="mt-3 text-xs text-[#64748B] byline-appear" style={{ animationDelay: '600ms' }}>
+              Initializing system...
+            </p>
+          )}
         </div>
       </div>
     </div>

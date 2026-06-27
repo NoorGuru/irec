@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import Loading from '@/components/ui/loading'
 
 /* ─── Types ─── */
 
@@ -615,31 +616,7 @@ export default function VideosPage() {
   }, [videos, search, sentimentFilter, channelFilter, sort])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute glow-emerge" style={{ width: '200px', height: '200px', animationDelay: '300ms' }}>
-            <div className="aura-glow" />
-          </div>
-          <div className="relative text-center">
-            <div className="text-5xl font-extralight tracking-[0.2em] logo-sweep">
-              {'Videos'.split('').map((letter, i) => (
-                <span
-                  key={i}
-                  className="logo-letter letter-materialize"
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  {letter}
-                </span>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-[#64748B] byline-appear" style={{ animationDelay: '600ms' }}>
-              Loading the archive…
-            </p>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading title="Videos" subtitle="Loading the archive..." />
   }
 
   return (
