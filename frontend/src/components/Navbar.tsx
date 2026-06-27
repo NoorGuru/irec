@@ -265,8 +265,16 @@ export function Navbar() {
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
 
-  const mobilePrimaryLinks = allLinks.slice(0, 3) // Home, Explore, Today's
-  const mobileMoreLinks = allLinks.slice(3) // Radars, Channels, Videos
+  const mobilePrimaryLinks = [
+    { href: '/', label: 'Home', icon: DashboardIcon },
+    { href: '/explore', label: 'Explore', icon: ExploreIcon },
+    { href: '/today', label: "Today's Plays", icon: TodayPlaysIcon },
+  ]
+  const mobileMoreLinks = [
+    { href: '/radars', label: 'Radars', icon: RadarsIcon },
+    { href: '/channels', label: 'Channels', icon: ChannelsIcon },
+    { href: '/videos', label: 'Videos', icon: VideosIcon },
+  ]
 
   return (
     <>
@@ -396,13 +404,10 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile More Menu Overlay */}
+      {/* Mobile More Menu */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-[#0A0F1A]/80 backdrop-blur-sm" onClick={() => setMoreOpen(false)}>
-          <div
-            className="absolute bottom-16 left-4 right-4 bg-[#141B2D] border border-[#1E293B] rounded-2xl shadow-2xl p-2 animate-fade-up"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="md:hidden fixed bottom-16 left-4 right-4 z-50 animate-fade-up">
+          <div className="bg-[#141B2D] border border-[#1E293B] rounded-2xl shadow-2xl p-2">
             <div className="flex flex-col gap-1">
               {mobileMoreLinks.map((link) => {
                 const isActive = pathname?.startsWith(link.href)
