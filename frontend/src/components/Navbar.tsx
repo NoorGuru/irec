@@ -398,8 +398,8 @@ export function Navbar() {
 
       {/* Mobile More Menu Overlay */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-[#0A0F1A]/80 backdrop-blur-sm" onClick={() => setMoreOpen(false)}>
-          <div 
+        <div className="md:hidden fixed inset-0 z-50 bg-[#0A0F1A]/80 backdrop-blur-sm" onClick={() => setMoreOpen(false)}>
+          <div
             className="absolute bottom-16 left-4 right-4 bg-[#141B2D] border border-[#1E293B] rounded-2xl shadow-2xl p-2 animate-fade-up"
             onClick={(e) => e.stopPropagation()}
           >

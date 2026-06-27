@@ -217,8 +217,8 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
         <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-[#060A13]/10 border border-white/5 rounded-xl mb-4 font-[family-name:var(--font-geist-mono)] text-center">
           {/* Conviction */}
           <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${activeSortBy === 'conviction'
-              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
-              : 'opacity-60 hover:opacity-80'
+            ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
+            : 'opacity-60 hover:opacity-80'
             }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Conviction</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.avg_conviction.toFixed(1)}/10</span>
@@ -229,8 +229,8 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
 
           {/* Buzz */}
           <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${activeSortBy === 'mentions'
-              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
-              : 'opacity-60 hover:opacity-80'
+            ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
+            : 'opacity-60 hover:opacity-80'
             }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Buzz</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.recent_mentions}x</span>
@@ -243,8 +243,8 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
 
           {/* Agreement */}
           <div className={`p-1.5 rounded-lg transition-all duration-300 flex flex-col justify-between h-[48px] ${activeSortBy === 'consensus_sentiment'
-              ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
-              : 'opacity-60 hover:opacity-80'
+            ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_8px_rgba(255,255,255,0.02)] scale-[1.03]'
+            : 'opacity-60 hover:opacity-80'
             }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Agreement</span>
             <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.agreement_pct}%</span>
@@ -447,8 +447,8 @@ function PulseStream({
                 {/* Dashboard Stats */}
                 <div className="grid grid-cols-3 gap-3 p-2 bg-[#060A13]/10 border border-white/5 rounded-xl mb-6 font-[family-name:var(--font-geist-mono)] text-center">
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'conviction'
-                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
-                      : 'opacity-70'
+                    ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
+                    : 'opacity-70'
                     }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Conviction</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
@@ -456,8 +456,8 @@ function PulseStream({
                     </span>
                   </div>
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'mentions'
-                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
-                      : 'opacity-70'
+                    ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
+                    : 'opacity-70'
                     }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Buzz</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
@@ -465,8 +465,8 @@ function PulseStream({
                     </span>
                   </div>
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'consensus_sentiment'
-                      ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
-                      : 'opacity-70'
+                    ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-105'
+                    : 'opacity-70'
                     }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Agreement</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
@@ -533,8 +533,8 @@ function PulseStream({
           onClick={handlePrev}
           disabled={activeIndex === 0}
           className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${activeIndex === 0
-              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed'
-              : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
+            ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed'
+            : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
             }`}
         >
           <ArrowLeft className="w-5 h-5" />
@@ -548,8 +548,8 @@ function PulseStream({
           onClick={handleNext}
           disabled={activeIndex === plays.length - 1}
           className={`flex items-center justify-center p-3 rounded-full border bg-[#141B2D]/40 backdrop-blur-md transition-all duration-200 ${activeIndex === plays.length - 1
-              ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed'
-              : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
+            ? 'opacity-30 border-[#1E293B] text-[#475569] cursor-not-allowed'
+            : 'border-[#1E293B] text-[#F1F5F9] hover:border-[#00D4AA] hover:text-[#00D4AA] active:scale-95'
             }`}
         >
           <ArrowRight className="w-5 h-5" />
@@ -607,7 +607,7 @@ export default function TodayPlaysPage() {
   // Restore user session tab preferences & handle mobile responsiveness
   useEffect(() => {
     let savedViewMode = sessionStorage.getItem('today_viewMode') as 'grid' | 'stream' | null
-    
+
     // Check if this is a hard refresh to clear session data (if that's the intended behavior)
     let isReload = false
     if (typeof window !== 'undefined' && window.performance) {
@@ -713,12 +713,12 @@ export default function TodayPlaysPage() {
 
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-        
+
         const headers: HeadersInit = {}
         if (localEtag) {
           headers['If-None-Match'] = `W/"${localEtag}"`
         }
-        
+
         const res = await fetch(`${backendUrl}/api/v1/today?strategy=${sortBy}`, { headers })
 
         if (res.status === 304) {
@@ -963,8 +963,8 @@ export default function TodayPlaysPage() {
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${viewMode === 'grid'
-                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
-                      : 'text-[#64748B] hover:text-[#F1F5F9]'
+                    ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
+                    : 'text-[#64748B] hover:text-[#F1F5F9]'
                     }`}
                 >
                   <Grid className="w-3.5 h-3.5" />
@@ -973,8 +973,8 @@ export default function TodayPlaysPage() {
                 <button
                   onClick={() => setViewMode('stream')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${viewMode === 'stream'
-                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
-                      : 'text-[#64748B] hover:text-[#F1F5F9]'
+                    ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
+                    : 'text-[#64748B] hover:text-[#F1F5F9]'
                     }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
@@ -1092,7 +1092,7 @@ export default function TodayPlaysPage() {
                 href="/"
                 className="px-4 py-2 text-xs font-bold rounded-lg border border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-all"
               >
-                Go to Explorer
+                Go to Explore
               </Link>
               <Link
                 href="/admin/ingest"
@@ -1204,7 +1204,7 @@ export default function TodayPlaysPage() {
 
       {/* 📱 MOBILE FLOATING DOCK 📱 */}
       {!loading && !error && data && (
-        <div className="md:hidden fixed bottom-16 left-4 right-4 z-40 bg-[#0A0F1A]/90 backdrop-blur-xl border border-[#1E293B] shadow-2xl rounded-2xl overflow-hidden select-none">
+        <div className="md:hidden fixed bottom-16 left-4 right-4 z-30 bg-[#0A0F1A]/90 backdrop-blur-xl border border-[#1E293B] shadow-2xl rounded-2xl overflow-hidden select-none">
 
           {/* Top row: Stream navigation — only visible in stream mode */}
           {viewMode === 'stream' && activePlays.length > 1 && (
@@ -1215,7 +1215,7 @@ export default function TodayPlaysPage() {
                 className={`p-1.5 rounded-lg transition-all ${streamIndex === 0
                   ? 'opacity-20 text-[#475569]'
                   : `${activeColorText} active:scale-90`
-                }`}
+                  }`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -1242,7 +1242,7 @@ export default function TodayPlaysPage() {
                 className={`p-1.5 rounded-lg transition-all ${streamIndex === activePlays.length - 1
                   ? 'opacity-20 text-[#475569]'
                   : `${activeColorText} active:scale-90`
-                }`}
+                  }`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
