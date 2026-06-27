@@ -56,20 +56,27 @@ export default function RadarsIndexPage() {
         </header>
 
         {/* Category Filter */}
-        <div className="flex flex-wrap gap-2 mb-12 animate-fade-up">
-          {categories.map(category => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedCategory === category
-                  ? 'bg-[#00D4AA] text-[#0A0F1A]'
-                  : 'bg-[#1E293B] text-[#8B95A8] hover:bg-[#2D3A4F] hover:text-[#E2E8F0]'
-              }`}
-            >
-              {category === 'all' ? 'All Categories' : category}
-            </button>
-          ))}
+        <div className="mb-12 animate-fade-up">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="text-sm font-semibold text-[#8B95A8] uppercase tracking-wider">
+              Filter by Category
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map(category => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                  selectedCategory === category
+                    ? 'bg-[#00D4AA] text-[#0A0F1A] shadow-lg shadow-[#00D4AA]/20'
+                    : 'bg-[#1E293B] text-[#8B95A8] hover:bg-[#2D3A4F] hover:text-[#E2E8F0] hover:border-[#00D4AA]/30 border border-transparent'
+                }`}
+              >
+                {category === 'all' ? 'All' : category}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Radars Grid */}
