@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -128,14 +128,18 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   }
   const total = aggregated.length
 
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const cardRef = useRef<HTMLDivElement>(null)
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+    const el = cardRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    el.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`)
+    el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`)
   }
 
   return (
     <section 
+      ref={cardRef}
       className="group relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-8 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30 animate-fade-up stagger-1"
       onMouseMove={handleMouseMove}
     >
@@ -143,7 +147,7 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
       <div 
         className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
         style={{
-          background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.04), transparent 40%)`
+          background: `radial-gradient(600px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255,255,255,0.04), transparent 40%)`
         }}
       />
       <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig.glow} opacity-60 transition-all duration-1000`} />
@@ -162,7 +166,7 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
           <div className="mt-3">
             <div className="flex items-center gap-4 flex-wrap">
               <span className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter ${moodConfig.color} transition-all duration-1000 leading-none`}>
-                <TextScramble text={moodConfig.title} duration={800} />
+                {moodConfig.title}
               </span>
               <span className="text-sm md:text-lg text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-4 py-2 md:px-5 md:py-2.5 rounded-xl">
                 {moodConfig.scoreText}

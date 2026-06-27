@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -603,14 +603,14 @@ export default function TodayPlaysPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const headerRef = useRef<HTMLDivElement>(null)
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    setMousePos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    })
+    const el = headerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    el.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`)
+    el.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`)
   }
 
   // Restore user session tab preferences & handle mobile responsiveness
@@ -891,6 +891,7 @@ export default function TodayPlaysPage() {
 
         {/* Unified Dashboard Header */}
         <section 
+          ref={headerRef}
           className="mb-10 relative overflow-hidden rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 backdrop-blur-md shadow-xl shadow-black/30 group"
           onMouseMove={handleMouseMove}
         >
@@ -898,7 +899,7 @@ export default function TodayPlaysPage() {
           <div 
             className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
             style={{
-              background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.04), transparent 40%)`
+              background: `radial-gradient(600px circle at var(--mouse-x, 0px) var(--mouse-y, 0px), rgba(255,255,255,0.04), transparent 40%)`
             }}
           />
           
@@ -938,7 +939,7 @@ export default function TodayPlaysPage() {
                   <div className="mt-2.5">
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className={`text-4xl md:text-6xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000 leading-none`}>
-                        <TextScramble text={moodConfig?.title || ''} duration={800} />
+                        {moodConfig?.title}
                       </span>
                       <span className="text-xs md:text-sm text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">
                         {moodConfig?.scoreText}
