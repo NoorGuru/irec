@@ -268,7 +268,7 @@ export function Navbar() {
   const mobilePrimaryLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
-    { href: '/today', label: "Today's Plays", icon: TodayPlaysIcon },
+    { href: '/today', label: "Today's", icon: TodayPlaysIcon },
   ]
   const mobileMoreLinks = [
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
