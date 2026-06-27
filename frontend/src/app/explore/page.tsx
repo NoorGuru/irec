@@ -166,7 +166,7 @@ function SortFilterBar({
         </button>
 
         <button
-          onClick={() => setHighDataOnly(prev => !prev)}
+          onClick={() => setHighDataOnly(!highDataOnly)}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${
             highDataOnly
               ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]'
