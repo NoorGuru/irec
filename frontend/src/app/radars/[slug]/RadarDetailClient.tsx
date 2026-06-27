@@ -32,18 +32,24 @@ function getSentimentBadgeClass(value: number): string {
 
 function LargeSparkline({ data, color }: { data: number[]; color: string }) {
   if (!data || data.length === 0) return null
-  
+
   const min = Math.min(...data)
   const max = Math.max(...data)
   const range = max - min || 1
   const height = 100
   const width = 300
-  
-  const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * width
-    const y = height - ((val - min) / range) * height
-    return `${x},${y}`
-  }).join(' ')
+
+  let points = ""
+  if (data.length === 1) {
+    const y = height - ((data[0] - min) / range) * height
+    points = `0,${y} ${width},${y}`
+  } else {
+    points = data.map((val, i) => {
+      const x = (i / (data.length - 1)) * width
+      const y = height - ((val - min) / range) * height
+      return `${x},${y}`
+    }).join(' ')
+  }
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible drop-shadow-2xl" style={{ color }}>
@@ -139,14 +145,14 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
   return (
     <main className="min-h-screen bg-[#0A0F1A] text-[#E2E8F0] p-4 md:p-8 font-[family-name:var(--font-geist-sans)] selection:bg-white/20">
       <div className="max-w-[1400px] w-full mx-auto pt-6 pb-20">
-        
+
         <Link href="/radars" className="inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#00D4AA] transition-colors mb-8 uppercase tracking-widest font-semibold">
           <ArrowLeft size={16} />
           All Radars
         </Link>
 
         {/* Hero Section */}
-        <div 
+        <div
           className="relative rounded-[2rem] border border-white/5 bg-[#141B2D]/40 backdrop-blur-3xl overflow-hidden mb-12 p-8 md:p-12"
           style={{ viewTransitionName: vtName } as any}
         >
@@ -166,11 +172,11 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                   Curated Radar
                 </div>
               </div>
-              
+
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-[#F1F5F9] mb-4 drop-shadow-md">
                 {radar.name}
               </h1>
-              
+
               <p className="text-lg text-[#8B95A8] leading-relaxed max-w-lg mb-8">
                 {radar.description}
               </p>
@@ -186,43 +192,43 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
 
             {/* Huge Stats Panel */}
             <div className="flex flex-col gap-6 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-3xl p-8 shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]">
-               
-               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                 <div>
-                   <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-2 flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
-                     30-Day Aura Score
-                   </div>
-                   <div className="text-6xl md:text-8xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-tighter flex items-baseline gap-2">
-                     {radar.aura_score}
-                     <span className="text-xl text-[#64748B] font-medium tracking-normal">/100</span>
-                   </div>
-                 </div>
 
-                 <div className="text-left md:text-right border-l-2 md:border-l-0 md:border-r-2 border-[#1E293B] pl-4 md:pl-0 md:pr-4">
-                   <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-2">
-                     All-Time Omni Score
-                   </div>
-                   <div className="text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#8B95A8] tracking-tighter">
-                     {radar.omni_score}
-                   </div>
-                 </div>
-                 
-                 <div className="hidden lg:block text-right">
-                   <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-2">Signal</div>
-                   <span className={getSentimentBadgeClass(radar.sentiment_pulse)}>
-                     {getSentimentLabel(radar.sentiment_pulse)}
-                   </span>
-                 </div>
-               </div>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <div>
+                  <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-2 flex items-center gap-2 whitespace-nowrap">
+                    <span className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
+                    Aura Pick (30 days signal)
+                  </div>
+                  <div className="text-6xl md:text-8xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-tighter flex items-baseline gap-2">
+                    {radar.aura_score}
+                    <span className="text-xl text-[#64748B] font-medium tracking-normal">/100</span>
+                  </div>
+                </div>
 
-               <div className="pt-6 border-t border-[#1E293B]">
-                 <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-4">30-Day Score Trend</div>
-                 <div className="h-24 w-full pr-4">
-                   <LargeSparkline data={trendData} color={radar.theme_color} />
-                 </div>
-               </div>
-               
+                <div className="text-left md:text-right border-l-2 md:border-l-0 md:border-r-2 border-[#1E293B] pl-4 md:pl-0 md:pr-4">
+                  <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-2">
+                    All-Time Omni Score
+                  </div>
+                  <div className="text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#8B95A8] tracking-tighter">
+                    {radar.omni_score}
+                  </div>
+                </div>
+
+                <div className="hidden lg:block text-right">
+                  <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-2">Signal</div>
+                  <span className={getSentimentBadgeClass(radar.sentiment_pulse)}>
+                    {getSentimentLabel(radar.sentiment_pulse)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-[#1E293B]">
+                <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-4">30-Day Score Trend</div>
+                <div className="h-24 w-full pr-4">
+                  <LargeSparkline data={trendData} color={radar.theme_color} />
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -232,16 +238,16 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
           <Activity className="text-[#00D4AA]" size={24} />
           Radar Constituents
         </h2>
-        
+
         {radar.plays.length === 0 ? (
           <div className="p-12 text-center text-[#8B95A8] bg-[#141B2D]/40 rounded-3xl border border-[#1E293B]">
             No active plays found for these constituents in the past 30 days.
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {radar.plays.sort((a,b) => b.aura_score - a.aura_score).map(play => (
-              <Link 
-                key={play.ticker} 
+            {radar.plays.sort((a, b) => b.aura_score - a.aura_score).map(play => (
+              <Link
+                key={play.ticker}
                 href={`/ticker?s=${play.ticker}`}
                 className="group flex flex-col bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-white/10 rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl"
               >
@@ -258,10 +264,10 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                     </div>
                     <span className="text-xs text-[#8B95A8] font-medium">{play.stock_name}</span>
                   </div>
-                  
+
                   <div className="flex flex-col items-end gap-2 text-right">
                     <div className="flex items-center gap-2 text-[#8B95A8] text-xs font-[family-name:var(--font-geist-mono)]">
-                      <Target size={14} /> 
+                      <Target size={14} />
                       {play.avg_target_price ? `$${play.avg_target_price.toFixed(2)}` : 'N/A'}
                     </div>
                     <div className="flex items-center gap-2 text-[#8B95A8] text-xs font-[family-name:var(--font-geist-mono)]">
@@ -275,7 +281,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                 <div className="p-6 flex-grow flex flex-col gap-4">
                   <div className="flex justify-between items-center text-xs">
                     <div className="text-[#64748B]">
-                      {play.recent_mentions > 0 
+                      {play.recent_mentions > 0
                         ? `${play.analyst_count} analysts (${play.agreement_pct}% agree)`
                         : 'No recent analyst consensus'
                       }
@@ -284,7 +290,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                       <ConvictionMini level={play.avg_conviction} />
                     )}
                   </div>
-                  
+
                   <div className="bg-[#0A0F1A]/50 rounded-xl p-4 border border-white/5 text-sm text-[#8B95A8] italic line-clamp-3 leading-relaxed">
                     "{play.top_catalyst}"
                   </div>
@@ -293,15 +299,15 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                 {/* Footer: The Dual Scores */}
                 <div className="grid grid-cols-2 divide-x divide-white/5 border-t border-white/5 bg-[#0A0F1A]/80">
                   <div className="p-5 flex flex-col items-center justify-center group-hover:bg-white/5 transition-colors">
-                    <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
-                      Aura Score (30 Days)
+                    <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
+                      Aura Pick (30 days signal)
                     </div>
                     <div className="text-4xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
                       {play.aura_score}
                     </div>
                   </div>
-                  
+
                   <div className="p-5 flex flex-col items-center justify-center group-hover:bg-white/5 transition-colors">
                     <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1">
                       Omni Score (All-Time)

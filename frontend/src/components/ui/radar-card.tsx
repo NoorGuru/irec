@@ -62,11 +62,17 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const height = 24
   const width = 60
   
-  const points = data.map((val, i) => {
-    const x = (i / (data.length - 1)) * width
-    const y = height - ((val - min) / range) * height
-    return `${x},${y}`
-  }).join(' ')
+  let points = ""
+  if (data.length === 1) {
+    const y = height - ((data[0] - min) / range) * height
+    points = `0,${y} ${width},${y}`
+  } else {
+    points = data.map((val, i) => {
+      const x = (i / (data.length - 1)) * width
+      const y = height - ((val - min) / range) * height
+      return `${x},${y}`
+    }).join(' ')
+  }
 
   return (
     <svg width={width} height={height} className="overflow-visible" style={{ color }}>
@@ -158,26 +164,26 @@ export default function RadarCard({
 
         {/* Stats Row */}
         <div className="flex flex-col gap-4 mb-6">
-           <div className="grid grid-cols-2 gap-4 items-end">
-             <div>
-                <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
-                  Aura Score
-                </div>
-                <div className="text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
-                   {radar.aura_score}
-                </div>
-             </div>
-             
-             <div className="border-l border-white/5 pl-4 text-left">
-                <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1">
-                  Omni (All-Time)
-                </div>
-                <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-                   {radar.omni_score}
-                </div>
-             </div>
-           </div>
+            <div className="flex justify-between items-end gap-4">
+              <div className="flex-1 min-w-0">
+                 <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
+                   <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
+                   Aura Pick (30 days signal)
+                 </div>
+                 <div className="text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
+                    {radar.aura_score}
+                 </div>
+              </div>
+              
+              <div className="border-l border-white/5 pl-4 text-left shrink-0">
+                 <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 whitespace-nowrap">
+                   Omni (All-Time)
+                 </div>
+                 <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
+                    {radar.omni_score}
+                 </div>
+              </div>
+            </div>
            
            <div className="flex items-center justify-between border-t border-white/5 pt-4">
               <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">30 Days Trend</div>
