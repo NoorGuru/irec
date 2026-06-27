@@ -181,8 +181,7 @@ function CommandPalette({
                 aria-selected={i === selectedIndex}
                 onClick={() => navigate(result.ticker)}
                 onMouseEnter={() => setSelectedIndex(i)}
-                className={`cmd-result-item flex items-center justify-between px-5 py-3.5 cursor-pointer transition-all duration-100 ${
-                    i === selectedIndex ? 'bg-[#00D4AA]/8 border-l-2 border-l-[#00D4AA]' : 'border-l-2 border-l-transparent hover:bg-[#0A0F1A]/40'
+                className={`cmd-result-item flex items-center justify-between px-5 py-3.5 cursor-pointer transition-all duration-100 ${i === selectedIndex ? 'bg-[#00D4AA]/8 border-l-2 border-l-[#00D4AA]' : 'border-l-2 border-l-transparent hover:bg-[#0A0F1A]/40'
                   }`}
               >
                 <div className="flex items-center gap-4">
@@ -259,7 +258,7 @@ export function Navbar() {
   const allLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
-    { href: '/today', label: "Today's", icon: TodayPlaysIcon },
+    { href: '/today', label: "Today", icon: TodayPlaysIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
@@ -279,9 +278,8 @@ export function Navbar() {
   return (
     <>
       <nav
-        className={`hidden md:block sticky top-0 z-50 w-full transition-all duration-300 ${
-          scrolled ? 'bg-[#0A0F1A]/95 backdrop-blur-xl border-b border-[#1E293B]/50 shadow-lg shadow-black/20' : 'bg-transparent border-b border-transparent'
-        }`}
+        className={`hidden md:block sticky top-0 z-50 w-full transition-all duration-300 ${scrolled ? 'bg-[#0A0F1A]/95 backdrop-blur-xl border-b border-[#1E293B]/50 shadow-lg shadow-black/20' : 'bg-transparent border-b border-transparent'
+          }`}
         role="navigation"
         aria-label="Main navigation"
       >
@@ -309,8 +307,7 @@ export function Navbar() {
                         sessionStorage.removeItem('today_streamIndex')
                       }
                     }}
-                    className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                        isActive ? 'bg-[#0A0F1A] text-[#F1F5F9] shadow-sm shadow-black/20' : 'text-[#64748B] hover:text-[#C8D1DE]'
+                    className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive ? 'bg-[#0A0F1A] text-[#F1F5F9] shadow-sm shadow-black/20' : 'text-[#64748B] hover:text-[#C8D1DE]'
                       }`}
                   >
                     <Icon active={!!isActive} />

@@ -130,7 +130,7 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   return (
     <section className="relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-8 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30 animate-fade-up stagger-1">
       <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig.glow} opacity-60 transition-all duration-1000`} />
-      
+
       <EKGHeartbeat overallMood={moodConfig.title} direction={moodConfig.direction} />
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -141,7 +141,7 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
               Market Pulse
             </h1>
           </div>
-          
+
           <div className="mt-3">
             <div className="flex items-center gap-4 flex-wrap">
               <span className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter ${moodConfig.color} transition-all duration-1000 leading-none`}>
@@ -155,8 +155,8 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
               {moodConfig.byline}
             </p>
             <div className="mt-4">
-              <Link 
-                href="/today" 
+              <Link
+                href="/today"
                 className="inline-flex items-center gap-1.5 text-xs text-[#00D4AA] hover:text-[#00FFD0] font-bold tracking-wider uppercase font-[family-name:var(--font-geist-mono)] transition-all duration-300 group/pulse-link"
               >
                 <span>View Today's Plays Detail</span>
@@ -170,22 +170,22 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
         </div>
 
         <div className="flex flex-col gap-4 md:gap-5 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-3xl p-6 md:p-8 shrink-0 self-start md:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full md:w-[450px] lg:w-[500px]">
-           <div className="flex justify-between text-[11px] md:text-sm uppercase tracking-widest text-[#64748B] mb-1">
-             <span>Bullish</span>
-             <span>Bearish</span>
-           </div>
-           <div className="flex w-full h-6 md:h-8 rounded-full overflow-hidden bg-[#1E293B] shadow-inner">
-             {buckets.strongBuy > 0 && <div className="h-full bg-[#00FFD0] transition-all duration-1000" style={{ width: `${(buckets.strongBuy / total) * 100}%` }} />}
-             {buckets.buy > 0 && <div className="h-full bg-[#00D4AA] transition-all duration-1000" style={{ width: `${(buckets.buy / total) * 100}%` }} />}
-             {buckets.neutral > 0 && <div className="h-full bg-[#475569] transition-all duration-1000" style={{ width: `${(buckets.neutral / total) * 100}%` }} />}
-             {buckets.sell > 0 && <div className="h-full bg-[#FF4D6A] transition-all duration-1000" style={{ width: `${(buckets.sell / total) * 100}%` }} />}
-             {buckets.strongSell > 0 && <div className="h-full bg-[#FF1744] transition-all duration-1000" style={{ width: `${(buckets.strongSell / total) * 100}%` }} />}
-           </div>
-           <div className="flex justify-between items-center text-sm md:text-base mt-2">
-             <span className="text-[#00D4AA] font-black tracking-wide">{buckets.strongBuy + buckets.buy} <span className="text-[#64748B] font-bold text-xs md:text-sm">signals</span></span>
-             <span className="text-[#8B95A8] font-black tracking-wide">{buckets.neutral} <span className="text-[#64748B] font-bold text-xs md:text-sm">neutral</span></span>
-             <span className="text-[#FF4D6A] font-black tracking-wide">{buckets.sell + buckets.strongSell} <span className="text-[#64748B] font-bold text-xs md:text-sm">signals</span></span>
-           </div>
+          <div className="flex justify-between text-[11px] md:text-sm uppercase tracking-widest text-[#64748B] mb-1">
+            <span>Bullish</span>
+            <span>Bearish</span>
+          </div>
+          <div className="flex w-full h-6 md:h-8 rounded-full overflow-hidden bg-[#1E293B] shadow-inner">
+            {buckets.strongBuy > 0 && <div className="h-full bg-[#00FFD0] transition-all duration-1000" style={{ width: `${(buckets.strongBuy / total) * 100}%` }} />}
+            {buckets.buy > 0 && <div className="h-full bg-[#00D4AA] transition-all duration-1000" style={{ width: `${(buckets.buy / total) * 100}%` }} />}
+            {buckets.neutral > 0 && <div className="h-full bg-[#475569] transition-all duration-1000" style={{ width: `${(buckets.neutral / total) * 100}%` }} />}
+            {buckets.sell > 0 && <div className="h-full bg-[#FF4D6A] transition-all duration-1000" style={{ width: `${(buckets.sell / total) * 100}%` }} />}
+            {buckets.strongSell > 0 && <div className="h-full bg-[#FF1744] transition-all duration-1000" style={{ width: `${(buckets.strongSell / total) * 100}%` }} />}
+          </div>
+          <div className="flex justify-between items-center text-sm md:text-base mt-2">
+            <span className="text-[#00D4AA] font-black tracking-wide">{buckets.strongBuy + buckets.buy} <span className="text-[#64748B] font-bold text-xs md:text-sm">signals</span></span>
+            <span className="text-[#8B95A8] font-black tracking-wide">{buckets.neutral} <span className="text-[#64748B] font-bold text-xs md:text-sm">neutral</span></span>
+            <span className="text-[#FF4D6A] font-black tracking-wide">{buckets.sell + buckets.strongSell} <span className="text-[#64748B] font-bold text-xs md:text-sm">signals</span></span>
+          </div>
         </div>
       </div>
     </section>
@@ -202,7 +202,7 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
 
   const addCard = (label: string, icon: string, ticker: AggregatedTicker) => {
     if (!ticker || seen.has(ticker.ticker)) return false
-    
+
     let glowTheme, textTheme, gradient
     if (ticker.consensus_sentiment >= 0.5) {
       glowTheme = 'hover:shadow-[0_10px_30px_-10px_rgba(0,212,170,0.3)] hover:border-[#00D4AA]/40'
@@ -252,7 +252,7 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
             className={`group relative flex flex-col p-5 rounded-2xl bg-[#141B2D]/40 backdrop-blur-md border border-[#ffffff]/5 ${glowTheme} transition-all duration-500 ease-out hover:-translate-y-1 overflow-hidden`}
           >
             <div className={`absolute -inset-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] ${gradient} pointer-events-none`} />
-            
+
             <div className="flex items-center gap-2 mb-3 relative z-10">
               <span className={`text-sm ${textTheme} opacity-80 group-hover:opacity-100 transition-opacity`}>{icon}</span>
               <span className="text-[10px] uppercase tracking-[0.15em] text-[#64748B] font-medium">{label}</span>
@@ -263,7 +263,7 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
                 {ticker.ticker}
               </h2>
             </div>
-            
+
             <div className="flex items-center gap-3 mt-auto pt-2 relative z-10">
               <span className={getSentimentBadgeClass(ticker.consensus_sentiment)}>
                 {getSentimentLabel(ticker.consensus_sentiment)}
@@ -294,8 +294,8 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
             Trending Radars
           </h2>
         </div>
-        <Link 
-          href="/radars" 
+        <Link
+          href="/radars"
           className="text-xs text-[#00D4AA] hover:text-[#00FFD0] font-semibold tracking-wide flex items-center gap-1 transition-colors group/radar-link"
         >
           <span>View All Radars</span>
@@ -305,7 +305,7 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
           </svg>
         </Link>
       </div>
-      
+
       <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
         {radars.map(radar => (
           <RadarCard key={radar.slug} radar={radar} />
@@ -403,13 +403,13 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen px-4 py-8 md:px-8 md:py-12 bg-[#0A0F1A] overflow-hidden">
-      <div 
-        className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] mix-blend-overlay" 
+      <div
+        className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] mix-blend-overlay"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
         }}
       />
-      
+
       <div className="relative z-10 w-full max-w-[1400px] mx-auto">
         <header className="mb-16 md:mb-20 pt-8 md:pt-16">
           <div className="relative flex flex-col items-center mb-8 md:mb-10">
@@ -453,25 +453,25 @@ export default function Home() {
                 Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.
               </p>
             </div>
-            
+
             {/* Quick Navigation Pills */}
             <div className="flex flex-wrap justify-center gap-3">
-              <Link 
-                href="/today" 
+              <Link
+                href="/today"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/30 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-today"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
                 <span>Today's Plays</span>
               </Link>
-              <Link 
-                href="/explore" 
+              <Link
+                href="/explore"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/30 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-explore"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#64748B]" />
-                <span>Explorer</span>
+                <span>Explore</span>
               </Link>
-              <Link 
-                href="/radars" 
+              <Link
+                href="/radars"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#F59E0B]/30 text-xs font-semibold text-[#8B95A8] hover:text-[#F59E0B] transition-all duration-300 shadow-inner group/pill-radars"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
@@ -551,31 +551,19 @@ export default function Home() {
         {/* Explore CTA */}
         {aggregated.length > 0 && (
           <div className="text-center animate-fade-up stagger-5 py-8">
-             <Link 
-               href="/explore" 
-               className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-[#00D4AA] font-bold tracking-wide hover:bg-[#00D4AA]/20 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(0,212,170,0.15)] hover:shadow-[0_0_30px_rgba(0,212,170,0.3)]"
-             >
-               <span>Explore All Data</span>
-               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                 <path d="M5 12h14" />
-                 <path d="m12 5 7 7-7 7" />
-               </svg>
-             </Link>
+            <Link
+              href="/explore"
+              className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-[#00D4AA] font-bold tracking-wide hover:bg-[#00D4AA]/20 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(0,212,170,0.15)] hover:shadow-[0_0_30px_rgba(0,212,170,0.3)]"
+            >
+              <span>Explore All Data</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </Link>
           </div>
         )}
 
-        {aggregated.length > 0 && (
-          <footer className="mt-12 pt-6 border-t border-[#1E293B] animate-fade-up stagger-10">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="text-xs text-[#64748B] leading-relaxed">
-                Trust-weighted consensus · <span className="text-[#8B95A8]">*</span> fewer than 3 mentions
-              </p>
-              <p className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569] tracking-wide">
-                <span className="text-[#64748B]">{aggregated.length}</span> total tickers tracked
-              </p>
-            </div>
-          </footer>
-        )}
       </div>
     </div>
   )

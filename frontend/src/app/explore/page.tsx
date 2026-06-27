@@ -85,6 +85,8 @@ function SortFilterBar({
   counts,
   hasTargetOnly,
   setHasTargetOnly,
+  highDataOnly,
+  setHighDataOnly,
 }: {
   sort: SortKey
   setSort: (s: SortKey) => void
@@ -93,6 +95,8 @@ function SortFilterBar({
   counts: Record<string, number>
   hasTargetOnly: boolean
   setHasTargetOnly: (v: boolean) => void
+  highDataOnly: boolean
+  setHighDataOnly: (v: boolean) => void
 }) {
   const sortOptions: { key: SortKey; label: string }[] = [
     { key: 'mentions', label: 'Mentions' },
@@ -152,13 +156,24 @@ function SortFilterBar({
 
         <button
           onClick={() => setHasTargetOnly(!hasTargetOnly)}
-          className={`ml-auto px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${
             hasTargetOnly
               ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]'
               : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
           }`}
         >
           <span className="mr-1">$</span>Has Target
+        </button>
+
+        <button
+          onClick={() => setHighDataOnly(prev => !prev)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 ${
+            highDataOnly
+              ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]'
+              : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
+          }`}
+        >
+          <span className="mr-1">📊</span>High Data Only
         </button>
       </div>
     </div>
@@ -172,6 +187,7 @@ export default function Explore() {
   const [sort, setSort] = useState<SortKey>('mentions')
   const [filter, setFilter] = useState('')
   const [hasTargetOnly, setHasTargetOnly] = useState(false)
+  const [highDataOnly, setHighDataOnly] = useState(false)
   const [visibleCount, setVisibleCount] = useState(15)
 
   useEffect(() => {
@@ -237,6 +253,9 @@ export default function Explore() {
     if (hasTargetOnly) {
       list = list.filter(t => t.avg_target_price !== null)
     }
+    if (highDataOnly) {
+      list = list.filter(t => t.mention_count >= 3)
+    }
     if (search) {
       const q = search.toLowerCase()
       list = list.filter(t => t.ticker.toLowerCase().includes(q) || t.stock_name.toLowerCase().includes(q))
@@ -256,11 +275,11 @@ export default function Explore() {
         list.sort((a, b) => b.mention_count - a.mention_count)
     }
     return list
-  }, [aggregated, sort, filter, hasTargetOnly, search])
+  }, [aggregated, sort, filter, hasTargetOnly, search, highDataOnly])
 
   useEffect(() => {
     setVisibleCount(15)
-  }, [search, sort, filter, hasTargetOnly])
+  }, [search, sort, filter, hasTargetOnly, highDataOnly])
 
   if (loading) {
     return (
@@ -289,9 +308,17 @@ export default function Explore() {
       
       <div className="relative z-10 w-full max-w-[1400px] mx-auto pt-8">
         <header className="mb-8 md:mb-12">
-          <h1 className="text-4xl md:text-5xl font-extralight tracking-wide text-[#F1F5F9] mb-4">
-            Market Explorer
-          </h1>
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+            <h1 className="text-4xl md:text-5xl font-extralight tracking-wide text-[#F1F5F9]">
+              Market Explorer
+            </h1>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141B2D]/60 border border-[#1E293B]">
+              <span className="text-xs text-[#64748B] uppercase tracking-wider">Total Tickers</span>
+              <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#00D4AA]">
+                {aggregated.length}
+              </span>
+            </div>
+          </div>
           <p className="text-[#8B95A8] max-w-2xl text-lg font-light leading-relaxed">
             Scan the entire market across all extracted signals. Use filters to zero in on high conviction setups.
           </p>
@@ -336,7 +363,17 @@ export default function Explore() {
               )}
             </div>
 
-            <SortFilterBar sort={sort} setSort={setSort} filter={filter} setFilter={setFilter} counts={filterCounts} hasTargetOnly={hasTargetOnly} setHasTargetOnly={setHasTargetOnly} />
+            <SortFilterBar
+              sort={sort}
+              setSort={setSort}
+              filter={filter}
+              setFilter={setFilter}
+              counts={filterCounts}
+              hasTargetOnly={hasTargetOnly}
+              setHasTargetOnly={setHasTargetOnly}
+              highDataOnly={highDataOnly}
+              setHighDataOnly={setHighDataOnly}
+            />
           </div>
         )}
 
@@ -382,6 +419,7 @@ export default function Explore() {
             )}
           </div>
         )}
+
       </div>
     </div>
   )
