@@ -62,7 +62,24 @@ export default function RadarsIndexPage() {
               Filter by Category
             </span>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          {/* Mobile Dropdown */}
+          <div className="md:hidden mb-4">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-3 bg-[#1E293B] text-[#E2E8F0] rounded-lg border border-[#2D3A4F] focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA] outline-none transition-all duration-300"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category === 'all' ? 'All' : category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Desktop Pills */}
+          <div className="hidden md:flex flex-wrap gap-2">
             {categories.map(category => (
               <button
                 key={category}
