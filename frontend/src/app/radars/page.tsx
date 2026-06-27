@@ -65,32 +65,42 @@ export default function RadarsIndexPage() {
 
           {/* Mobile Dropdown */}
           <div className="md:hidden mb-4">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-3 bg-[#1E293B] text-[#E2E8F0] rounded-lg border border-[#2D3A4F] focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA] outline-none transition-all duration-300"
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category === 'all' ? 'All' : category}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 bg-[#1E293B] text-[#E2E8F0] rounded-xl border border-[#2D3A4F] focus:border-[#00D4AA] focus:ring-2 focus:ring-[#00D4AA]/20 outline-none transition-all duration-300 appearance-none cursor-pointer"
+              >
+                {categories.map(category => (
+                  <option key={category} value={category} className="bg-[#0A0F1A] text-[#E2E8F0]">
+                    {category === 'all' ? 'All' : category}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#8B95A8]">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Desktop Pills */}
-          <div className="hidden md:flex flex-wrap gap-2">
+          <div className="hidden md:flex flex-wrap gap-3">
             {categories.map(category => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 group relative ${
                   selectedCategory === category
-                    ? 'bg-[#00D4AA] text-[#0A0F1A] shadow-lg shadow-[#00D4AA]/20'
-                    : 'bg-[#1E293B] text-[#8B95A8] hover:bg-[#2D3A4F] hover:text-[#E2E8F0] hover:border-[#00D4AA]/30 border border-transparent'
+                    ? 'bg-gradient-to-r from-[#00D4AA] to-[#00FFD0] text-[#0A0F1A] shadow-lg shadow-[#00D4AA]/30'
+                    : 'bg-[#1E293B] text-[#8B95A8] hover:bg-[#2D3A4F] hover:text-[#E2E8F0] border border-[#2D3A4F] hover:border-[#00D4AA]/30'
                 }`}
               >
                 {category === 'all' ? 'All' : category}
+                {selectedCategory === category && (
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-[#00D4AA] to-[#00FFD0] blur-md opacity-50 -z-10 group-hover:opacity-70 transition-opacity duration-300" />
+                )}
               </button>
             ))}
           </div>
