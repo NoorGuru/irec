@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import HolographicCard from '@/components/HolographicCard'
-import EKGHeartbeat from '@/components/EKGHeartbeat'
+import PulseField from '@/components/PulseField'
+import TextScramble from '@/components/TextScramble'
 import RadarCard from '@/components/ui/radar-card'
 import { RecommendationRow, AggregatedTicker, RadarResponse } from '@/lib/types'
 import { TickerRow, PulseBar, getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
@@ -127,11 +128,27 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   }
   const total = aggregated.length
 
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+  }
+
   return (
-    <section className="relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-8 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30 animate-fade-up stagger-1">
+    <section 
+      className="group relative rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 overflow-hidden mb-8 p-6 md:p-10 transition-all duration-500 shadow-xl shadow-black/30 animate-fade-up stagger-1"
+      onMouseMove={handleMouseMove}
+    >
+      {/* Mouse Tracking Glow */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
+        style={{
+          background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.04), transparent 40%)`
+        }}
+      />
       <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig.glow} opacity-60 transition-all duration-1000`} />
 
-      <EKGHeartbeat overallMood={moodConfig.title} direction={moodConfig.direction} />
+      <PulseField overallMood={moodConfig.title} direction={moodConfig.direction} />
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -145,7 +162,7 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
           <div className="mt-3">
             <div className="flex items-center gap-4 flex-wrap">
               <span className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter ${moodConfig.color} transition-all duration-1000 leading-none`}>
-                {moodConfig.title}
+                <TextScramble text={moodConfig.title} duration={800} />
               </span>
               <span className="text-sm md:text-lg text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-4 py-2 md:px-5 md:py-2.5 rounded-xl">
                 {moodConfig.scoreText}

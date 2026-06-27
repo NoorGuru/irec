@@ -25,7 +25,7 @@ function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 import HolographicCard from '@/components/HolographicCard'
 import TextScramble from '@/components/TextScramble'
-import EKGHeartbeat from '@/components/EKGHeartbeat'
+import PulseField from '@/components/PulseField'
 
 // --- Types ---
 
@@ -603,6 +603,15 @@ export default function TodayPlaysPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    })
+  }
 
   // Restore user session tab preferences & handle mobile responsiveness
   useEffect(() => {
@@ -881,14 +890,24 @@ export default function TodayPlaysPage() {
       <div className="w-full max-w-6xl mx-auto px-4 md:px-8 py-8 relative z-10">
 
         {/* Unified Dashboard Header */}
-        <section className="mb-10 relative overflow-hidden rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 backdrop-blur-md shadow-xl shadow-black/30 group">
+        <section 
+          className="mb-10 relative overflow-hidden rounded-3xl border border-[#1E293B] bg-[#141B2D]/45 backdrop-blur-md shadow-xl shadow-black/30 group"
+          onMouseMove={handleMouseMove}
+        >
+          {/* Mouse Tracking Glow */}
+          <div 
+            className="pointer-events-none absolute inset-0 z-20 transition-opacity duration-300 opacity-0 group-hover:opacity-100"
+            style={{
+              background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(255,255,255,0.04), transparent 40%)`
+            }}
+          />
           
           {/* Primary: Living EKG Verdict Header (Market Pulse) */}
           <div className="relative p-6 md:px-10 md:py-8 z-10">
             {data && (
               <>
                 <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig?.glow} opacity-60 transition-all duration-1000`} />
-                <EKGHeartbeat overallMood={data.market_mood.overall} direction={activeTab} />
+                <PulseField overallMood={data.market_mood.overall} direction={activeTab} />
               </>
             )}
 
@@ -919,7 +938,7 @@ export default function TodayPlaysPage() {
                   <div className="mt-2.5">
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className={`text-4xl md:text-6xl font-black tracking-tighter ${moodConfig?.color} transition-all duration-1000 leading-none`}>
-                        {moodConfig?.title}
+                        <TextScramble text={moodConfig?.title || ''} duration={800} />
                       </span>
                       <span className="text-xs md:text-sm text-[#64748B] font-bold font-[family-name:var(--font-geist-mono)] bg-[#0A0F1A]/80 border border-[#1E293B] px-3 py-1.5 md:px-4 md:py-2 rounded-xl">
                         {moodConfig?.scoreText}
@@ -932,22 +951,32 @@ export default function TodayPlaysPage() {
                 )}
               </div>
 
-              {/* Quick Metrics Bar */}
+              {/* Quick Metrics Bar -> Tug-of-War Polarity Gauge */}
               {!loading && !error && data && (
-                <div className="flex items-center justify-between divide-x divide-[#1E293B]/60 rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/80 p-4 shrink-0 self-start xl:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full xl:w-[380px]">
-                  <div className="flex flex-col flex-1 items-center">
-                    <span className="text-2xl md:text-3xl font-black text-[#00D4AA] tracking-wide">{buyPlays.length}</span>
-                    <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy</span>
+                <div className="flex flex-col justify-center rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/80 p-5 shrink-0 self-start xl:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full xl:w-[380px]">
+                  <div className="flex items-end justify-between mb-3">
+                    <div className="flex flex-col">
+                      <span className="text-2xl md:text-3xl font-black text-[#00D4AA] leading-none">{buyPlays.length}</span>
+                      <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Nodes</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] leading-none">{sellPlays.length}</span>
+                      <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Nodes</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col flex-1 items-center">
-                    <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] tracking-wide">{sellPlays.length}</span>
-                    <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell</span>
-                  </div>
-                  <div className="flex flex-col flex-1 items-center">
-                    <span className="text-sm md:text-base text-[#8B95A8] font-black tracking-wide">
-                      {new Date(data.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                    <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sync</span>
+                  
+                  {/* The Gauge */}
+                  <div className="relative w-full h-2.5 bg-[#141B2D] rounded-full overflow-hidden flex border border-[#1E293B]/60">
+                    <div 
+                      className="h-full bg-[#00D4AA] shadow-[0_0_8px_#00D4AA] transition-all duration-1000 ease-out"
+                      style={{ width: `${(buyPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
+                    />
+                    <div 
+                      className="h-full bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A] transition-all duration-1000 ease-out"
+                      style={{ width: `${(sellPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
+                    />
+                    {/* Center Mark */}
+                    <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/20" />
                   </div>
                 </div>
               )}
