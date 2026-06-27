@@ -1,7 +1,8 @@
 import logging
-from typing import List, Dict
+from typing import List, Dict, Any
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, Request, Response
+import statistics
 
 from app.database import get_cache, set_cache, get_latest_extraction_time
 from app.radars_schemas import RadarDefinition, RadarResponse, RadarTrendPoint
@@ -88,7 +89,7 @@ async def get_radar_history(radar_slug: str) -> List[RadarTrendPoint]:
 
 async def get_radar_plays_data() -> dict:
     """Fetch minimal play data needed for radar computation."""
-    cache_key = "radar_plays_data"
+    cache_key = "radar_plays_data_v4"
 
     cached_data = await get_cache(cache_key)
     latest_extraction = await get_latest_extraction_time()
@@ -107,11 +108,10 @@ async def get_radar_plays_data() -> dict:
     now = datetime.now(timezone.utc)
     start_date = (now - timedelta(days=days)).isoformat()
 
-    # Fetch recommendations with minimal fields
+    # Fetch recommendations with minimal fields for all time
     db_response = (
         client.table("recommendations")
-        .select("ticker, target_price, sentiment, conviction_level, videos!inner(published_at, channels!inner(channel_name, trust_weight))")
-        .gte("videos.published_at", start_date)
+        .select("ticker, target_price, sentiment, conviction_level, catalyst_notes, videos!inner(published_at, channels!inner(channel_name, trust_weight))")
         .execute()
     )
 
@@ -128,22 +128,24 @@ async def get_radar_plays_data() -> dict:
         ticker_groups[ticker].append(rec)
 
     plays = []
-    for ticker, recs in ticker_groups.items():
-        # Calculate minimal metrics
-        recent_mentions = len(recs)
-        analyst_count = len(set([(r.get("videos") or {}).get("channels", {}).get("channel_name", "Unknown") for r in recs]))
+    for ticker, all_recs in ticker_groups.items():
+        # Separate recent from all-time
+        recent_recs = [r for r in all_recs if r.get("videos", {}).get("published_at", "") >= start_date]
+        recent_mentions = len(recent_recs)
+        
+        analyst_count = len(set([(r.get("videos") or {}).get("channels", {}).get("channel_name", "Unknown") for r in all_recs]))
 
-        sentiments = [r.get("sentiment", 0) for r in recs]
-        convictions = [r.get("conviction_level", 5) for r in recs]
-        target_prices = [float(r.get("target_price")) for r in recs if r.get("target_price") is not None]
+        sentiments = [r.get("sentiment", 0) for r in all_recs]
+        convictions = [r.get("conviction_level", 5) for r in all_recs]
+        target_prices = [float(r.get("target_price")) for r in all_recs if r.get("target_price") is not None]
 
-        avg_conviction = sum(convictions) / len(convictions) if recs else 0.0
+        avg_conviction = sum(convictions) / len(convictions) if all_recs else 0.0
         avg_target_price = sum(target_prices) / len(target_prices) if target_prices else None
 
         # Calculate trust-weighted consensus sentiment
         total_weight = 0.0
         weighted_sentiment_sum = 0.0
-        for rec in recs:
+        for rec in all_recs:
             sentiment = rec.get("sentiment", 0)
             channel = (rec.get("videos") or {}).get("channels") or {}
             trust_weight = channel.get("trust_weight") or 1.0
@@ -152,9 +154,42 @@ async def get_radar_plays_data() -> dict:
 
         consensus_sentiment = weighted_sentiment_sum / total_weight if total_weight > 0 else 0.0
 
-        # Calculate simple scores
-        aura_score = int(50 + (consensus_sentiment * 25))
-        omni_score = aura_score
+        # Omni score uses all time data roughly
+        omni_score = int(50 + (consensus_sentiment * 25))
+        
+        # Aura score uses recent data
+        if recent_recs:
+            recent_weight = 0.0
+            recent_sent_sum = 0.0
+            for rec in recent_recs:
+                sentiment = rec.get("sentiment", 0)
+                channel = (rec.get("videos") or {}).get("channels") or {}
+                trust_weight = channel.get("trust_weight") or 1.0
+                recent_weight += trust_weight
+                recent_sent_sum += sentiment * trust_weight
+            recent_consensus = recent_sent_sum / recent_weight if recent_weight > 0 else 0.0
+            aura_score = int(50 + (recent_consensus * 25))
+        else:
+            aura_score = 0
+
+        if len(sentiments) > 1:
+            stddev = statistics.pstdev(sentiments)
+        else:
+            stddev = 0.0
+        agreement_pct = int(max(0, min(1, 1.0 - (stddev / 2.0))) * 100)
+
+        direction = "BUY" if consensus_sentiment >= 0 else "SELL"
+        if omni_score >= 80:
+            action_label = "Strong Buy" if direction == "BUY" else "Strong Sell"
+        else:
+            action_label = "Buy" if direction == "BUY" else "Sell"
+
+        sorted_recs = sorted(all_recs, key=lambda x: x.get("conviction_level", 5), reverse=True)
+        top_catalyst = sorted_recs[0].get("catalyst_notes") if sorted_recs else None
+        if not top_catalyst:
+            top_catalyst = "No catalyst notes available."
+
+        latest_mention_date = max([r.get("videos", {}).get("published_at", "") for r in all_recs]) if all_recs else None
 
         plays.append({
             "ticker": ticker,
@@ -165,7 +200,11 @@ async def get_radar_plays_data() -> dict:
             "analyst_count": analyst_count,
             "avg_conviction": avg_conviction,
             "consensus_sentiment": consensus_sentiment,
-            "avg_target_price": avg_target_price
+            "avg_target_price": avg_target_price,
+            "agreement_pct": agreement_pct,
+            "action_label": action_label,
+            "top_catalyst": top_catalyst,
+            "latest_mention_date": latest_mention_date
         })
 
     payload = {
@@ -195,7 +234,14 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
                 "aura_score": play["aura_score"],
                 "omni_score": play["omni_score"],
                 "recent_mentions": play["recent_mentions"],
-                "avg_conviction": play["avg_conviction"]
+                "avg_conviction": play["avg_conviction"],
+                "consensus_sentiment": play.get("consensus_sentiment", 0),
+                "action_label": play.get("action_label", "Neutral"),
+                "avg_target_price": play.get("avg_target_price"),
+                "analyst_count": play.get("analyst_count", 0),
+                "agreement_pct": play.get("agreement_pct", 0),
+                "top_catalyst": play.get("top_catalyst", ""),
+                "latest_mention_date": play.get("latest_mention_date")
             })
         else:
             # Create a zero-stat placeholder for tickers with no recent plays
@@ -205,7 +251,14 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
                 "aura_score": 0,
                 "omni_score": 0,
                 "recent_mentions": 0,
-                "avg_conviction": 0.0
+                "avg_conviction": 0.0,
+                "consensus_sentiment": 0.0,
+                "action_label": "Neutral",
+                "avg_target_price": None,
+                "analyst_count": 0,
+                "agreement_pct": 0,
+                "top_catalyst": "No recent plays.",
+                "latest_mention_date": None
             })
             
     if not radar_plays:
@@ -220,6 +273,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
             aura_score=0,
             omni_score=0,
             volume=0,
+            latest_mention_date=None,
             trend=[],
             plays=[]
         )
@@ -229,6 +283,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
     total_aura_score = 0
     total_omni_score = 0
     total_volume = 0
+    radar_latest_mention = max([p.get("latest_mention_date") for p in radar_plays if p.get("latest_mention_date")], default=None)
     
     for play in valid_plays:
         total_sentiment += play.get("consensus_sentiment", 0.0)
@@ -268,6 +323,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
         aura_score=avg_aura,
         omni_score=avg_omni,
         volume=total_volume,
+        latest_mention_date=radar_latest_mention,
         trend=trend,
         plays=radar_plays
     )
@@ -315,8 +371,8 @@ async def get_radars(request: Request, response: Response):
             trend = history_by_slug.get(r_def.slug, [])
             radars.append(compute_radar_stats(r_def, all_plays, trend))
 
-        # Sort radars by aura score
-        radars.sort(key=lambda r: r.aura_score, reverse=True)
+        # Sort radars by latest mention date, then aura score
+        radars.sort(key=lambda r: (r.latest_mention_date or "", r.aura_score), reverse=True)
         return radars
 
     except Exception as e:

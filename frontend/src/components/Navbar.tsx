@@ -348,8 +348,43 @@ export function Navbar() {
         </Link>
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-[#1E293B]/60 bg-[#0A0F1A]/95 backdrop-blur-xl safe-area-bottom" role="navigation" aria-label="Mobile navigation">
-        <div className="flex items-center justify-around h-14 px-2">
+      {/* Mobile Backdrop for More Menu */}
+      {moreOpen && (
+        <div 
+          className="md:hidden fixed inset-0 z-40 bg-black/5 backdrop-blur-[2px]" 
+          onClick={() => setMoreOpen(false)} 
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Bottom Navigation Area */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-[#0A0F1A]/95 backdrop-blur-xl border-t border-[#1E293B]/60 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all duration-300" role="navigation" aria-label="Mobile navigation">
+        
+        {/* Secondary Navigation Row (More Menu) */}
+        {moreOpen && (
+          <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200">
+            {mobileMoreLinks.map((link) => {
+              const isActive = pathname?.startsWith(link.href)
+              const Icon = link.icon
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
+                >
+                  <div className="relative">
+                    <Icon active={!!isActive} />
+                  </div>
+                  <span className="text-[10px] font-medium tracking-wide">{link.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Primary Navigation Row */}
+        <div className="flex items-center justify-around h-14 px-2 relative z-50">
           {mobilePrimaryLinks.map((link) => {
             const isActive = link.href === '/' ? pathname === '/' : pathname?.startsWith(link.href)
             const Icon = link.icon
@@ -364,8 +399,9 @@ export function Navbar() {
                     sessionStorage.removeItem('today_viewMode')
                     sessionStorage.removeItem('today_streamIndex')
                   }
+                  setMoreOpen(false)
                 }}
-                className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B]'}`}
+                className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
               >
                 <div className="relative">
                   <Icon active={!!isActive} />
@@ -380,8 +416,11 @@ export function Navbar() {
             )
           })}
           <button
-            onClick={() => setSearchOpen(true)}
-            className="flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg text-[#64748B]"
+            onClick={() => {
+              setSearchOpen(true)
+              setMoreOpen(false)
+            }}
+            className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg text-[#64748B] hover:text-[#F1F5F9] transition-colors"
             aria-label="Search"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
@@ -392,7 +431,7 @@ export function Navbar() {
           </button>
           <button
             onClick={() => setMoreOpen(!moreOpen)}
-            className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-lg transition-colors ${moreOpen ? 'text-[#00D4AA]' : 'text-[#64748B]'}`}
+            className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${moreOpen ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
             aria-label="More options"
           >
             <MoreHorizontal className="w-[18px] h-[18px]" />
@@ -400,31 +439,6 @@ export function Navbar() {
           </button>
         </div>
       </div>
-
-      {/* Mobile More Menu */}
-      {moreOpen && (
-        <div className="md:hidden fixed bottom-16 left-4 right-4 z-50 animate-fade-up">
-          <div className="bg-[#141B2D] border border-[#1E293B] rounded-2xl shadow-2xl p-2">
-            <div className="flex flex-col gap-1">
-              {mobileMoreLinks.map((link) => {
-                const isActive = pathname?.startsWith(link.href)
-                const Icon = link.icon
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMoreOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${isActive ? 'bg-[#00D4AA]/10 text-[#00D4AA]' : 'text-[#F1F5F9] hover:bg-[#1E293B]'}`}
-                  >
-                    <Icon active={!!isActive} />
-                    <span className="font-medium">{link.label}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>

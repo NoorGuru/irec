@@ -26,6 +26,7 @@ class RadarResponse(BaseModel):
     aura_score: int
     omni_score: int
     volume: int
+    latest_mention_date: Optional[str] = None
     trend: List[RadarTrendPoint]
     
     # List of plays for the constituent stocks
