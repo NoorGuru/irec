@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import RadarCard from '@/components/ui/radar-card'
 import Loading from '@/components/ui/loading'
@@ -9,6 +9,7 @@ import { RadarResponse } from '@/lib/types'
 export default function RadarsIndexPage() {
   const [radars, setRadars] = useState<RadarResponse[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
 
   useEffect(() => {
     async function fetchData() {
@@ -24,6 +25,20 @@ export default function RadarsIndexPage() {
     fetchData()
   }, [])
 
+  // Extract unique categories from radars
+  const categories = useMemo(() => {
+    const uniqueCategories = new Set(['all', ...radars.map(radar => radar.category)])
+    return Array.from(uniqueCategories).sort()
+  }, [radars])
+
+  // Filter radars by selected category
+  const filteredRadars = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return radars
+    }
+    return radars.filter(radar => radar.category === selectedCategory)
+  }, [radars, selectedCategory])
+
   if (loading) {
     return <Loading title="Radars" />
   }
@@ -31,11 +46,6 @@ export default function RadarsIndexPage() {
   return (
     <main className="min-h-screen bg-[#0A0F1A] text-[#E2E8F0] p-4 md:p-8 font-[family-name:var(--font-geist-sans)] selection:bg-[#00D4AA]/30">
       <div className="max-w-[1400px] w-full mx-auto pt-6 pb-20 px-4">
-        <Link href="/" className="inline-flex items-center gap-2 text-sm text-[#64748B] hover:text-[#00D4AA] transition-colors mb-12 uppercase tracking-widest font-semibold">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          Back to Dashboard
-        </Link>
-
         <header className="mb-12 animate-fade-up">
           <h1 className="text-5xl md:text-7xl font-light tracking-tight text-[#F1F5F9] mb-4">
             Stock <span className="font-medium bg-gradient-to-r from-[#00D4AA] to-[#00FFD0] text-transparent bg-clip-text">Radars</span>
@@ -45,11 +55,38 @@ export default function RadarsIndexPage() {
           </p>
         </header>
 
+        {/* Category Filter */}
+        <div className="flex flex-wrap gap-2 mb-12 animate-fade-up">
+          {categories.map(category => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedCategory === category
+                  ? 'bg-[#00D4AA] text-[#0A0F1A]'
+                  : 'bg-[#1E293B] text-[#8B95A8] hover:bg-[#2D3A4F] hover:text-[#E2E8F0]'
+              }`}
+            >
+              {category === 'all' ? 'All Categories' : category}
+            </button>
+          ))}
+        </div>
+
+        {/* Radars Grid */}
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 animate-fade-up stagger-2">
-          {radars.map(radar => (
+          {filteredRadars.map(radar => (
             <RadarCard key={radar.slug} radar={radar} />
           ))}
         </div>
+
+        {/* No Results Message */}
+        {filteredRadars.length === 0 && (
+          <div className="text-center py-12 animate-fade-up">
+            <p className="text-lg text-[#8B95A8]">
+              No radars found in the selected category.
+            </p>
+          </div>
+        )}
       </div>
     </main>
   )
