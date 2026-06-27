@@ -20,14 +20,14 @@ router = APIRouter(
 async def get_radars_from_db() -> List[RadarDefinition]:
     from app.database import _get_client
     client = _get_client()
-    
+
     # Fetch radars
     radars_res = client.table("radars").select("*").execute()
     if not radars_res.data:
         return []
-        
+
     radars_data = radars_res.data
-    
+
     # Fetch all tickers
     tickers_res = client.table("radar_tickers").select("*").execute()
     tickers_map = {}
@@ -36,7 +36,25 @@ async def get_radars_from_db() -> List[RadarDefinition]:
         if rid not in tickers_map:
             tickers_map[rid] = []
         tickers_map[rid].append(row["ticker"])
-        
+
+    # Map slugs to categories
+    slug_to_category = {
+        "mag-7": "Tech & Innovation",
+        "mangos": "Tech & Innovation",
+        "ai-infrastructure": "Tech & Innovation",
+        "glp-1": "Healthcare",
+        "crypto-proxies": "Finance",
+        "defense": "Defense",
+        "ai-semiconductors": "Tech & Innovation",
+        "cloud-computing": "Tech & Innovation",
+        "renewable-energy": "Energy",
+        "dividend-aristocrats": "Dividend Aristocrats",
+        "fintech": "Finance",
+        "emerging-markets": "Emerging Markets",
+        "cybersecurity": "Tech & Innovation",
+        "space-technology": "Space Technology",
+    }
+
     radar_defs = []
     for r in radars_data:
         rid = r["id"]
@@ -47,9 +65,10 @@ async def get_radars_from_db() -> List[RadarDefinition]:
             description=r.get("description", ""),
             theme_color=r.get("theme_color", "#00D4AA"),
             icon=r.get("icon", "activity"),
-            tickers=tickers
+            tickers=tickers,
+            category=slug_to_category.get(r["slug"], "Other"),
         ))
-        
+
     return radar_defs
 
 async def get_radar_history(radar_slug: str) -> List[RadarTrendPoint]:
@@ -269,6 +288,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
             tickers=radar_def.tickers,
             theme_color=radar_def.theme_color,
             icon=radar_def.icon,
+            category=radar_def.category,
             sentiment_pulse=0.0,
             aura_score=0,
             omni_score=0,
@@ -319,6 +339,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
         tickers=radar_def.tickers,
         theme_color=radar_def.theme_color,
         icon=radar_def.icon,
+        category=radar_def.category,
         sentiment_pulse=round(avg_sentiment, 2),
         aura_score=avg_aura,
         omni_score=avg_omni,

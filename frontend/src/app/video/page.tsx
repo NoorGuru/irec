@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import Loading from '@/components/ui/loading'
 
 /* ─── Types ─── */
 
@@ -305,19 +306,7 @@ function VideoContent() {
   }, [videoId])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute glow-emerge" style={{ width: '200px', height: '200px', animationDelay: '200ms' }}>
-            <div className="aura-glow" />
-          </div>
-          <div className="relative text-center space-y-3">
-            <div className="w-6 h-6 mx-auto rounded-full border-2 border-[#1E293B] border-t-[#00D4AA] animate-spin" />
-            <p className="text-xs text-[#64748B]">Loading video...</p>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading title="Video" />
   }
 
   if (!videoId || !video) {

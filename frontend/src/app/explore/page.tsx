@@ -6,6 +6,7 @@ import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { RecommendationRow, AggregatedTicker } from '@/lib/types'
 import { TickerRow } from '@/components/TickerRow'
+import Loading from '@/components/ui/loading'
 
 type SortKey = 'mentions' | 'sentiment' | 'conviction' | 'alpha'
 

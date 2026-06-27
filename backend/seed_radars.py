@@ -16,7 +16,8 @@ RADARS = [
         description="The mega-cap tech giants driving major index movements.",
         tickers=["AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NVDA"],
         theme_color="#FFD700", # Golden/Purple Aura
-        icon="crown"
+        icon="crown",
+        category="Tech & Innovation",
     ),
     RadarDefinition(
         name="MANGOS",
@@ -24,7 +25,8 @@ RADARS = [
         description="The new AI frontier and next-gen tech leadership.",
         tickers=["META", "ANTH", "NVDA", "GOOGL", "OAI", "SPCX"],
         theme_color="#F59E0B", # Amber Aura
-        icon="spark"
+        icon="spark",
+        category="Tech & Innovation",
     ),
     RadarDefinition(
         name="AI Infrastructure",
@@ -32,7 +34,8 @@ RADARS = [
         description="The hardware and foundry backbone of artificial intelligence.",
         tickers=["AMD", "SMCI", "TSM", "ASML", "ARM", "PLTR", "MU"],
         theme_color="#00FFFF", # Electric Blue Aura
-        icon="microchip"
+        icon="microchip",
+        category="Tech & Innovation",
     ),
     RadarDefinition(
         name="GLP-1 & Bio",
@@ -40,7 +43,8 @@ RADARS = [
         description="The massive biotech wave driven by weight-loss drugs.",
         tickers=["LLY", "NVO", "AMGN", "VKTX"],
         theme_color="#6366F1", # Indigo Aura
-        icon="dna"
+        icon="dna",
+        category="Healthcare",
     ),
     RadarDefinition(
         name="Bitcoin Proxies",
@@ -48,7 +52,8 @@ RADARS = [
         description="Public companies acting as high-beta plays on cryptocurrency.",
         tickers=["MSTR", "COIN", "MARA", "RIOT", "IBIT"],
         theme_color="#F7931A", # Crypto Orange Aura
-        icon="bitcoin"
+        icon="bitcoin",
+        category="Finance",
     ),
     RadarDefinition(
         name="Defense & Aero",
@@ -56,7 +61,8 @@ RADARS = [
         description="Aerospace and tactical contractors amidst global rearmament.",
         tickers=["LMT", "RTX", "NOC", "GD"],
         theme_color="#FFBF00", # Tactical Amber Aura
-        icon="shield"
+        icon="shield",
+        category="Defense",
     ),
     RadarDefinition(
         name="AI Semiconductors",
@@ -64,7 +70,8 @@ RADARS = [
         description="Specialized hardware and chips designed to power AI workloads.",
         tickers=["NVDA", "AMD", "TSM", "QCOM", "ARM", "MTK"],
         theme_color="#FF00FF", # Magenta Cyan Aura
-        icon="processor"
+        icon="processor",
+        category="Tech & Innovation",
     ),
     RadarDefinition(
         name="Cloud Computing",
@@ -72,7 +79,8 @@ RADARS = [
         description="Providers of on-demand computing services including cloud storage, servers, and AI-powered solutions.",
         tickers=["AMZN", "MSFT", "GOOGL", "CRM", "ADBE", "SNOW", "DDOG"],
         theme_color="#00FF00", # Green Blue Aura
-        icon="cloud"
+        icon="cloud",
+        category="Tech & Innovation",
     ),
     RadarDefinition(
         name="Renewable Energy",
@@ -80,7 +88,8 @@ RADARS = [
         description="Companies involved in solar, wind, battery storage, and clean energy solutions.",
         tickers=["NEE", "ENPH", "TSLA", "FSLR", "RUN"],
         theme_color="#00FF7F", # Spring Green Aura
-        icon="sun"
+        icon="sun",
+        category="Energy",
     ),
     RadarDefinition(
         name="Dividend Aristocrats",
@@ -88,7 +97,8 @@ RADARS = [
         description="S&P 500 companies with 25+ consecutive years of dividend increases.",
         tickers=["KO", "JNJ", "PG", "MMM", "ABT", "CL", "EMR"],
         theme_color="#FFA500", # Orange Brown Aura
-        icon="dollar"
+        icon="dollar",
+        category="Dividend Aristocrats",
     ),
     RadarDefinition(
         name="Fintech & Payments",
@@ -96,7 +106,8 @@ RADARS = [
         description="Technology-driven financial services and digital payment solutions.",
         tickers=["PYPL", "SQ", "V", "MA", "ADYEY", "FIS"],
         theme_color="#FF6B6B", # Red Teal Aura
-        icon="creditCard"
+        icon="creditCard",
+        category="Finance",
     ),
     RadarDefinition(
         name="Emerging Markets",
@@ -104,7 +115,8 @@ RADARS = [
         description="High-growth companies from developing economies in Asia, Latin America, and Africa.",
         tickers=["BABA", "TCEHY", "HDB", "IBN", "NU"],
         theme_color="#9C27B0", # Purple Indigo Aura
-        icon="globe"
+        icon="globe",
+        category="Emerging Markets",
     ),
     RadarDefinition(
         name="Cybersecurity",
@@ -112,7 +124,8 @@ RADARS = [
         description="Companies providing software, hardware, and services to protect against cyber threats.",
         tickers=["CRWD", "PANW", "ZS", "FTNT", "CSCO"],
         theme_color="#FF0000", # Red Orange Aura
-        icon="lock"
+        icon="lock",
+        category="Tech & Innovation",
     ),
     RadarDefinition(
         name="Space Technology",
@@ -120,8 +133,9 @@ RADARS = [
         description="Companies involved in satellite manufacturing, launch services, and space exploration.",
         tickers=["RKLB", "ASTR", "MAXR"],
         theme_color="#00BFFF", # Deep Sky Blue Aura
-        icon="satellite"
-    )
+        icon="satellite",
+        category="Space Technology",
+    ),
 ]
 
 def seed_radars():
@@ -144,7 +158,8 @@ def seed_radars():
             "slug": radar.slug,
             "description": radar.description,
             "theme_color": radar.theme_color,
-            "icon": radar.icon
+            "icon": radar.icon,
+            "category": radar.category,
         }).execute()
         
         radar_id = radar_res.data[0]['id']

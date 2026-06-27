@@ -8,6 +8,7 @@ class RadarDefinition(BaseModel):
     tickers: List[str]
     theme_color: str  # Hex color for the aura
     icon: str  # Identifier for the frontend icon
+    category: str  # Category for filtering
 
 class RadarTrendPoint(BaseModel):
     date: str
@@ -20,7 +21,8 @@ class RadarResponse(BaseModel):
     tickers: List[str]
     theme_color: str
     icon: str
-    
+    category: str
+
     # Aggregated stats
     sentiment_pulse: float  # Simple Average Conviction mapped to sentiment
     aura_score: int
@@ -28,6 +30,6 @@ class RadarResponse(BaseModel):
     volume: int
     latest_mention_date: Optional[str] = None
     trend: List[RadarTrendPoint]
-    
+
     # List of plays for the constituent stocks
     plays: List[dict]  # Will hold PlayResponse dicts
