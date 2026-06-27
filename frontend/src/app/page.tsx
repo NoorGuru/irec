@@ -8,6 +8,7 @@ import HolographicCard from '@/components/HolographicCard'
 import PulseField from '@/components/PulseField'
 import TextScramble from '@/components/TextScramble'
 import RadarCard from '@/components/ui/radar-card'
+import Loading from '@/components/ui/loading'
 import { RecommendationRow, AggregatedTicker, RadarResponse } from '@/lib/types'
 import { TickerRow, PulseBar, getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
 
@@ -306,6 +307,9 @@ function SpotlightCards({ aggregated }: { aggregated: AggregatedTicker[] }) {
 function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
   if (!radars || radars.length === 0) return null
 
+  // Show only the first 6 radars
+  const trendingRadars = radars.slice(0, 6)
+
   return (
     <div className="mb-8 animate-fade-up stagger-3">
       <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
@@ -328,7 +332,7 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
       </div>
 
       <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
-        {radars.map(radar => (
+        {trendingRadars.map(radar => (
           <RadarCard key={radar.slug} radar={radar} />
         ))}
       </div>
@@ -380,41 +384,7 @@ export default function Home() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          <div
-            className="absolute glow-emerge"
-            style={{ width: '320px', height: '320px', animationDelay: '600ms' }}
-          >
-            <div className="aura-glow" />
-            <div className="aura-glow-inner" />
-          </div>
-          <div className="relative text-center">
-            <div className="text-8xl md:text-9xl font-extralight tracking-[0.25em] logo-sweep">
-              {'aura'.split('').map((letter, i) => (
-                <span
-                  key={i}
-                  className="logo-letter letter-materialize"
-                  style={{ animationDelay: `${i * 120}ms` }}
-                >
-                  {letter}
-                </span>
-              ))}
-            </div>
-            <a
-              href="https://bynoor.io"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="byline-appear inline-block mt-4 text-sm font-light text-[#64748B] hover:text-[#00D4AA] transition-colors duration-300 tracking-[0.15em]"
-              style={{ animationDelay: '700ms' }}
-            >
-              by noor
-            </a>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading isHome />
   }
 
   // Pre-calculate curated lists for the homepage

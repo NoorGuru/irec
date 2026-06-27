@@ -150,6 +150,11 @@ export default function RadarCard({
               {radar.name}
             </h2>
           </div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] uppercase tracking-wider text-[#64748B] bg-[#1E293B]/50 px-2 py-0.5 rounded-md border border-[#2D3A4F]">
+              {radar.category}
+            </span>
+          </div>
           <p className="text-xs md:text-sm text-[#8B95A8] leading-relaxed line-clamp-2 max-w-[90%]">
             {radar.description}
           </p>

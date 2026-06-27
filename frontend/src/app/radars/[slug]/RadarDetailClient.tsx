@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
 import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
+import Loading from '@/components/ui/loading'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   crown: Crown,
@@ -130,11 +131,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
   }, [radar])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A0F1A]">
-        <Activity className="w-8 h-8 text-[#00D4AA] animate-spin" />
-      </div>
-    )
+    return <Loading title="Radar" />
   }
 
   if (!radar) {
@@ -179,6 +176,12 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                 <div className="text-xs uppercase tracking-[0.3em] font-bold" style={{ color: radar.theme_color }}>
                   Curated Radar
                 </div>
+              </div>
+
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-[12px] uppercase tracking-wider text-[#64748B] bg-[#1E293B]/50 px-3 py-1 rounded-md border border-[#2D3A4F]">
+                  {radar.category}
+                </span>
               </div>
 
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-[#F1F5F9] mb-4 drop-shadow-md">

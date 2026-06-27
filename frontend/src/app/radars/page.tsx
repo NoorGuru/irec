@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Activity } from 'lucide-react'
 import RadarCard from '@/components/ui/radar-card'
+import Loading from '@/components/ui/loading'
 import { RadarResponse } from '@/lib/types'
 
 export default function RadarsIndexPage() {
@@ -25,11 +25,7 @@ export default function RadarsIndexPage() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A0F1A]">
-        <Activity className="w-8 h-8 text-[#00D4AA] animate-spin" />
-      </div>
-    )
+    return <Loading title="Radars" />
   }
 
   return (

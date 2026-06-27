@@ -50,6 +50,7 @@ export interface RadarResponse {
   tickers: string[]
   theme_color: string
   icon: string
+  category: string
   sentiment_pulse: number
   aura_score: number
   omni_score: number

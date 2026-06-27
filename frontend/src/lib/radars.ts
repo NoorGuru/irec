@@ -5,6 +5,7 @@ export interface RadarConfig {
   aura: string // Tailwind color class or hex for the glow
   gradient: string // Tailwind classes for the card background gradient
   tickers: string[]
+  category: string // Category for filtering (Tech & Innovation, Healthcare, Finance, Energy, Consumer, Emerging Markets, Dividend Aristocrats, Space Technology)
 }
 
 export const RADARS: RadarConfig[] = [
@@ -15,6 +16,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FFD700]/20 to-[#8A2BE2]/5',
     gradient: 'from-[#FFD700]/10 via-transparent to-transparent',
     tickers: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA'],
+    category: 'Tech & Innovation',
   },
   {
     slug: 'mangos',
@@ -23,6 +25,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#F59E0B]/20 to-[#7B1FA2]/5',
     gradient: 'from-[#F59E0B]/10 via-transparent to-transparent',
     tickers: ['META', 'ANTH', 'NVDA', 'GOOGL', 'OAI', 'SPCX'],
+    category: 'Tech & Innovation',
   },
   {
     slug: 'ai-infrastructure',
@@ -31,6 +34,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#00E5FF]/20 to-[#00B0FF]/5',
     gradient: 'from-[#00E5FF]/10 via-transparent to-transparent',
     tickers: ['AMD', 'SMCI', 'TSM', 'ASML', 'ARM', 'PLTR', 'MU'],
+    category: 'Tech & Innovation',
   },
   {
     slug: 'glp-1',
@@ -39,6 +43,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#6366F1]/20 to-[#1DE9B6]/5',
     gradient: 'from-[#6366F1]/10 via-transparent to-transparent',
     tickers: ['LLY', 'NVO', 'AMGN', 'VKTX'],
+    category: 'Healthcare',
   },
   {
     slug: 'crypto-proxies',
@@ -47,6 +52,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FF9100]/20 to-[#FF3D00]/5',
     gradient: 'from-[#FF9100]/10 via-transparent to-transparent',
     tickers: ['MSTR', 'COIN', 'MARA', 'RIOT', 'IBIT'],
+    category: 'Finance',
   },
   {
     slug: 'defense',
@@ -55,6 +61,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FFAB00]/20 to-[#FF6D00]/5',
     gradient: 'from-[#FFAB00]/10 via-transparent to-transparent',
     tickers: ['LMT', 'RTX', 'NOC', 'GD'],
+    category: 'Defense',
   },
   {
     slug: 'ai-semiconductors',
@@ -63,6 +70,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FF00FF]/20 to-[#00FFFF]/5',
     gradient: 'from-[#FF00FF]/10 via-transparent to-transparent',
     tickers: ['NVDA', 'AMD', 'TSM', 'QCOM', 'ARM', 'MTK'],
+    category: 'Tech & Innovation',
   },
   {
     slug: 'cloud-computing',
@@ -71,6 +79,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#00FF00]/20 to-[#0000FF]/5',
     gradient: 'from-[#00FF00]/10 via-transparent to-transparent',
     tickers: ['AMZN', 'MSFT', 'GOOGL', 'CRM', 'ADBE', 'SNOW', 'DDOG'],
+    category: 'Tech & Innovation',
   },
   {
     slug: 'renewable-energy',
@@ -79,6 +88,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#00FF7F]/20 to-[#FFD700]/5',
     gradient: 'from-[#00FF7F]/10 via-transparent to-transparent',
     tickers: ['NEE', 'ENPH', 'TSLA', 'FSLR', 'RUN'],
+    category: 'Energy',
   },
   {
     slug: 'dividend-aristocrats',
@@ -87,6 +97,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FFA500]/20 to-[#8B4513]/5',
     gradient: 'from-[#FFA500]/10 via-transparent to-transparent',
     tickers: ['KO', 'JNJ', 'PG', 'MMM', 'ABT', 'CL', 'EMR'],
+    category: 'Dividend Aristocrats',
   },
   {
     slug: 'fintech',
@@ -95,6 +106,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FF6B6B]/20 to-[#4ECDC4]/5',
     gradient: 'from-[#FF6B6B]/10 via-transparent to-transparent',
     tickers: ['PYPL', 'SQ', 'V', 'MA', 'ADYEY', 'FIS'],
+    category: 'Finance',
   },
   {
     slug: 'emerging-markets',
@@ -103,6 +115,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#9C27B0]/20 to-[#3F51B5]/5',
     gradient: 'from-[#9C27B0]/10 via-transparent to-transparent',
     tickers: ['BABA', 'TCEHY', 'HDB', 'IBN', 'NU'],
+    category: 'Emerging Markets',
   },
   {
     slug: 'cybersecurity',
@@ -111,6 +124,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#FF0000]/20 to-[#FF6347]/5',
     gradient: 'from-[#FF0000]/10 via-transparent to-transparent',
     tickers: ['CRWD', 'PANW', 'ZS', 'FTNT', 'CSCO'],
+    category: 'Tech & Innovation',
   },
   {
     slug: 'space-technology',
@@ -119,6 +133,7 @@ export const RADARS: RadarConfig[] = [
     aura: 'from-[#00BFFF]/20 to-[#1E90FF]/5',
     gradient: 'from-[#00BFFF]/10 via-transparent to-transparent',
     tickers: ['RKLB', 'ASTR', 'MAXR'],
+    category: 'Space Technology',
   },
 ]
 

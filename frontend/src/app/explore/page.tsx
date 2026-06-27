@@ -282,19 +282,7 @@ export default function Explore() {
   }, [search, sort, filter, hasTargetOnly, highDataOnly])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute glow-emerge" style={{ width: '320px', height: '320px', animationDelay: '600ms' }}>
-            <div className="aura-glow" />
-            <div className="aura-glow-inner" />
-          </div>
-          <div className="relative text-center">
-             <div className="text-4xl md:text-5xl font-extralight tracking-[0.25em] text-white">LOADING...</div>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading title="Explore" />
   }
 
   return (
