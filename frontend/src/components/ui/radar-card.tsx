@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
-import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity } from 'lucide-react'
+import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 import { useMemo } from 'react'
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -12,6 +12,14 @@ const ICON_MAP: Record<string, React.ElementType> = {
   dna: Dna,
   bitcoin: Bitcoin,
   shield: Shield,
+  processor: Cpu,
+  cloud: Cloud,
+  sun: Sun,
+  dollar: DollarSign,
+  creditCard: CreditCard,
+  globe: Globe,
+  lock: Lock,
+  satellite: Satellite,
 }
 
 // Reusing some helpers for display

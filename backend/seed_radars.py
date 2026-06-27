@@ -57,6 +57,70 @@ RADARS = [
         tickers=["LMT", "RTX", "NOC", "GD"],
         theme_color="#FFBF00", # Tactical Amber Aura
         icon="shield"
+    ),
+    RadarDefinition(
+        name="AI Semiconductors",
+        slug="ai-semiconductors",
+        description="Specialized hardware and chips designed to power AI workloads.",
+        tickers=["NVDA", "AMD", "TSM", "QCOM", "ARM", "MTK"],
+        theme_color="#FF00FF", # Magenta Cyan Aura
+        icon="processor"
+    ),
+    RadarDefinition(
+        name="Cloud Computing",
+        slug="cloud-computing",
+        description="Providers of on-demand computing services including cloud storage, servers, and AI-powered solutions.",
+        tickers=["AMZN", "MSFT", "GOOGL", "CRM", "ADBE", "SNOW", "DDOG"],
+        theme_color="#00FF00", # Green Blue Aura
+        icon="cloud"
+    ),
+    RadarDefinition(
+        name="Renewable Energy",
+        slug="renewable-energy",
+        description="Companies involved in solar, wind, battery storage, and clean energy solutions.",
+        tickers=["NEE", "ENPH", "TSLA", "FSLR", "RUN"],
+        theme_color="#00FF7F", # Spring Green Aura
+        icon="sun"
+    ),
+    RadarDefinition(
+        name="Dividend Aristocrats",
+        slug="dividend-aristocrats",
+        description="S&P 500 companies with 25+ consecutive years of dividend increases.",
+        tickers=["KO", "JNJ", "PG", "MMM", "ABT", "CL", "EMR"],
+        theme_color="#FFA500", # Orange Brown Aura
+        icon="dollar"
+    ),
+    RadarDefinition(
+        name="Fintech & Payments",
+        slug="fintech",
+        description="Technology-driven financial services and digital payment solutions.",
+        tickers=["PYPL", "SQ", "V", "MA", "ADYEY", "FIS"],
+        theme_color="#FF6B6B", # Red Teal Aura
+        icon="creditCard"
+    ),
+    RadarDefinition(
+        name="Emerging Markets",
+        slug="emerging-markets",
+        description="High-growth companies from developing economies in Asia, Latin America, and Africa.",
+        tickers=["BABA", "TCEHY", "HDB", "IBN", "NU"],
+        theme_color="#9C27B0", # Purple Indigo Aura
+        icon="globe"
+    ),
+    RadarDefinition(
+        name="Cybersecurity",
+        slug="cybersecurity",
+        description="Companies providing software, hardware, and services to protect against cyber threats.",
+        tickers=["CRWD", "PANW", "ZS", "FTNT", "CSCO"],
+        theme_color="#FF0000", # Red Orange Aura
+        icon="lock"
+    ),
+    RadarDefinition(
+        name="Space Technology",
+        slug="space-technology",
+        description="Companies involved in satellite manufacturing, launch services, and space exploration.",
+        tickers=["RKLB", "ASTR", "MAXR"],
+        theme_color="#00BFFF", # Deep Sky Blue Aura
+        icon="satellite"
     )
 ]
 

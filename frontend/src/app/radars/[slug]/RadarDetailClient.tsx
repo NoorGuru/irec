@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
-import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle } from 'lucide-react'
+import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   crown: Crown,
@@ -12,6 +12,14 @@ const ICON_MAP: Record<string, React.ElementType> = {
   dna: Dna,
   bitcoin: Bitcoin,
   shield: Shield,
+  processor: Cpu,
+  cloud: Cloud,
+  sun: Sun,
+  dollar: DollarSign,
+  creditCard: CreditCard,
+  globe: Globe,
+  lock: Lock,
+  satellite: Satellite,
 }
 
 function getSentimentLabel(value: number): string {
