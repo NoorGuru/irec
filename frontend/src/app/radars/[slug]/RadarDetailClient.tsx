@@ -197,7 +197,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                 <div>
                   <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-2 flex items-center gap-2 whitespace-nowrap">
                     <span className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
-                    Aura Pick (30 days signal)
+                    Aura Score (30 days signal)
                   </div>
                   <div className="text-6xl md:text-8xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-tighter flex items-baseline gap-2">
                     {radar.aura_score}
@@ -301,7 +301,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                   <div className="p-5 flex flex-col items-center justify-center group-hover:bg-white/5 transition-colors">
                     <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
-                      Aura Pick (30 days signal)
+                      Aura Score (30 days signal)
                     </div>
                     <div className="text-4xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
                       {play.aura_score}

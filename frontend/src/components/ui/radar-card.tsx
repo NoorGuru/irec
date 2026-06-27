@@ -55,13 +55,13 @@ function PulseBar({ value }: { value: number }) {
 
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (!data || data.length === 0) return null
-  
+
   const min = Math.min(...data)
   const max = Math.max(...data)
   const range = max - min || 1
   const height = 24
   const width = 60
-  
+
   let points = ""
   if (data.length === 1) {
     const y = height - ((data[0] - min) / range) * height
@@ -105,7 +105,7 @@ export default function RadarCard({
 }) {
   const Icon = ICON_MAP[radar.icon] || Activity
   const vtName = `radar-${radar.slug}`
-  
+
   // Extract sparkline data
   const trendData = useMemo(() => {
     return radar.trend.map(t => t.aura_score).reverse()
@@ -114,7 +114,7 @@ export default function RadarCard({
   // Get Top Pick
   const topPlay = useMemo(() => {
     if (!radar.plays || radar.plays.length === 0) return null
-    return [...radar.plays].sort((a,b) => b.aura_score - a.aura_score)[0]
+    return [...radar.plays].sort((a, b) => b.aura_score - a.aura_score)[0]
   }, [radar.plays])
 
   return (
@@ -135,15 +135,15 @@ export default function RadarCard({
         {/* Header */}
         <div className="flex flex-col mb-6 relative">
           <div className="flex items-center gap-3 mb-3 pr-8">
-             <div className="p-3 rounded-2xl bg-[#1E293B]/50 border border-white/5" style={{ color: radar.theme_color }}>
-                <Icon size={24} strokeWidth={2.5} />
-             </div>
-             <h2 className="text-3xl tracking-tight font-black text-[#F1F5F9] font-[family-name:var(--font-geist-sans)]">
-                {radar.name}
-             </h2>
+            <div className="p-3 rounded-2xl bg-[#1E293B]/50 border border-white/5" style={{ color: radar.theme_color }}>
+              <Icon size={24} strokeWidth={2.5} />
+            </div>
+            <h2 className="text-3xl tracking-tight font-black text-[#F1F5F9] font-[family-name:var(--font-geist-sans)]">
+              {radar.name}
+            </h2>
           </div>
           <p className="text-sm text-[#8B95A8] leading-relaxed line-clamp-2 max-w-[90%]">
-             {radar.description}
+            {radar.description}
           </p>
           <div className="absolute top-0 right-0 text-[#64748B] group-hover:text-[#F1F5F9] transition-colors">
             <svg
@@ -164,45 +164,45 @@ export default function RadarCard({
 
         {/* Stats Row */}
         <div className="flex flex-col gap-4 mb-6">
-            <div className="flex justify-between items-end gap-4">
-              <div className="flex-1 min-w-0">
-                 <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
-                   <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
-                   Aura Pick (30 days signal)
-                 </div>
-                 <div className="text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
-                    {radar.aura_score}
-                 </div>
+          <div className="flex justify-between items-end gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] text-[#64748B] uppercase tracking-wider font-[family-name:var(--font-geist-mono)] mb-1 flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse shrink-0" />
+                Aura Score (30 days signal)
               </div>
-              
-              <div className="border-l border-white/5 pl-4 text-left shrink-0">
-                 <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 whitespace-nowrap">
-                   Omni (All-Time)
-                 </div>
-                 <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-                    {radar.omni_score}
-                 </div>
+              <div className="text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
+                {radar.aura_score}
               </div>
             </div>
-           
-           <div className="flex items-center justify-between border-t border-white/5 pt-4">
-              <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">30 Days Trend</div>
-              <Sparkline data={trendData} color={radar.theme_color} />
-           </div>
+
+            <div className="border-l border-white/5 pl-4 text-left shrink-0">
+              <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 whitespace-nowrap">
+                Omni (All-Time)
+              </div>
+              <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
+                {radar.omni_score}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-white/5 pt-4">
+            <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">30 Days Trend</div>
+            <Sparkline data={trendData} color={radar.theme_color} />
+          </div>
         </div>
 
         {/* Top Pick Highlight */}
         {topPlay && topPlay.recent_mentions > 0 && (
           <div className="mb-6 bg-[#0A0F1A]/50 rounded-xl p-3 border border-white/5 flex items-center gap-3">
-             <div className="text-xs font-bold text-[#F1F5F9] px-2 py-1 bg-[#1E293B] rounded-md border border-[#2D3A4F] font-[family-name:var(--font-geist-mono)]">
-               {topPlay.ticker}
-             </div>
-             <div className="text-xs text-[#8B95A8] truncate flex-1">
-               Top Pick &middot; {topPlay.recent_mentions} mentions
-             </div>
-             <div className="text-sm font-bold text-[#00D4AA] font-[family-name:var(--font-geist-mono)]">
-               {topPlay.aura_score}
-             </div>
+            <div className="text-xs font-bold text-[#F1F5F9] px-2 py-1 bg-[#1E293B] rounded-md border border-[#2D3A4F] font-[family-name:var(--font-geist-mono)]">
+              {topPlay.ticker}
+            </div>
+            <div className="text-xs text-[#8B95A8] truncate flex-1">
+              Top Pick &middot; {topPlay.recent_mentions} mentions
+            </div>
+            <div className="text-sm font-bold text-[#00D4AA] font-[family-name:var(--font-geist-mono)]">
+              {topPlay.aura_score}
+            </div>
           </div>
         )}
 
@@ -214,11 +214,10 @@ export default function RadarCard({
             return (
               <span
                 key={tickerSymbol}
-                className={`text-[10px] font-[family-name:var(--font-geist-mono)] px-2 py-1 rounded-md border transition-colors ${
-                  hasData
+                className={`text-[10px] font-[family-name:var(--font-geist-mono)] px-2 py-1 rounded-md border transition-colors ${hasData
                     ? 'bg-[#1E293B]/50 border-[#2D3A4F] text-[#F1F5F9] group-hover:border-white/10'
                     : 'bg-transparent border-white/5 text-[#475569]'
-                }`}
+                  }`}
               >
                 {tickerSymbol}
               </span>
