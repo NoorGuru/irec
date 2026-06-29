@@ -12,3 +12,5 @@ certifi==2024.8.30
 yt-dlp==2025.5.22
 pytest==8.3.3
 hypothesis==6.112.1
+yfinance==0.2.51
+exchange-calendars==4.5.6

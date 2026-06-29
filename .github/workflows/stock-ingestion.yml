@@ -1,0 +1,87 @@
+name: Stock Ingestion Pipeline
+
+on:
+  schedule:
+    # Tier 1 Intraday: Every 30 min during US market hours (9:30 AM - 3:30 PM EST = 14:30 - 20:30 UTC)
+    - cron: '30 13 * * 1-5'    # 9:30 AM EDT / 8:30 EST
+    - cron: '0 14 * * 1-5'     # 10:00 AM EDT
+    - cron: '30 14 * * 1-5'    # 10:30 AM EDT
+    - cron: '0 15 * * 1-5'     # 11:00 AM EDT
+    - cron: '30 15 * * 1-5'    # 11:30 AM EDT
+    - cron: '0 16 * * 1-5'     # 12:00 PM EDT
+    - cron: '30 16 * * 1-5'    # 12:30 PM EDT
+    - cron: '0 17 * * 1-5'     # 1:00 PM EDT
+    - cron: '30 17 * * 1-5'    # 1:30 PM EDT
+    - cron: '0 18 * * 1-5'     # 2:00 PM EDT
+    - cron: '30 18 * * 1-5'    # 2:30 PM EDT
+    - cron: '0 19 * * 1-5'     # 3:00 PM EDT
+    - cron: '30 19 * * 1-5'    # 3:30 PM EDT
+    # Tier 1 Final Close: 4:15 PM EDT
+    - cron: '15 20 * * 1-5'    # 4:15 PM EDT
+    # Tier 2 EOD: 6:00 PM EDT
+    - cron: '0 22 * * 1-5'     # 6:00 PM EDT
+    # Nightly Rerank: 6:00 AM EDT
+    - cron: '0 10 * * 1-5'     # 6:00 AM EDT
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Which pipeline to run'
+        required: true
+        type: choice
+        options:
+          - tier1_intraday
+          - tier1_close
+          - tier2_eod
+          - rerank
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine action from cron
+        id: action
+        run: |
+          ACTION="${{ github.event.inputs.action }}"
+          
+          if [ -z "$ACTION" ]; then
+            # We are triggered by schedule
+            # UTC Hour
+            HOUR=$(date -u +"%H")
+            MINUTE=$(date -u +"%M")
+            
+            if [ "$HOUR" = "10" ]; then
+              ACTION="rerank"
+            elif [ "$HOUR" = "22" ]; then
+              ACTION="tier2_eod"
+            elif [ "$HOUR" = "20" ] && [ "$MINUTE" = "15" ]; then
+              ACTION="tier1_close"
+            else
+              ACTION="tier1_intraday"
+            fi
+          fi
+          
+          echo "Determined action: $ACTION"
+          echo "action=$ACTION" >> $GITHUB_OUTPUT
+          
+      - name: Trigger backend endpoint
+        run: |
+          ACTION="${{ steps.action.outputs.action }}"
+          
+          # We need to map to the correct endpoint path
+          ENDPOINT_PATH=$ACTION
+          
+          # The Cloud Run URL is passed as a secret, assuming the production URL is used
+          BACKEND_URL="https://irec-backend-f5xyrqhyjq-uc.a.run.app"
+          
+          echo "Calling $BACKEND_URL/api/v1/admin/ingestion/$ENDPOINT_PATH"
+          
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "$BACKEND_URL/api/v1/admin/ingestion/$ENDPOINT_PATH" \
+            -H "Authorization: Bearer ${{ secrets.INGESTION_SERVICE_TOKEN }}")
+            
+          if [ "$HTTP_STATUS" -ne 200 ] && [ "$HTTP_STATUS" -ne 201 ]; then
+            echo "Request failed with HTTP status $HTTP_STATUS"
+            exit 1
+          else
+            echo "Request succeeded"
+          fi

@@ -54,3 +54,16 @@ async def verify_owner(authorization: str = Header(None)) -> str:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return email
+
+async def verify_cron_or_owner(authorization: str = Header(None)) -> str:
+    """FastAPI dependency for endpoints accessed by both the owner and cron jobs."""
+    if authorization is None or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+        
+    token = authorization[len("Bearer "):]
+    cron_token = os.environ.get("INGESTION_SERVICE_TOKEN")
+    
+    if cron_token and token == cron_token:
+        return "cron"
+        
+    return await verify_owner(authorization)
