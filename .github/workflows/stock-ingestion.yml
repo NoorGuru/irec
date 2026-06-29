@@ -16,8 +16,8 @@ on:
     - cron: '30 18 * * 1-5'    # 2:30 PM EDT
     - cron: '0 19 * * 1-5'     # 3:00 PM EDT
     - cron: '30 19 * * 1-5'    # 3:30 PM EDT
-    # Tier 1 Final Close: 4:15 PM EDT
-    - cron: '15 20 * * 1-5'    # 4:15 PM EDT
+    # Tier 1 Final Close: 5:30 PM EDT
+    - cron: '30 21 * * 1-5'    # 5:30 PM EDT
     # Tier 2 EOD: 6:00 PM EDT
     - cron: '0 22 * * 1-5'     # 6:00 PM EDT
     # Nightly Rerank: 6:00 AM EDT
@@ -53,7 +53,7 @@ jobs:
               ACTION="rerank"
             elif [ "$HOUR" = "22" ]; then
               ACTION="tier2_eod"
-            elif [ "$HOUR" = "20" ] && [ "$MINUTE" = "15" ]; then
+            elif [ "$HOUR" = "21" ] && [ "$MINUTE" = "30" ]; then
               ACTION="tier1_close"
             else
               ACTION="tier1_intraday"

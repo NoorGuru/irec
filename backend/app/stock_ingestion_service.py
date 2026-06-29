@@ -24,7 +24,7 @@ class StockIngestionService:
 
     async def run_tier1_final_close(self) -> IngestionResult:
         """
-        Mandatory 4:15 PM EST check for official closing prices.
+        Mandatory 5:30 PM EST check for official closing prices.
         """
         return await self._run_tier1("tier1_close")
 

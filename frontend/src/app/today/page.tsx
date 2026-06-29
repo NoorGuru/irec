@@ -181,7 +181,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
       <div>
         {/* Header: Ticker & Name */}
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-1">
               <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black tracking-widest text-[#F1F5F9] leading-none">
                 <TextScramble text={play.ticker} />
@@ -192,7 +192,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
             </div>
             
             {play.current_price != null && (
-              <div className="relative group/price flex flex-col mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-2.5 w-max overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
+              <div className="relative group/price flex flex-col mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-2.5 w-max max-w-full overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
                 {/* Ambient background glow based on sentiment */}
                 {play.price_change_pct != null && (
                   <div 
@@ -482,8 +482,8 @@ function PulseStream({
               onClick={() => router.push(`/ticker?s=${play.ticker}`)}
             >
               <div>
-                <div className="flex items-center justify-between mb-5">
-                  <div>
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex-1 min-w-0 mr-2">
                     <span className="text-[10px] tracking-widest font-black uppercase text-[#64748B] font-[family-name:var(--font-geist-mono)] block mb-1">
                       Signal Node
                     </span>
@@ -493,7 +493,7 @@ function PulseStream({
                     <p className="text-sm text-[#8B95A8] mt-1 mb-2 font-semibold">{play.stock_name}</p>
                     
                     {play.current_price != null && (
-                      <div className="relative group/price flex flex-row items-center md:flex-col md:items-start md:justify-center mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 md:p-3 w-max overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
+                      <div className="relative group/price flex flex-row items-center md:flex-col md:items-start md:justify-center mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl px-3 py-2 md:p-3 w-max max-w-full overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
                         {/* Ambient background glow based on sentiment */}
                         {play.price_change_pct != null && (
                           <div 
@@ -503,13 +503,13 @@ function PulseStream({
                           />
                         )}
                         
-                        <div className="relative z-10 flex items-end gap-3">
-                          <span className="font-[family-name:var(--font-geist-mono)] text-3xl font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
+                        <div className="relative z-10 flex items-end gap-2 md:gap-3">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-xl md:text-3xl font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
                             ${play.current_price.toFixed(2)}
                           </span>
                           {play.price_change_pct != null && (
                             <span 
-                              className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-sm font-bold mb-0.5 px-2 py-0.5 rounded-md border backdrop-blur-md ${
+                              className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-xs md:text-sm font-bold mb-0.5 px-1.5 md:px-2 py-0.5 rounded-md border backdrop-blur-md shrink-0 ${
                                 play.price_change_pct >= 0 
                                   ? 'bg-[#00D4AA]/10 text-[#00FFD0] border-[#00D4AA]/20 shadow-[0_0_10px_rgba(0,212,170,0.1)]' 
                                   : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20 shadow-[0_0_10px_rgba(255,77,106,0.1)]'
@@ -521,7 +521,7 @@ function PulseStream({
                           )}
                         </div>
                         {play.price_fetched_at && (
-                          <div className="relative z-10 flex items-center gap-1.5 ml-4 md:ml-0 md:mt-2">
+                          <div className="relative z-10 flex items-center gap-1.5 ml-3 md:ml-0 md:mt-2 shrink-0">
                             <div className="relative flex h-1.5 w-1.5">
                               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                                 play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
@@ -531,7 +531,7 @@ function PulseStream({
                               }`}></span>
                             </div>
                             <span 
-                              className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
+                              className="font-[family-name:var(--font-geist-mono)] text-[9px] md:text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
                               title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}
                             >
                               {formatMarketTime(play.price_fetched_at)}
