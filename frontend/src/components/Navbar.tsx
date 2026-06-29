@@ -257,6 +257,7 @@ export function Navbar() {
 
   const allLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
+    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/today', label: "Today", icon: TodayPlaysIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
@@ -266,10 +267,11 @@ export function Navbar() {
 
   const mobilePrimaryLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
-    { href: '/explore', label: 'Explore', icon: ExploreIcon },
+    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/today', label: "Today", icon: TodayPlaysIcon },
   ]
   const mobileMoreLinks = [
+    { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
@@ -503,6 +505,15 @@ function RadarsIcon({ active }: { active: boolean }) {
       <circle cx="12" cy="12" r="2" fill="currentColor" />
       <path d="M12 2L12 6M12 18L12 22M2 12L6 12M18 12L22 12" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
       <path d="M12 12L18 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function StocksIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+      <path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7 14l4-4 4 4 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   )
 }

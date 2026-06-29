@@ -4,6 +4,7 @@ from typing import Dict, List, Any
 from app.database import _get_client
 from app.today_routes import parse_iso_datetime
 from app.stock_ingestion_schemas import RerankResult
+from app.ticker_names import TICKER_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,19 @@ class TierRankingService:
         existing_res = client.table("stock_meta").select("*").execute()
         existing_meta = {row["ticker"]: row for row in (existing_res.data or [])}
         
+        # Ensure all known tickers exist in meta
+        for ticker in TICKER_NAMES.keys():
+            if ticker not in existing_meta:
+                existing_meta[ticker] = {
+                    "ticker": ticker,
+                    "tier": 2,
+                    "is_pinned": False,
+                    "priority_score": 0.0,
+                    "mention_count_30d": 0,
+                    "analyst_count": 0,
+                    "last_mentioned_at": None
+                }
+                
         # Merge scores
         for ticker, score_data in scores.items():
             if ticker not in existing_meta:

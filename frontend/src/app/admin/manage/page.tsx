@@ -4,12 +4,13 @@ import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Radio, Tv2, MessageSquareText, Brain, BarChart3 } from 'lucide-react'
+import { ArrowLeft, Radio, Tv2, MessageSquareText, Brain, BarChart3, Database } from 'lucide-react'
 import { ChannelsTab } from './tabs/channels-tab'
 import { VideosTab } from './tabs/videos-tab'
 import { RecommendationsTab } from './tabs/recommendations-tab'
 import { LlmLogsTab } from './tabs/llm-logs-tab'
 import { StatsTab } from './tabs/stats-tab'
+import { StocksTab } from './tabs/stocks-tab'
 
 // ─── Tab Config ───
 
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'recs', label: 'Recs', icon: MessageSquareText, shortcut: '3' },
   { id: 'llm', label: 'LLM', icon: Brain, shortcut: '4' },
   { id: 'stats', label: 'Stats', icon: BarChart3, shortcut: '5' },
+  { id: 'stocks', label: 'Tiers', icon: Database, shortcut: '6' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -166,6 +168,7 @@ function AdminManageContent() {
           {activeTab === 'recs' && <RecommendationsTab />}
           {activeTab === 'llm' && <LlmLogsTab />}
           {activeTab === 'stats' && <StatsTab />}
+          {activeTab === 'stocks' && <StocksTab />}
         </div>
       </main>
     </div>
