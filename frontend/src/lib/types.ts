@@ -64,3 +64,20 @@ export interface RadarResponse {
   trend: RadarTrendPoint[]
   plays: PlayResponse[]
 }
+
+export interface StockDirectoryItem {
+  ticker: string
+  stock_name: string | null
+  tier: number
+  is_pinned: boolean
+  priority_score: number
+  mention_count_30d: number
+  analyst_count: number
+  last_mentioned_at: string | null
+  current_price: number | null
+  price_change_pct: number | null
+  price_fetched_at: string | null
+  overall_sentiment: number | null
+  avg_target_price: number | null
+  avg_conviction: number | null
+}

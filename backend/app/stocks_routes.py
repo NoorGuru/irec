@@ -28,6 +28,8 @@ class StockDirectoryItem(BaseModel):
     price_change_pct: float | None = None
     price_fetched_at: str | None = None
     overall_sentiment: float | None = None
+    avg_target_price: float | None = None
+    avg_conviction: float | None = None
 
 class StocksDirectoryResponse(BaseModel):
     stocks: List[StockDirectoryItem]
@@ -35,9 +37,9 @@ class StocksDirectoryResponse(BaseModel):
 
 @router.get("/stocks", response_model=StocksDirectoryResponse)
 async def get_stocks_directory(request: Request, response: Response):
-    """Fetch public directory of all tracked stocks with their latest prices."""
+    """Fetch public directory of all tracked stocks with their latest prices and unified aggregated metrics."""
     try:
-        cache_key = "stocks_directory_v5"
+        cache_key = "stocks_directory_v6"
         cached_data = await get_cache(cache_key)
         latest_extraction = await get_latest_extraction_time()
         
@@ -63,13 +65,18 @@ async def get_stocks_directory(request: Request, response: Response):
         
         tickers = [m["ticker"] for m in meta_data]
         
-        # Get names and sentiment from recommendations
-        recs_res = client.table("recommendations").select("ticker, stock_name, sentiment").execute()
+        # Get names, sentiment, targets, and conviction from recommendations
+        recs_res = client.table("recommendations").select("ticker, stock_name, sentiment, target_price, conviction_level").execute()
         recs_data = recs_res.data or []
         
         names_map = {}
         sentiment_map = {}
         sentiment_counts = {}
+        target_map = {}
+        target_counts = {}
+        conviction_map = {}
+        conviction_counts = {}
+        
         for r in recs_data:
             t = r["ticker"]
             if t not in names_map and r.get("stock_name"):
@@ -79,6 +86,16 @@ async def get_stocks_directory(request: Request, response: Response):
             if s is not None:
                 sentiment_map[t] = sentiment_map.get(t, 0) + s
                 sentiment_counts[t] = sentiment_counts.get(t, 0) + 1
+                
+            tp = r.get("target_price")
+            if tp is not None:
+                target_map[t] = target_map.get(t, 0) + tp
+                target_counts[t] = target_counts.get(t, 0) + 1
+                
+            cl = r.get("conviction_level")
+            if cl is not None:
+                conviction_map[t] = conviction_map.get(t, 0) + cl
+                conviction_counts[t] = conviction_counts.get(t, 0) + 1
                 
         # Get latest prices
         five_days_ago = (now - timedelta(days=5)).isoformat()
@@ -112,6 +129,14 @@ async def get_stocks_directory(request: Request, response: Response):
             if sentiment_counts.get(t, 0) > 0:
                 overall_sentiment = sentiment_map[t] / sentiment_counts[t]
                 
+            avg_target_price = None
+            if target_counts.get(t, 0) > 0:
+                avg_target_price = target_map[t] / target_counts[t]
+                
+            avg_conviction = None
+            if conviction_counts.get(t, 0) > 0:
+                avg_conviction = conviction_map[t] / conviction_counts[t]
+                
             item = StockDirectoryItem(
                 ticker=t,
                 stock_name=names_map.get(t),
@@ -124,7 +149,9 @@ async def get_stocks_directory(request: Request, response: Response):
                 current_price=current_price,
                 price_change_pct=price_change_pct,
                 price_fetched_at=price_fetched_at,
-                overall_sentiment=overall_sentiment
+                overall_sentiment=overall_sentiment,
+                avg_target_price=avg_target_price,
+                avg_conviction=avg_conviction
             )
             result_stocks.append(item)
             

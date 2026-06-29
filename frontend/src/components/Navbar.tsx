@@ -260,7 +260,6 @@ export function Navbar() {
     { href: '/today', label: "Today", icon: TodayPlaysIcon },
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
-    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
@@ -272,7 +271,6 @@ export function Navbar() {
   ]
   const mobileMoreLinks = [
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
-    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
@@ -509,11 +507,4 @@ function RadarsIcon({ active }: { active: boolean }) {
   )
 }
 
-function StocksIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
-      <path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M7 14l4-4 4 4 6-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
+ 
