@@ -257,22 +257,22 @@ export function Navbar() {
 
   const allLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
-    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
-    { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/today', label: "Today", icon: TodayPlaysIcon },
+    { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
+    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
 
   const mobilePrimaryLinks = [
     { href: '/', label: 'Home', icon: DashboardIcon },
-    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/today', label: "Today", icon: TodayPlaysIcon },
+    { href: '/explore', label: 'Explore', icon: ExploreIcon },
   ]
   const mobileMoreLinks = [
-    { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
+    { href: '/stocks', label: 'Stocks', icon: StocksIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
   ]
