@@ -170,10 +170,13 @@ export default function StocksDirectoryPage() {
     
     // Sort
     result.sort((a, b) => {
-      let valA: any = a[sortField]
-      let valB: any = b[sortField]
+      let valA: any = null
+      let valB: any = null
       
-      if (sortField === 'score') {
+      if (sortField === 'ticker') {
+        valA = a.ticker
+        valB = b.ticker
+      } else if (sortField === 'score') {
         valA = a.priority_score
         valB = b.priority_score
       } else if (sortField === 'change') {
