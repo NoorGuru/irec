@@ -26,6 +26,7 @@ function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
 import HolographicCard from '@/components/HolographicCard'
 import TextScramble from '@/components/TextScramble'
 import PulseField from '@/components/PulseField'
+import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
 
 // --- Types ---
 
@@ -60,6 +61,9 @@ interface Play {
   catalysts?: CatalystOpinion[]
   why_bullets: string[]
   latest_video: VideoSummaryInfo
+  current_price?: number | null
+  price_change_pct?: number | null
+  price_fetched_at?: string | null
 }
 
 interface MarketMood {
@@ -186,6 +190,55 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
                 {play.stock_name}
               </span>
             </div>
+            
+            {play.current_price != null && (
+              <div className="relative group/price flex flex-col mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-2.5 w-max overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
+                {/* Ambient background glow based on sentiment */}
+                {play.price_change_pct != null && (
+                  <div 
+                    className={`absolute inset-0 opacity-20 group-hover/price:opacity-30 transition-opacity duration-500 blur-xl ${
+                      play.price_change_pct >= 0 ? 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#00D4AA]/40 to-transparent' : 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FF4D6A]/40 to-transparent'
+                    }`}
+                  />
+                )}
+                
+                <div className="relative z-10 flex items-end gap-2.5">
+                  <span className="font-[family-name:var(--font-geist-mono)] text-xl font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
+                    ${play.current_price.toFixed(2)}
+                  </span>
+                  {play.price_change_pct != null && (
+                    <span 
+                      className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-xs font-bold mb-0.5 px-1.5 py-0.5 rounded-md border backdrop-blur-md ${
+                        play.price_change_pct >= 0 
+                          ? 'bg-[#00D4AA]/10 text-[#00FFD0] border-[#00D4AA]/20 shadow-[0_0_10px_rgba(0,212,170,0.1)]' 
+                          : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20 shadow-[0_0_10px_rgba(255,77,106,0.1)]'
+                      }`}
+                      title="Change since market open"
+                    >
+                      {play.price_change_pct > 0 ? '+' : ''}{play.price_change_pct.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+                {play.price_fetched_at && (
+                  <div className="relative z-10 flex items-center gap-1.5 mt-1.5">
+                    <div className="relative flex h-1.5 w-1.5">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                      }`}></span>
+                      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                        play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                      }`}></span>
+                    </div>
+                    <span 
+                      className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#8B95A8] uppercase tracking-widest cursor-help"
+                      title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}
+                    >
+                      {formatRelativeTime(play.price_fetched_at)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-2 mt-2">
               <span
@@ -437,6 +490,56 @@ function PulseStream({
                     <h2 className="text-3xl md:text-5xl font-black text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] tracking-wider">
                       <TextScramble text={play.ticker} duration={600} />
                     </h2>
+                    
+                    {play.current_price != null && (
+                      <div className="relative group/price flex flex-col mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-3 w-max overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
+                        {/* Ambient background glow based on sentiment */}
+                        {play.price_change_pct != null && (
+                          <div 
+                            className={`absolute inset-0 opacity-20 group-hover/price:opacity-30 transition-opacity duration-500 blur-xl ${
+                              play.price_change_pct >= 0 ? 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#00D4AA]/40 to-transparent' : 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FF4D6A]/40 to-transparent'
+                            }`}
+                          />
+                        )}
+                        
+                        <div className="relative z-10 flex items-end gap-3">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-3xl font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
+                            ${play.current_price.toFixed(2)}
+                          </span>
+                          {play.price_change_pct != null && (
+                            <span 
+                              className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-sm font-bold mb-0.5 px-2 py-0.5 rounded-md border backdrop-blur-md ${
+                                play.price_change_pct >= 0 
+                                  ? 'bg-[#00D4AA]/10 text-[#00FFD0] border-[#00D4AA]/20 shadow-[0_0_10px_rgba(0,212,170,0.1)]' 
+                                  : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20 shadow-[0_0_10px_rgba(255,77,106,0.1)]'
+                              }`}
+                              title="Change since market open"
+                            >
+                              {play.price_change_pct > 0 ? '+' : ''}{play.price_change_pct.toFixed(2)}%
+                            </span>
+                          )}
+                        </div>
+                        {play.price_fetched_at && (
+                          <div className="relative z-10 flex items-center gap-1.5 mt-2">
+                            <div className="relative flex h-1.5 w-1.5">
+                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                                play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                              }`}></span>
+                              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                                play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                              }`}></span>
+                            </div>
+                            <span 
+                              className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
+                              title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}
+                            >
+                              {formatRelativeTime(play.price_fetched_at)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     <p className="text-xs text-[#CBD5E1] mt-1 font-semibold">{play.stock_name}</p>
                   </div>
                   <div className="scale-125 mr-2">

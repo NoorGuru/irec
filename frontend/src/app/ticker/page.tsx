@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
+import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
 
 interface Recommendation {
   ticker: string
@@ -123,6 +124,7 @@ function TickerContent() {
   
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
+  const [priceData, setPriceData] = useState<{ current_price: number, price_change_pct: number | null, price_fetched_at: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [showMoreLinks, setShowMoreLinks] = useState(false)
 
@@ -137,7 +139,7 @@ function TickerContent() {
 
       try {
         const supabase = createClient()
-        const [recsRes, radarsRes] = await Promise.all([
+        const [recsRes, radarsRes, pricesRes] = await Promise.all([
           supabase
             .from("recommendations")
             .select(`
@@ -159,7 +161,13 @@ function TickerContent() {
             .ilike("ticker", symbol),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
             .then(res => res.ok ? res.json() : [])
-            .catch(() => [])
+            .catch(() => []),
+          supabase
+            .from("stock_prices")
+            .select("*")
+            .eq("ticker", symbol.toUpperCase())
+            .order("fetched_at", { ascending: false })
+            .limit(1)
         ])
 
         const sorted = ((recsRes.data as unknown as Recommendation[]) || []).sort((a, b) => {
@@ -168,6 +176,12 @@ function TickerContent() {
 
         setRecommendations(sorted)
         setRadars(radarsRes)
+        
+        if (pricesRes.data && pricesRes.data.length > 0) {
+          const p = pricesRes.data[0]
+          const change = (p.open_price && p.open_price > 0) ? ((p.price - p.open_price) / p.open_price) * 100 : null
+          setPriceData({ current_price: p.price, price_change_pct: change, price_fetched_at: p.fetched_at })
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error)
       } finally {
@@ -225,9 +239,60 @@ function TickerContent() {
         <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
-                {symbol.toUpperCase()}
-              </h1>
+              <div className="flex items-end gap-4 flex-wrap">
+                <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9] leading-none">
+                  {symbol.toUpperCase()}
+                </h1>
+                
+                {priceData && (
+                  <div className="relative group/price flex flex-col mb-1 md:mb-2 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-3 w-max overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
+                    {/* Ambient background glow based on sentiment */}
+                    {priceData.price_change_pct != null && (
+                      <div 
+                        className={`absolute inset-0 opacity-20 group-hover/price:opacity-30 transition-opacity duration-500 blur-xl ${
+                          priceData.price_change_pct >= 0 ? 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#00D4AA]/40 to-transparent' : 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FF4D6A]/40 to-transparent'
+                        }`}
+                      />
+                    )}
+                    
+                    <div className="relative z-10 flex items-end gap-3">
+                      <span className="font-[family-name:var(--font-geist-mono)] text-2xl md:text-3xl font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
+                        ${priceData.current_price.toFixed(2)}
+                      </span>
+                      {priceData.price_change_pct != null && (
+                        <span 
+                          className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-xs md:text-sm font-bold mb-0.5 px-2 py-0.5 rounded-md border backdrop-blur-md ${
+                            priceData.price_change_pct >= 0 
+                              ? 'bg-[#00D4AA]/10 text-[#00FFD0] border-[#00D4AA]/20 shadow-[0_0_10px_rgba(0,212,170,0.1)]' 
+                              : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20 shadow-[0_0_10px_rgba(255,77,106,0.1)]'
+                          }`}
+                          title="Change since market open"
+                        >
+                          {priceData.price_change_pct > 0 ? '+' : ''}{priceData.price_change_pct.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    {priceData.price_fetched_at && (
+                      <div className="relative z-10 flex items-center gap-1.5 mt-2">
+                        <div className="relative flex h-1.5 w-1.5">
+                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                            priceData.price_change_pct && priceData.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                          }`}></span>
+                          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                            priceData.price_change_pct && priceData.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                          }`}></span>
+                        </div>
+                        <span 
+                          className="font-[family-name:var(--font-geist-mono)] text-[9px] md:text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
+                          title={`Fetched at ${formatLocalTime(priceData.price_fetched_at)}`}
+                        >
+                          {formatRelativeTime(priceData.price_fetched_at)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               {recommendations[0]?.stock_name && (
                 <p className="mt-1 text-lg text-[#8B95A8]">{recommendations[0].stock_name}</p>
               )}
