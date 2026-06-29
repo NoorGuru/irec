@@ -182,11 +182,11 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
         {/* Header: Ticker & Name */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
               <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black tracking-widest text-[#F1F5F9] leading-none">
                 <TextScramble text={play.ticker} />
               </span>
-              <span className="text-[10px] text-[#94A3B8] font-bold truncate max-w-[110px]" title={play.stock_name}>
+              <span className="text-[10px] text-[#94A3B8] font-bold truncate max-w-[160px]" title={play.stock_name}>
                 {play.stock_name}
               </span>
             </div>
@@ -490,9 +490,10 @@ function PulseStream({
                     <h2 className="text-3xl md:text-5xl font-black text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] tracking-wider">
                       <TextScramble text={play.ticker} duration={600} />
                     </h2>
+                    <p className="text-sm text-[#8B95A8] mt-1 mb-2 font-semibold">{play.stock_name}</p>
                     
                     {play.current_price != null && (
-                      <div className="relative group/price flex flex-col mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-3 w-max overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
+                      <div className="relative group/price flex flex-row items-center md:flex-col md:items-start md:justify-center mt-3 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 md:p-3 w-max overflow-hidden shadow-[0_4px_20px_rgb(0,0,0,0.3)]">
                         {/* Ambient background glow based on sentiment */}
                         {play.price_change_pct != null && (
                           <div 
@@ -520,7 +521,7 @@ function PulseStream({
                           )}
                         </div>
                         {play.price_fetched_at && (
-                          <div className="relative z-10 flex items-center gap-1.5 mt-2">
+                          <div className="relative z-10 flex items-center gap-1.5 ml-4 md:ml-0 md:mt-2">
                             <div className="relative flex h-1.5 w-1.5">
                               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                                 play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
@@ -539,8 +540,6 @@ function PulseStream({
                         )}
                       </div>
                     )}
-                    
-                    <p className="text-xs text-[#CBD5E1] mt-1 font-semibold">{play.stock_name}</p>
                   </div>
                   <div className="scale-125 mr-2">
                     <AuraReactor score={play.aura_score} direction={play.direction} />

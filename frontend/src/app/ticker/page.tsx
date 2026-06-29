@@ -239,13 +239,16 @@ function TickerContent() {
         <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <div className="flex items-end gap-4 flex-wrap">
+              <div className="flex flex-col mb-4">
                 <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9] leading-none">
                   {symbol.toUpperCase()}
                 </h1>
+                {recommendations[0]?.stock_name && (
+                  <p className="mt-2 mb-4 text-lg text-[#8B95A8] font-semibold">{recommendations[0].stock_name}</p>
+                )}
                 
                 {priceData && (
-                  <div className="relative group/price flex flex-col mb-1 md:mb-2 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl p-3 w-max overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
+                  <div className="relative group/price flex flex-row items-center md:flex-col md:items-start md:justify-center mb-1 md:mb-2 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 md:p-3 w-max overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
                     {/* Ambient background glow based on sentiment */}
                     {priceData.price_change_pct != null && (
                       <div 
@@ -273,7 +276,7 @@ function TickerContent() {
                       )}
                     </div>
                     {priceData.price_fetched_at && (
-                      <div className="relative z-10 flex items-center gap-1.5 mt-2">
+                      <div className="relative z-10 flex items-center gap-1.5 ml-4 md:ml-0 md:mt-2">
                         <div className="relative flex h-1.5 w-1.5">
                           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                             priceData.price_change_pct && priceData.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
@@ -293,9 +296,6 @@ function TickerContent() {
                   </div>
                 )}
               </div>
-              {recommendations[0]?.stock_name && (
-                <p className="mt-1 text-lg text-[#8B95A8]">{recommendations[0].stock_name}</p>
-              )}
               
               {activeRadars.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">

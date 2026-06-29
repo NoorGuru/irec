@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
 import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 import Loading from '@/components/ui/loading'
+import { formatLocalTime, formatRelativeTime } from '@/lib/utils'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   crown: Crown,
@@ -274,7 +275,51 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                         {play.action_label}
                       </span>
                     </div>
-                    <span className="text-xs text-[#8B95A8] font-medium">{play.stock_name}</span>
+                    <span className="text-xs text-[#8B95A8] font-medium block mb-3">{play.stock_name}</span>
+                    
+                    {play.current_price != null && (
+                      <div className="relative group/price flex flex-col bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-lg px-2.5 py-1.5 w-max overflow-hidden shadow-[0_4px_12px_rgb(0,0,0,0.3)]">
+                        {play.price_change_pct != null && (
+                          <div 
+                            className={`absolute inset-0 opacity-20 group-hover/price:opacity-30 transition-opacity duration-500 blur-lg ${
+                              play.price_change_pct >= 0 ? 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#00D4AA]/40 to-transparent' : 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FF4D6A]/40 to-transparent'
+                            }`}
+                          />
+                        )}
+                        <div className="relative z-10 flex items-end gap-2">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-base font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
+                            ${play.current_price.toFixed(2)}
+                          </span>
+                          {play.price_change_pct != null && (
+                            <span 
+                              className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-[10px] font-bold px-1.5 py-0.5 rounded border backdrop-blur-md ${
+                                play.price_change_pct >= 0 
+                                  ? 'bg-[#00D4AA]/10 text-[#00FFD0] border-[#00D4AA]/20 shadow-[0_0_8px_rgba(0,212,170,0.1)]' 
+                                  : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20 shadow-[0_0_8px_rgba(255,77,106,0.1)]'
+                              }`}
+                              title="Change since market open"
+                            >
+                              {play.price_change_pct > 0 ? '+' : ''}{play.price_change_pct.toFixed(2)}%
+                            </span>
+                          )}
+                        </div>
+                        {play.price_fetched_at && (
+                          <div className="relative z-10 flex items-center gap-1 mt-1.5">
+                            <div className="relative flex h-1 w-1">
+                              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                                play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                              }`}></span>
+                              <span className={`relative inline-flex rounded-full h-1 w-1 ${
+                                play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+                              }`}></span>
+                            </div>
+                            <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#8B95A8] uppercase tracking-widest cursor-help" title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}>
+                              {formatRelativeTime(play.price_fetched_at)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-end gap-2 text-right">
