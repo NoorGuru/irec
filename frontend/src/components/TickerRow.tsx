@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { AggregatedTicker } from '@/lib/types'
-import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 
 export function getSentimentLabel(value: number): string {
   if (value >= 1.5) return "Strong Buy"
@@ -152,7 +152,7 @@ export function TickerRow({
                           }`}></span>
                         </div>
                         <span className="font-[family-name:var(--font-geist-mono)] text-[8px] text-[#8B95A8] uppercase tracking-widest cursor-help" title={`Fetched at ${formatLocalTime(row.price_fetched_at)}`}>
-                          {formatRelativeTime(row.price_fetched_at)}
+                          {formatMarketTime(row.price_fetched_at)}
                         </span>
                       </div>
                     )}
@@ -232,7 +232,7 @@ export function TickerRow({
                           }`}></span>
                         </div>
                         <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#8B95A8] uppercase tracking-widest cursor-help" title={`Fetched at ${formatLocalTime(row.price_fetched_at)}`}>
-                          {formatRelativeTime(row.price_fetched_at)}
+                          {formatMarketTime(row.price_fetched_at)}
                         </span>
                       </div>
                     )}
@@ -341,7 +341,7 @@ export function TickerRow({
                           }`}></span>
                         </div>
                         <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#8B95A8] uppercase tracking-widest cursor-help" title={`Fetched at ${formatLocalTime(row.price_fetched_at)}`}>
-                          {formatRelativeTime(row.price_fetched_at)}
+                          {formatMarketTime(row.price_fetched_at)}
                         </span>
                       </div>
                     )}

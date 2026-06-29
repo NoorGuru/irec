@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
-import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 
 interface Recommendation {
   ticker: string
@@ -289,7 +289,7 @@ function TickerContent() {
                           className="font-[family-name:var(--font-geist-mono)] text-[9px] md:text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
                           title={`Fetched at ${formatLocalTime(priceData.price_fetched_at)}`}
                         >
-                          {formatRelativeTime(priceData.price_fetched_at)}
+                          {formatMarketTime(priceData.price_fetched_at)}
                         </span>
                       </div>
                     )}

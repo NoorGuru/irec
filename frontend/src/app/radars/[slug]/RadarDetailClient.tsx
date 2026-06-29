@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
 import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 import Loading from '@/components/ui/loading'
-import { formatLocalTime, formatRelativeTime } from '@/lib/utils'
+import { formatLocalTime, formatRelativeTime, formatMarketTime } from '@/lib/utils'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   crown: Crown,
@@ -314,7 +314,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                               }`}></span>
                             </div>
                             <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#8B95A8] uppercase tracking-widest cursor-help" title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}>
-                              {formatRelativeTime(play.price_fetched_at)}
+                              {formatMarketTime(play.price_fetched_at)}
                             </span>
                           </div>
                         )}

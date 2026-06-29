@@ -26,7 +26,7 @@ function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
 import HolographicCard from '@/components/HolographicCard'
 import TextScramble from '@/components/TextScramble'
 import PulseField from '@/components/PulseField'
-import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 
 // --- Types ---
 
@@ -233,7 +233,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
                       className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#8B95A8] uppercase tracking-widest cursor-help"
                       title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}
                     >
-                      {formatRelativeTime(play.price_fetched_at)}
+                      {formatMarketTime(play.price_fetched_at)}
                     </span>
                   </div>
                 )}
@@ -534,7 +534,7 @@ function PulseStream({
                               className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
                               title={`Fetched at ${formatLocalTime(play.price_fetched_at)}`}
                             >
-                              {formatRelativeTime(play.price_fetched_at)}
+                              {formatMarketTime(play.price_fetched_at)}
                             </span>
                           </div>
                         )}

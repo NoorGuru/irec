@@ -3,16 +3,14 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, ChevronDown, ChevronUp, Activity, BarChart2, ArrowUpDown } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Activity, BarChart2, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
 import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
 import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import Loading from '@/components/ui/loading'
 
-type ViewMode = 'signals' | 'directory'
 type SortField = 'ticker' | 'price' | 'change' | 'score' | 'mentions' | 'sentiment' | 'conviction' | 'target'
 type SortOrder = 'asc' | 'desc'
-type FilterTier = 'all' | 'tier1' | 'tier2'
 
 interface RatingFilter {
   key: string
@@ -40,21 +38,15 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // View Mode
-  const [viewMode, setViewMode] = useState<ViewMode>('signals')
-
-  // Common Filters
+  // Filters
   const [search, setSearch] = useState('')
   const [sortField, setSortField] = useState<SortField>('score')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
-  // Signals Filters
+  // Data Filters
   const [ratingFilter, setRatingFilter] = useState('')
   const [hasTargetOnly, setHasTargetOnly] = useState(false)
   const [highDataOnly, setHighDataOnly] = useState(false)
-
-  // Directory Filters
-  const [filterTier, setFilterTier] = useState<FilterTier>('all')
   const [visibleCount, setVisibleCount] = useState(25)
 
   useEffect(() => {
@@ -105,20 +97,9 @@ export default function ExplorePage() {
     return () => { active = false }
   }, [])
 
-  // Auto-switch sort defaults when view mode changes
-  useEffect(() => {
-    if (viewMode === 'signals') {
-      setSortField('mentions')
-      setSortOrder('desc')
-    } else {
-      setSortField('score')
-      setSortOrder('desc')
-    }
-  }, [viewMode])
-
   useEffect(() => {
     setVisibleCount(25)
-  }, [viewMode, search, sortField, sortOrder, ratingFilter, hasTargetOnly, highDataOnly, filterTier])
+  }, [search, sortField, sortOrder, ratingFilter, hasTargetOnly, highDataOnly])
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -136,7 +117,6 @@ export default function ExplorePage() {
 
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { '': 0, 'strong-buy': 0, buy: 0, neutral: 0, sell: 0, 'strong-sell': 0 }
-    if (viewMode !== 'signals') return counts
 
     let baseList = stocks.filter(s => s.overall_sentiment !== null && s.mention_count_30d > 0)
     counts[''] = baseList.length
@@ -150,32 +130,22 @@ export default function ExplorePage() {
       else counts['strong-sell']++
     }
     return counts
-  }, [stocks, viewMode])
+  }, [stocks])
 
   const filteredAndSorted = useMemo(() => {
     if (!stocks.length) return []
 
     let result = stocks.filter(s => {
-      // 1. View Mode Filtering
-      if (viewMode === 'signals') {
-        // Must have recent signals/sentiment
-        if (s.overall_sentiment === null || s.mention_count_30d === 0) return false
+      // Rating Filter
+      if (ratingFilter === 'strong-buy' && (s.overall_sentiment === null || s.overall_sentiment < 1.5)) return false
+      if (ratingFilter === 'buy' && (s.overall_sentiment === null || s.overall_sentiment < 0.5 || s.overall_sentiment >= 1.5)) return false
+      if (ratingFilter === 'neutral' && (s.overall_sentiment === null || s.overall_sentiment <= -0.5 || s.overall_sentiment >= 0.5)) return false
+      if (ratingFilter === 'sell' && (s.overall_sentiment === null || s.overall_sentiment <= -1.5 || s.overall_sentiment > -0.5)) return false
+      if (ratingFilter === 'strong-sell' && (s.overall_sentiment === null || s.overall_sentiment > -1.5)) return false
 
-        // Rating Filter
-        if (ratingFilter === 'strong-buy' && s.overall_sentiment < 1.5) return false
-        if (ratingFilter === 'buy' && (s.overall_sentiment < 0.5 || s.overall_sentiment >= 1.5)) return false
-        if (ratingFilter === 'neutral' && (s.overall_sentiment <= -0.5 || s.overall_sentiment >= 0.5)) return false
-        if (ratingFilter === 'sell' && (s.overall_sentiment <= -1.5 || s.overall_sentiment > -0.5)) return false
-        if (ratingFilter === 'strong-sell' && s.overall_sentiment > -1.5) return false
-
-        // Target / Data
-        if (hasTargetOnly && s.avg_target_price === null) return false
-        if (highDataOnly && s.mention_count_30d < 3) return false
-      } else {
-        // Directory Mode Filtering
-        if (filterTier === 'tier1' && s.tier !== 1) return false
-        if (filterTier === 'tier2' && s.tier !== 2) return false
-      }
+      // Target / Data Filters
+      if (hasTargetOnly && s.avg_target_price === null) return false
+      if (highDataOnly && s.mention_count_30d < 3) return false
 
       // 2. Global Search
       if (search) {
@@ -236,7 +206,7 @@ export default function ExplorePage() {
     })
 
     return result
-  }, [stocks, search, viewMode, ratingFilter, hasTargetOnly, highDataOnly, filterTier, sortField, sortOrder])
+  }, [stocks, search, ratingFilter, hasTargetOnly, highDataOnly, sortField, sortOrder])
 
   if (loading && !stocks.length) {
     return <Loading title="Market Explorer" subtitle="Loading assets and signals..." />
@@ -255,25 +225,9 @@ export default function ExplorePage() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-[family-name:var(--font-geist-mono)] font-extralight tracking-tight text-[#F1F5F9]">
               Explore
             </h1>
-            <div className="flex items-center bg-[#141B2D]/60 border border-[#1E293B] rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('signals')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold tracking-wide transition-colors duration-200 ${viewMode === 'signals' ? 'bg-[#00D4AA]/20 text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-              >
-                Active Setups
-              </button>
-              <button
-                onClick={() => setViewMode('directory')}
-                className={`px-4 py-2 rounded-lg text-sm font-bold tracking-wide transition-colors duration-200 ${viewMode === 'directory' ? 'bg-[#1E293B] text-[#F1F5F9] shadow-sm' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-              >
-                All Assets
-              </button>
-            </div>
           </div>
-          <p className="text-[#8B95A8] max-w-2xl text-lg font-light leading-relaxed">
-            {viewMode === 'signals' 
-              ? "Discover active market signals extracted from analyst coverage. Filter by sentiment and conviction." 
-              : `Comprehensive directory of ${stocks.length} tracked assets, prices, and Aura priority scores.`}
+          <p className="text-[#8B95A8] max-w-4xl text-lg font-light leading-relaxed">
+            Comprehensive directory of {stocks.length} tracked assets. Discover active signals, target prices, and Aura priority scores.
           </p>
         </div>
 
@@ -293,90 +247,76 @@ export default function ExplorePage() {
               />
             </div>
 
-            {/* Mobile Sort Dropdown */}
-            <div className="relative w-full sm:w-[200px] lg:hidden">
-              <select 
-                value={`${sortField}-${sortOrder}`}
-                onChange={(e) => {
-                  const [field, order] = e.target.value.split('-') as [SortField, SortOrder]
-                  setSortField(field)
-                  setSortOrder(order)
-                }}
-                className="w-full appearance-none bg-[#141B2D]/50 border border-[#1E293B] rounded-xl pl-4 pr-10 py-2.5 text-sm text-[#F1F5F9] outline-none focus:border-[#00D4AA]/50 transition-colors font-[family-name:var(--font-geist-mono)]"
+            {/* Mobile Sort */}
+            <div className="flex items-center gap-2 w-full sm:w-auto lg:hidden">
+              <div className="relative flex-1 sm:w-[160px]">
+                <select 
+                  value={sortField}
+                  onChange={(e) => setSortField(e.target.value as SortField)}
+                  className="w-full appearance-none bg-[#141B2D]/50 border border-[#1E293B] rounded-xl pl-4 pr-10 py-2.5 text-sm text-[#F1F5F9] outline-none focus:border-[#00D4AA]/50 transition-colors font-[family-name:var(--font-geist-mono)]"
+                >
+                  <option value="score">Sort: Aura Score</option>
+                  <option value="mentions">Sort: Coverage</option>
+                  <option value="sentiment">Sort: Sentiment</option>
+                  <option value="conviction">Sort: Conviction</option>
+                  <option value="target">Sort: Target</option>
+                  <option value="change">Sort: 24H Change</option>
+                  <option value="price">Sort: Price</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+              </div>
+              
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="flex items-center justify-center shrink-0 w-[42px] h-[42px] bg-[#141B2D]/50 border border-[#1E293B] rounded-xl text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/50 transition-colors"
+                aria-label="Toggle sort direction"
               >
-                {viewMode === 'signals' ? (
-                  <>
-                    <option value="mentions-desc">Sort: Mentions (High)</option>
-                    <option value="sentiment-desc">Sort: Sentiment (High)</option>
-                    <option value="conviction-desc">Sort: Conviction (High)</option>
-                    <option value="target-desc">Sort: Target (High)</option>
-                    <option value="change-desc">Sort: Change (High)</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="score-desc">Sort: Aura Score (High)</option>
-                    <option value="mentions-desc">Sort: Mentions (High)</option>
-                    <option value="change-desc">Sort: Change (High)</option>
-                    <option value="change-asc">Sort: Change (Low)</option>
-                  </>
-                )}
-              </select>
-              <ArrowUpDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                {sortOrder === 'desc' ? <ArrowDown className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 
-          {/* Right: Mode-Specific Filters & Sort */}
+          {/* Unified Filters */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto pb-2 pt-1 sm:pb-0 sm:pt-0">
             
-            {viewMode === 'signals' && (
-              <>
-                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                  {RATING_FILTERS.map(rf => {
-                    const isActive = ratingFilter === rf.key
-                    const count = filterCounts[rf.key] ?? 0
-                    return (
-                      <button
-                        key={rf.key}
-                        onClick={() => setRatingFilter(ratingFilter === rf.key ? '' : rf.key)}
-                        className={`
-                          shrink-0 relative px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border whitespace-nowrap
-                          ${isActive ? `${rf.activeBg} ${rf.activeBorder} ${rf.activeColor}` : `bg-transparent border-[#1E293B] ${rf.color} hover:bg-[#141B2D]/40`}
-                        `}
-                      >
-                        {rf.label}
-                        {rf.key !== '' && (
-                          <span className={`ml-1.5 font-[family-name:var(--font-geist-mono)] text-[10px] ${isActive ? 'opacity-80' : 'opacity-50'}`}>
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-                <div className="w-px h-6 bg-[#1E293B] shrink-0 mx-1 hidden sm:block" />
-                <button
-                  onClick={() => setHasTargetOnly(!hasTargetOnly)}
-                  className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 whitespace-nowrap ${hasTargetOnly ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]' : 'bg-[#141B2D]/40 border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:bg-[#1E293B]/50'}`}
-                >
-                  <span className="mr-1 text-[#F59E0B]">$</span>Target
-                </button>
-                <button
-                  onClick={() => setHighDataOnly(!highDataOnly)}
-                  className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 whitespace-nowrap ${highDataOnly ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]' : 'bg-[#141B2D]/40 border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:bg-[#1E293B]/50'}`}
-                >
-                  <span className="mr-1">📊</span>High Data
-                </button>
-              </>
-            )}
-
-            {viewMode === 'directory' && (
-              <div className="flex flex-wrap items-center p-1 bg-[#141B2D]/40 border border-[#1E293B] rounded-xl shrink-0 w-full sm:w-auto">
-                <button onClick={() => setFilterTier('all')} className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold font-[family-name:var(--font-geist-mono)] tracking-wider whitespace-nowrap transition-colors ${filterTier === 'all' ? 'bg-[#1E293B] text-[#F1F5F9] shadow-sm' : 'text-[#8B95A8] hover:text-[#F1F5F9]'}`}>ALL ASSETS</button>
-                <button onClick={() => setFilterTier('tier1')} className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold font-[family-name:var(--font-geist-mono)] tracking-wider whitespace-nowrap transition-colors flex items-center justify-center gap-1.5 ${filterTier === 'tier1' ? 'bg-[#00D4AA]/20 text-[#00D4AA] shadow-sm' : 'text-[#8B95A8] hover:text-[#00D4AA]'}`}><Activity className="w-3.5 h-3.5" />TRENDING</button>
-                <button onClick={() => setFilterTier('tier2')} className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold font-[family-name:var(--font-geist-mono)] tracking-wider whitespace-nowrap transition-colors flex items-center justify-center gap-1.5 ${filterTier === 'tier2' ? 'bg-[#1E293B] text-[#F1F5F9] shadow-sm' : 'text-[#8B95A8] hover:text-[#F1F5F9]'}`}><BarChart2 className="w-3.5 h-3.5" />EXTENDED</button>
-              </div>
-            )}
-
+            <div className="flex flex-wrap items-center gap-1.5">
+              {RATING_FILTERS.map(rf => {
+                const isActive = ratingFilter === rf.key
+                const count = filterCounts[rf.key] ?? 0
+                return (
+                  <button
+                    key={rf.key}
+                    onClick={() => setRatingFilter(ratingFilter === rf.key ? '' : rf.key)}
+                    className={`
+                      relative px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border whitespace-nowrap
+                      ${isActive ? `${rf.activeBg} ${rf.activeBorder} ${rf.activeColor}` : `bg-transparent border-[#1E293B] ${rf.color} hover:bg-[#141B2D]/40`}
+                    `}
+                  >
+                    {rf.label}
+                    {rf.key !== '' && (
+                      <span className={`ml-1.5 font-[family-name:var(--font-geist-mono)] text-[10px] ${isActive ? 'opacity-80' : 'opacity-50'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            
+            <div className="w-px h-6 bg-[#1E293B] shrink-0 mx-1 hidden sm:block" />
+            
+            <button
+              onClick={() => setHasTargetOnly(!hasTargetOnly)}
+              className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 whitespace-nowrap ${hasTargetOnly ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]' : 'bg-[#141B2D]/40 border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:bg-[#1E293B]/50'}`}
+            >
+              <span className="mr-1 text-[#F59E0B]">$</span>Target
+            </button>
+            <button
+              onClick={() => setHighDataOnly(!highDataOnly)}
+              className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 whitespace-nowrap ${highDataOnly ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B]' : 'bg-[#141B2D]/40 border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:bg-[#1E293B]/50'}`}
+            >
+              <span className="mr-1">📊</span>High Data
+            </button>
           </div>
         </div>
 
@@ -395,24 +335,18 @@ export default function ExplorePage() {
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('change')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">24H <SortIcon field="change" /></div>
                   </th>
-                  {viewMode === 'signals' && (
-                    <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('target')}>
-                      <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Target <SortIcon field="target" /></div>
-                    </th>
-                  )}
+                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('target')}>
+                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Target <SortIcon field="target" /></div>
+                  </th>
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('sentiment')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Sentiment <SortIcon field="sentiment" /></div>
                   </th>
-                  {viewMode === 'signals' && (
-                    <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('conviction')}>
-                      <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Conviction <SortIcon field="conviction" /></div>
-                    </th>
-                  )}
-                  {viewMode === 'directory' && (
-                    <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('score')}>
-                      <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Aura Score <SortIcon field="score" /></div>
-                    </th>
-                  )}
+                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('conviction')}>
+                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Conviction <SortIcon field="conviction" /></div>
+                  </th>
+                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('score')}>
+                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Aura Score <SortIcon field="score" /></div>
+                  </th>
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('mentions')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Coverage <SortIcon field="mentions" /></div>
                   </th>
@@ -421,7 +355,7 @@ export default function ExplorePage() {
               <tbody className="divide-y divide-[#1E293B]/50">
                 {filteredAndSorted.slice(0, visibleCount).map((stock) => {
                   const direction = stock.overall_sentiment ? (stock.overall_sentiment >= 0.5 ? 'BUY' : stock.overall_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL') : 'NEUTRAL'
-                  const borderGlowClass = viewMode === 'signals' ? (direction === 'BUY' ? 'border-l-2 border-l-[#00D4AA]' : direction === 'SELL' ? 'border-l-2 border-l-[#FF4D6A]' : 'border-l-2 border-l-[#8B95A8]') : 'border-l-2 border-l-transparent'
+                  const borderGlowClass = direction === 'BUY' ? 'border-l-2 border-l-[#00D4AA]' : direction === 'SELL' ? 'border-l-2 border-l-[#FF4D6A]' : stock.overall_sentiment !== null ? 'border-l-2 border-l-[#8B95A8]' : 'border-l-2 border-l-transparent'
                   
                   return (
                     <tr 
@@ -435,7 +369,7 @@ export default function ExplorePage() {
                             <span className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors leading-none tracking-wide">
                               {stock.ticker}
                             </span>
-                            {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && viewMode === 'signals' && (
+                            {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
                               <span className="inline-flex items-center text-[8px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
                             )}
                           </div>
@@ -458,17 +392,15 @@ export default function ExplorePage() {
                           <span className="text-[#64748B]">—</span>
                         )}
                       </td>
-                      {viewMode === 'signals' && (
-                        <td className="px-5 py-4">
-                          {stock.avg_target_price !== null ? (
-                            <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
-                              ${stock.avg_target_price.toFixed(0)}
-                            </span>
-                          ) : (
-                            <span className="text-[#64748B] text-xs">—</span>
-                          )}
-                        </td>
-                      )}
+                      <td className="px-5 py-4">
+                        {stock.avg_target_price !== null ? (
+                          <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
+                            ${stock.avg_target_price.toFixed(0)}
+                          </span>
+                        ) : (
+                          <span className="text-[#64748B] text-xs">—</span>
+                        )}
+                      </td>
                       <td className="px-5 py-4 min-w-[150px]">
                         {stock.overall_sentiment !== null ? (
                           <div className="flex flex-col gap-1.5">
@@ -484,28 +416,21 @@ export default function ExplorePage() {
                           <span className="text-[#64748B] text-xs">No Data</span>
                         )}
                       </td>
-                      
-                      {viewMode === 'signals' && (
-                        <td className="px-5 py-4">
-                          {stock.avg_conviction !== null ? <ConvictionMini level={stock.avg_conviction} /> : <span className="text-[#64748B] text-xs">—</span>}
-                        </td>
-                      )}
-
-                      {viewMode === 'directory' && (
-                        <td className="px-5 py-4">
-                          <span className="text-sm font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                            {stock.priority_score.toFixed(3)}
-                          </span>
-                        </td>
-                      )}
-
+                      <td className="px-5 py-4">
+                        {stock.avg_conviction !== null ? <ConvictionMini level={stock.avg_conviction} /> : <span className="text-[#64748B] text-xs">—</span>}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-sm font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
+                          {stock.priority_score.toFixed(3)}
+                        </span>
+                      </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1.5 text-xs">
                             <span className="font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{stock.mention_count_30d}</span>
                             <span className="text-[#8B95A8] text-[10px]">mentions</span>
                           </div>
-                          {viewMode === 'signals' && stock.analyst_count > 0 && (
+                          {stock.analyst_count > 0 && (
                             <div className="flex items-center gap-1.5 text-xs">
                               <span className="font-[family-name:var(--font-geist-mono)] text-[#64748B]">{stock.analyst_count}</span>
                               <span className="text-[#64748B] text-[10px]">analysts</span>
@@ -525,7 +450,7 @@ export default function ExplorePage() {
         <div className="lg:hidden flex flex-col gap-3 pb-8">
           {filteredAndSorted.slice(0, visibleCount).map((stock) => {
             const direction = stock.overall_sentiment ? (stock.overall_sentiment >= 0.5 ? 'BUY' : stock.overall_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL') : 'NEUTRAL'
-            const borderClass = viewMode === 'signals' ? (direction === 'BUY' ? 'border-l-4 border-l-[#00D4AA] border-r border-y border-[#1E293B]' : direction === 'SELL' ? 'border-l-4 border-l-[#FF4D6A] border-r border-y border-[#1E293B]' : 'border border-[#1E293B]') : 'border border-[#1E293B]'
+            const borderClass = direction === 'BUY' ? 'border-l-4 border-l-[#00D4AA] border-r border-y border-[#1E293B]' : direction === 'SELL' ? 'border-l-4 border-l-[#FF4D6A] border-r border-y border-[#1E293B]' : stock.overall_sentiment !== null ? 'border border-[#1E293B] border-l-4 border-l-[#8B95A8]' : 'border border-[#1E293B]'
 
             return (
               <Link key={stock.ticker} href={`/ticker?s=${stock.ticker}`} className={`block rounded-xl bg-[#141B2D]/60 p-4 active:scale-[0.98] transition-all shadow-md ${borderClass}`}>
@@ -533,7 +458,7 @@ export default function ExplorePage() {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <span className="text-xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-wide">{stock.ticker}</span>
-                      {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && viewMode === 'signals' && (
+                      {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
                         <span className="inline-flex items-center text-[9px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
                       )}
                     </div>
@@ -567,35 +492,34 @@ export default function ExplorePage() {
                   </div>
                 </div>
 
-                <div className="flex items-end justify-between pt-3 border-t border-[#1E293B]/60">
-                  {viewMode === 'signals' ? (
-                    <>
-                      <div className="flex flex-col gap-1 w-1/3">
-                        <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Target</span>
-                        {stock.avg_target_price !== null ? (
-                          <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
-                            ${stock.avg_target_price.toFixed(0)}
-                          </span>
-                        ) : <span className="text-[#64748B] text-xs">—</span>}
-                      </div>
-                      <div className="flex flex-col items-center gap-1 w-1/3">
-                        <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Conviction</span>
-                        {stock.avg_conviction !== null ? <ConvictionMini level={stock.avg_conviction} /> : <span className="text-[#64748B] text-xs">—</span>}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col gap-1 w-2/3">
+                <div className="flex flex-col gap-3 pt-3 border-t border-[#1E293B]/60">
+                  <div className="flex items-end justify-between">
+                    <div className="flex flex-col gap-1 w-1/2">
+                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Target</span>
+                      {stock.avg_target_price !== null ? (
+                        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
+                          ${stock.avg_target_price.toFixed(0)}
+                        </span>
+                      ) : <span className="text-[#64748B] text-xs">—</span>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 w-1/2">
+                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Conviction</span>
+                      {stock.avg_conviction !== null ? <ConvictionMini level={stock.avg_conviction} /> : <span className="text-[#64748B] text-xs">—</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div className="flex flex-col gap-1 w-1/2">
                       <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Aura Score</span>
                       <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
                         {stock.priority_score.toFixed(3)}
                       </span>
                     </div>
-                  )}
-                  <div className="flex flex-col items-end gap-1 w-1/3">
-                    <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Coverage</span>
-                    <div className="flex items-center gap-1">
-                      <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">{stock.mention_count_30d}</span>
-                      <span className="text-[10px] text-[#64748B]">mentions</span>
+                    <div className="flex flex-col items-end gap-1 w-1/2">
+                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Coverage</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">{stock.mention_count_30d}</span>
+                        <span className="text-[10px] text-[#64748B]">mentions</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -635,7 +559,6 @@ export default function ExplorePage() {
                   setRatingFilter('')
                   setHasTargetOnly(false)
                   setHighDataOnly(false)
-                  setFilterTier('all')
                 }}
                 className="mt-6 text-[#00D4AA] text-sm font-medium hover:underline"
               >
