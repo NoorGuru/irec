@@ -345,7 +345,6 @@ export function ChannelsTab() {
             </div>
           </div>
 
-          {/* Trust Weight Precision Stepper */}
           <div className="relative mt-5 pt-4 border-t border-[#1E293B]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-[#8B95A8] font-mono uppercase tracking-wider">Trust Score</span>

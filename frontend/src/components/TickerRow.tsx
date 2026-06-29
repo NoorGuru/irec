@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AggregatedTicker } from '@/lib/types'
+import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
 
 export function getSentimentLabel(value: number): string {
   if (value >= 1.5) return "Strong Buy"
@@ -114,6 +115,28 @@ export function TickerRow({
                 {row.stock_name && (
                   <span className="text-[10px] text-[#64748B] truncate mt-1.5 max-w-[120px]">{row.stock_name}</span>
                 )}
+                {row.current_price != null && (
+                  <div className="flex flex-col mt-2.5 bg-[#060A13]/40 border border-[#1E293B]/60 rounded px-2 py-1.5 w-max">
+                    <div className="flex items-end gap-1.5">
+                      <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9] leading-none">
+                        ${row.current_price.toFixed(2)}
+                      </span>
+                      {row.price_change_pct != null && (
+                        <span 
+                          className={`font-[family-name:var(--font-geist-mono)] text-[9px] font-bold px-1 py-0.5 rounded ${row.price_change_pct >= 0 ? 'bg-[#00D4AA]/10 text-[#00FFD0]' : 'bg-[#FF4D6A]/10 text-[#FF4D6A]'}`}
+                          title="Change since market open"
+                        >
+                          {row.price_change_pct > 0 ? '+' : ''}{row.price_change_pct.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    {row.price_fetched_at && (
+                      <span className="font-[family-name:var(--font-geist-mono)] text-[8px] text-[#64748B] uppercase tracking-wider mt-1 cursor-help" title={`Fetched at ${formatLocalTime(row.price_fetched_at)}`}>
+                        {formatRelativeTime(row.price_fetched_at)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col justify-center max-w-[170px] w-full">
@@ -144,11 +167,35 @@ export function TickerRow({
             </div>
           ) : (
             <div className="hidden md:grid md:grid-cols-[1.5fr_2fr_1.5fr_1fr_auto] md:items-center md:gap-6 relative z-10">
-              <div className="flex items-baseline gap-3 overflow-hidden">
-                <span className={`font-[family-name:var(--font-geist-mono)] text-xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
-                  {row.ticker}
-                </span>
-                <span className="text-xs text-[#64748B] truncate max-w-[140px]">{row.stock_name}</span>
+              <div className="flex flex-col justify-center min-w-0">
+                <div className="flex items-baseline gap-3 overflow-hidden">
+                  <span className={`font-[family-name:var(--font-geist-mono)] text-xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
+                    {row.ticker}
+                  </span>
+                  <span className="text-xs text-[#64748B] truncate max-w-[140px]">{row.stock_name}</span>
+                </div>
+                {row.current_price != null && (
+                  <div className="flex flex-col mt-2.5 bg-[#060A13]/40 border border-[#1E293B]/60 rounded-md px-2.5 py-1.5 w-max shadow-inner">
+                    <div className="flex items-end gap-2">
+                      <span className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#F1F5F9] leading-none">
+                        ${row.current_price.toFixed(2)}
+                      </span>
+                      {row.price_change_pct != null && (
+                        <span 
+                          className={`font-[family-name:var(--font-geist-mono)] text-[10px] font-bold px-1.5 py-0.5 rounded ${row.price_change_pct >= 0 ? 'bg-[#00D4AA]/10 text-[#00FFD0]' : 'bg-[#FF4D6A]/10 text-[#FF4D6A]'}`}
+                          title="Change since market open"
+                        >
+                          {row.price_change_pct > 0 ? '+' : ''}{row.price_change_pct.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    {row.price_fetched_at && (
+                      <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#64748B] uppercase tracking-wider mt-1 cursor-help" title={`Fetched at ${formatLocalTime(row.price_fetched_at)}`}>
+                        {formatRelativeTime(row.price_fetched_at)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col justify-center max-w-[200px] w-full">
@@ -201,17 +248,41 @@ export function TickerRow({
 
           <div className="md:hidden flex flex-col gap-3 relative z-10">
             <div className="flex items-start justify-between">
-              <div>
-                <span className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
-                  {row.ticker}
-                </span>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
+                    {row.ticker}
+                  </span>
+                  {isLowConfidence && (
+                    <span className="inline-flex items-center text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1 py-0.5 rounded">
+                      low data
+                    </span>
+                  )}
+                </div>
                 {row.stock_name && (
                   <p className="text-xs text-[#64748B] mt-0.5 truncate max-w-[200px]">{row.stock_name}</p>
                 )}
-                {isLowConfidence && (
-                  <span className="mt-1 inline-flex items-center text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1 py-0.5 rounded">
-                    low data
-                  </span>
+                {row.current_price != null && (
+                  <div className="flex flex-col mt-3 bg-[#060A13]/40 border border-[#1E293B]/60 rounded-md px-2.5 py-1.5 w-max shadow-inner">
+                    <div className="flex items-end gap-2">
+                      <span className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#F1F5F9] leading-none">
+                        ${row.current_price.toFixed(2)}
+                      </span>
+                      {row.price_change_pct != null && (
+                        <span 
+                          className={`font-[family-name:var(--font-geist-mono)] text-[10px] font-bold px-1.5 py-0.5 rounded ${row.price_change_pct >= 0 ? 'bg-[#00D4AA]/10 text-[#00FFD0]' : 'bg-[#FF4D6A]/10 text-[#FF4D6A]'}`}
+                          title="Change since market open"
+                        >
+                          {row.price_change_pct > 0 ? '+' : ''}{row.price_change_pct.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                    {row.price_fetched_at && (
+                      <span className="font-[family-name:var(--font-geist-mono)] text-[9px] text-[#64748B] uppercase tracking-wider mt-1 cursor-help" title={`Fetched at ${formatLocalTime(row.price_fetched_at)}`}>
+                        {formatRelativeTime(row.price_fetched_at)}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="text-right flex flex-col items-end gap-1">

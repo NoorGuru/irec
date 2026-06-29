@@ -20,6 +20,9 @@ export interface AggregatedTicker {
   avg_conviction: number
   mention_count: number
   analyst_count: number
+  current_price?: number | null
+  price_change_pct?: number | null
+  price_fetched_at?: string | null
 }
 
 export interface RadarTrendPoint {
@@ -41,6 +44,9 @@ export interface PlayResponse {
   analyst_count: number
   agreement_pct: number
   top_catalyst: string
+  current_price?: number | null
+  price_change_pct?: number | null
+  price_fetched_at?: string | null
 }
 
 export interface RadarResponse {

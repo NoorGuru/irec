@@ -54,6 +54,9 @@ class PlayResponse(BaseModel):
     catalysts: List[CatalystOpinion]
     why_bullets: List[str]
     latest_video: VideoSummaryInfo
+    current_price: Optional[float] = None
+    price_change_pct: Optional[float] = None
+    price_fetched_at: Optional[str] = None
 
 class MarketMoodResponse(BaseModel):
     buy_plays: int
@@ -523,6 +526,32 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score") -> Toda
         plays.sort(key=lambda x: abs(x.consensus_sentiment), reverse=True)
     else:  # default or "aura_score"
         plays.sort(key=lambda x: x.aura_score, reverse=True)
+
+    # Inject latest stock prices
+    if plays:
+        play_tickers = [p.ticker for p in plays]
+        five_days_ago = (now - timedelta(days=5)).isoformat()
+        try:
+            prices_res = client.table("stock_prices").select("*").in_("ticker", play_tickers).gte("fetched_at", five_days_ago).execute()
+            prices_data = prices_res.data or []
+            # Sort by fetched_at desc to get the latest per ticker
+            prices_data.sort(key=lambda x: x["fetched_at"], reverse=True)
+            
+            latest_prices = {}
+            for row in prices_data:
+                if row["ticker"] not in latest_prices:
+                    latest_prices[row["ticker"]] = row
+                    
+            for play in plays:
+                price_row = latest_prices.get(play.ticker)
+                if price_row:
+                    play.current_price = price_row["price"]
+                    play.price_fetched_at = price_row["fetched_at"]
+                    op = price_row.get("open_price")
+                    if op and op > 0:
+                        play.price_change_pct = round(((play.current_price - op) / op) * 100, 2)
+        except Exception as e:
+            logger.error(f"Failed to fetch prices for today plays: {e}")
 
     # Compute Market Mood
     buy_plays = sum(1 for p in plays if p.direction == "BUY")
