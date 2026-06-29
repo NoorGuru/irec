@@ -108,7 +108,7 @@ async def get_radar_history(radar_slug: str) -> List[RadarTrendPoint]:
 
 async def get_radar_plays_data() -> dict:
     """Fetch minimal play data needed for radar computation."""
-    cache_key = "radar_plays_data_v4"
+    cache_key = "radar_plays_data_v5"
 
     cached_data = await get_cache(cache_key)
     latest_extraction = await get_latest_extraction_time()
@@ -289,7 +289,10 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
                 "analyst_count": play.get("analyst_count", 0),
                 "agreement_pct": play.get("agreement_pct", 0),
                 "top_catalyst": play.get("top_catalyst", ""),
-                "latest_mention_date": play.get("latest_mention_date")
+                "latest_mention_date": play.get("latest_mention_date"),
+                "current_price": play.get("current_price"),
+                "price_change_pct": play.get("price_change_pct"),
+                "price_fetched_at": play.get("price_fetched_at")
             })
         else:
             # Create a zero-stat placeholder for tickers with no recent plays
@@ -306,7 +309,10 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
                 "analyst_count": 0,
                 "agreement_pct": 0,
                 "top_catalyst": "No recent plays.",
-                "latest_mention_date": None
+                "latest_mention_date": None,
+                "current_price": None,
+                "price_change_pct": None,
+                "price_fetched_at": None
             })
             
     if not radar_plays:

@@ -278,7 +278,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                     <span className="text-xs text-[#8B95A8] font-medium block mb-3">{play.stock_name}</span>
                     
                     {play.current_price != null && (
-                      <div className="relative group/price flex flex-col bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-lg px-2.5 py-1.5 w-max overflow-hidden shadow-[0_4px_12px_rgb(0,0,0,0.3)]">
+                      <div className="relative group/price flex flex-row items-center md:flex-col md:items-start bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-lg px-3 py-2 md:px-2.5 md:py-1.5 w-max overflow-hidden shadow-[0_4px_12px_rgb(0,0,0,0.3)]">
                         {play.price_change_pct != null && (
                           <div 
                             className={`absolute inset-0 opacity-20 group-hover/price:opacity-30 transition-opacity duration-500 blur-lg ${
@@ -304,7 +304,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                           )}
                         </div>
                         {play.price_fetched_at && (
-                          <div className="relative z-10 flex items-center gap-1 mt-1.5">
+                          <div className="relative z-10 flex items-center gap-1.5 ml-3 md:ml-0 md:mt-1.5">
                             <div className="relative flex h-1 w-1">
                               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                                 play.price_change_pct && play.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
