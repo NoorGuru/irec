@@ -256,9 +256,12 @@ export function ChannelsTab() {
       {channels.map((ch) => (
         <div
           key={ch.channel_id}
-          className="bg-[#141B2D] border border-[#1E293B] rounded-lg p-5 hover:border-[#1E293B]/80 transition-colors"
+          className="group relative bg-[#141B2D]/40 backdrop-blur-md border border-[#1E293B]/60 rounded-xl p-5 hover:border-[#00D4AA]/30 hover:bg-[#141B2D]/60 transition-all duration-300 overflow-hidden"
         >
-          <div className="flex items-start gap-4">
+          {/* Ambient glow */}
+          <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+               style={{ background: 'radial-gradient(circle, rgba(0,212,170,0.05) 0%, transparent 70%)' }} />
+          <div className="relative flex items-start gap-4">
             {/* Thumbnail */}
             <div className="w-10 h-10 rounded-full bg-[#1E293B] flex-shrink-0 flex items-center justify-center overflow-hidden">
               {ch.channel_thumbnail_url ? (
@@ -308,10 +311,18 @@ export function ChannelsTab() {
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1 text-xs text-[#8B95A8] font-mono">
+              <div className="flex items-center gap-3 mt-1.5 text-xs text-[#8B95A8] font-mono">
                 <span>{ch.video_count} video{ch.video_count !== 1 ? 's' : ''}</span>
                 <span className="text-[#1E293B]">·</span>
                 <span>{ch.rec_count} rec{ch.rec_count !== 1 ? 's' : ''}</span>
+                {ch.youtube_channel_id && (
+                  <>
+                    <span className="text-[#1E293B]">·</span>
+                    <a href={`https://youtube.com/channel/${ch.youtube_channel_id}`} target="_blank" rel="noreferrer" className="hover:text-[#00D4AA] transition-colors">
+                      YouTube ↗
+                    </a>
+                  </>
+                )}
               </div>
             </div>
 
@@ -334,30 +345,49 @@ export function ChannelsTab() {
             </div>
           </div>
 
-          {/* Trust Weight Power Bar */}
-          <div className="mt-4 flex items-center gap-3">
-            <span className="text-xs text-[#8B95A8] font-mono w-12 flex-shrink-0">
-              Trust
-            </span>
-            <div className="flex-1 relative">
-              <div className="h-2 bg-[#0A0F1A] rounded-full overflow-hidden">
+          {/* Trust Weight Precision Stepper */}
+          <div className="relative mt-5 pt-4 border-t border-[#1E293B]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-[#8B95A8] font-mono uppercase tracking-wider">Trust Score</span>
+              <div className="flex gap-1.5">
+                {[0.5, 1.0, 1.5, 2.0].map(weight => (
+                  <button
+                    key={weight}
+                    onClick={() => handleWeightChange(ch.channel_id, weight)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors border ${
+                      ch.trust_weight === weight
+                        ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA] shadow-[0_0_10px_rgba(0,212,170,0.1)]'
+                        : 'bg-[#0A0F1A] border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] hover:border-[#1E293B]/80'
+                    }`}
+                  >
+                    {weight.toFixed(1)}×
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="relative w-24 h-1.5 bg-[#0A0F1A] rounded-full overflow-hidden hidden sm:block">
                 <div
-                  className="h-full bg-gradient-to-r from-[#00D4AA]/60 to-[#00D4AA] rounded-full transition-all duration-300"
-                  style={{ width: `${(ch.trust_weight / 2) * 100}%` }}
+                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#00D4AA]/40 to-[#00D4AA] rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min((ch.trust_weight / 2.5) * 100, 100)}%` }}
                 />
               </div>
-              <Slider
-                value={[ch.trust_weight]}
-                min={0}
-                max={2}
-                step={0.1}
-                className="absolute inset-0 opacity-0 hover:opacity-100 cursor-pointer"
-                onValueCommitted={(value) => handleWeightChange(ch.channel_id, Array.isArray(value) ? value[0] : value)}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="5"
+                  value={ch.trust_weight}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val)) handleWeightChange(ch.channel_id, val);
+                  }}
+                  className={`w-16 h-7 px-1 text-xs font-mono bg-[#0A0F1A] border-[#1E293B] text-center transition-colors ${savingWeight === ch.channel_id ? 'text-[#00D4AA] border-[#00D4AA]/50 shadow-[0_0_10px_rgba(0,212,170,0.1)]' : 'text-[#F1F5F9] focus:border-[#00D4AA]/50'}`}
+                />
+              </div>
             </div>
-            <span className={`text-sm font-mono w-10 text-right ${savingWeight === ch.channel_id ? 'text-[#00D4AA] animate-pulse' : 'text-[#F1F5F9]'}`}>
-              {ch.trust_weight.toFixed(1)}
-            </span>
           </div>
         </div>
       ))}

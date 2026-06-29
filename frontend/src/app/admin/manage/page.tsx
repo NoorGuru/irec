@@ -97,19 +97,29 @@ function AdminManageContent() {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col relative min-h-screen">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#141B2D]/20 via-[#0A0F1A] to-[#0A0F1A] pointer-events-none -z-10" />
+
       {/* Header */}
-      <header className="border-b border-[#1E293B] px-4 sm:px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
+      <header className="border-b border-[#1E293B]/50 px-4 sm:px-6 py-4 bg-[#0A0F1A]/80 backdrop-blur-md sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
           <Link
             href="/admin"
-            className="flex items-center gap-1.5 text-[#8B95A8] hover:text-[#F1F5F9] transition-colors text-sm"
+            className="text-[#8B95A8] hover:text-[#00D4AA] transition-colors text-sm font-mono tracking-wider"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Hub</span>
+            aura
           </Link>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-[#F1F5F9]">
-            Control Panel
+          <span className="text-[#1E293B]">/</span>
+          <Link
+            href="/admin"
+            className="text-[#8B95A8] hover:text-[#00D4AA] transition-colors text-sm font-mono tracking-wider"
+          >
+            admin
+          </Link>
+          <span className="text-[#1E293B]">/</span>
+          <h1 className="text-sm font-medium tracking-tight text-[#F1F5F9] font-mono tracking-wider">
+            control-panel
           </h1>
         </div>
       </header>
@@ -140,7 +150,7 @@ function AdminManageContent() {
                 </kbd>
                 {/* Active indicator */}
                 {isActive && (
-                  <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#00D4AA] rounded-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent" style={{boxShadow: '0 -2px 10px rgba(0,212,170,0.5)'}} />
                 )}
               </button>
             )

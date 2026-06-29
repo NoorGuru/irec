@@ -209,7 +209,7 @@ export function StatsTab() {
       </div>
 
       {/* Weekly Bar Chart */}
-      <div className="bg-[#141B2D] border border-[#1E293B] rounded-lg p-5">
+      <div className="bg-[#141B2D]/40 backdrop-blur-md border border-[#1E293B]/60 rounded-xl p-5">
         <h3 className="text-sm font-medium text-[#8B95A8] mb-4">Weekly Ingestion Volume</h3>
         <div className="flex items-end gap-2 h-32">
           {stats.weeklyTrend.map((count, i) => (
@@ -234,7 +234,7 @@ export function StatsTab() {
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Channel Leaderboard */}
-        <div className="bg-[#141B2D] border border-[#1E293B] rounded-lg p-5">
+        <div className="bg-[#141B2D]/40 backdrop-blur-md border border-[#1E293B]/60 rounded-xl p-5">
           <h3 className="text-sm font-medium text-[#8B95A8] mb-4">Top Channels</h3>
           <div className="space-y-3">
             {stats.topChannels.map((ch, i) => (
@@ -261,7 +261,7 @@ export function StatsTab() {
         </div>
 
         {/* Recent Failures */}
-        <div className="bg-[#141B2D] border border-[#1E293B] rounded-lg p-5">
+        <div className="bg-[#141B2D]/40 backdrop-blur-md border border-[#1E293B]/60 rounded-xl p-5">
           <h3 className="text-sm font-medium text-[#8B95A8] mb-4 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-[#FF4D6A]" />
             Recent Failures
@@ -294,8 +294,10 @@ function StatCard({ label, value, icon: Icon, color }: {
   color: string
 }) {
   return (
-    <div className="bg-[#141B2D] border border-[#1E293B] rounded-lg p-5">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="group relative bg-[#141B2D]/40 backdrop-blur-md border border-[#1E293B]/60 rounded-xl p-5 hover:border-[#00D4AA]/30 hover:bg-[#141B2D]/60 transition-all duration-300 overflow-hidden">
+      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+           style={{ background: `radial-gradient(circle, ${color}15 0%, transparent 70%)` }} />
+      <div className="relative flex items-center gap-2 mb-3">
         <Icon className="w-4 h-4" style={{ color }} />
         <span className="text-xs font-mono text-[#8B95A8] uppercase tracking-wider">{label}</span>
       </div>

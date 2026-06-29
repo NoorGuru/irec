@@ -202,8 +202,8 @@ export function LlmLogsTab() {
           return (
             <div
               key={log.id}
-              className={`bg-[#141B2D] border border-[#1E293B] rounded-lg overflow-hidden transition-colors ${
-                !log.parse_success ? 'border-l-2 border-l-[#FF4D6A]' : ''
+              className={`bg-[#141B2D]/40 backdrop-blur-md border border-[#1E293B]/60 rounded-xl overflow-hidden transition-all duration-300 hover:border-[#1E293B] hover:bg-[#141B2D]/60 ${
+                !log.parse_success ? '!border-l-2 !border-l-[#FF4D6A]' : ''
               }`}
             >
               <div className="p-4 flex items-center gap-3">

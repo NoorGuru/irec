@@ -67,6 +67,8 @@ export function RecommendationsTab() {
   const [recs, setRecs] = useState<Recommendation[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [channelFilter, setChannelFilter] = useState('')
+  const [sentimentFilter, setSentimentFilter] = useState<number | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editData, setEditData] = useState<Partial<Recommendation>>({})
   const [saving, setSaving] = useState(false)
@@ -89,7 +91,7 @@ export function RecommendationsTab() {
         videos!inner(title, extracted_at, channels!inner(channel_name))
       `)
       .order('id', { ascending: false })
-      .limit(300)
+      .limit(5000)
 
     if (error) {
       console.error('Failed to fetch recommendations:', error)
@@ -124,12 +126,16 @@ export function RecommendationsTab() {
   // ─── Filter ───
 
   const filteredRecs = recs.filter((r) => {
+    if (channelFilter && r.channel_name !== channelFilter) return false
+    if (sentimentFilter !== null && r.sentiment !== sentimentFilter) return false
+    
     if (!search) return true
     const q = search.toLowerCase()
     return (
       r.ticker.toLowerCase().includes(q) ||
-      r.stock_name?.toLowerCase().includes(q) ||
-      r.channel_name.toLowerCase().includes(q)
+      (r.stock_name?.toLowerCase().includes(q) || false) ||
+      r.channel_name.toLowerCase().includes(q) ||
+      (r.video_title?.toLowerCase().includes(q) || false)
     )
   })
 
@@ -137,11 +143,13 @@ export function RecommendationsTab() {
 
   const startEdit = (rec: Recommendation) => {
     setEditingId(rec.id)
+    setExpandedId(rec.id)
     setEditData({
       ticker: rec.ticker,
       sentiment: rec.sentiment,
       target_price: rec.target_price,
       conviction_level: rec.conviction_level,
+      catalyst_notes: rec.catalyst_notes,
     })
   }
 
@@ -155,6 +163,7 @@ export function RecommendationsTab() {
       if (editData.sentiment !== undefined) body.sentiment = editData.sentiment
       if (editData.target_price !== undefined) body.target_price = editData.target_price
       if (editData.conviction_level !== undefined) body.conviction_level = editData.conviction_level
+      if (editData.catalyst_notes !== undefined) body.catalyst_notes = editData.catalyst_notes
 
       const res = await fetch(`${BACKEND_URL}/api/v1/admin/recommendations/${editingId}`, {
         method: 'PATCH',
@@ -226,15 +235,54 @@ export function RecommendationsTab() {
         </p>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B95A8]" />
-        <Input
-          placeholder="Search ticker, stock name, or channel..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] placeholder:text-[#8B95A8]/60"
-        />
+      {/* Search & Filters */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B95A8]" />
+          <Input
+            placeholder="Search ticker, company, channel, or video... (Press '/' to focus)"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-10 bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] placeholder:text-[#8B95A8]/60 focus-visible:ring-[#00D4AA]/30"
+          />
+        </div>
+        
+        <div className="flex flex-wrap gap-4 pt-1 pb-2">
+          {/* Sentiment Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+            <span className="text-xs text-[#8B95A8] font-mono mr-1">Sentiment:</span>
+            <button
+              onClick={() => setSentimentFilter(null)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${sentimentFilter === null ? 'bg-[#1E293B] border-[#8B95A8]/30 text-[#F1F5F9]' : 'bg-[#0A0F1A] border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9]'}`}
+            >All</button>
+            {[2, 1, 0, -1, -2].map(s => (
+              <button
+                key={s}
+                onClick={() => setSentimentFilter(s)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border`}
+                style={{
+                  backgroundColor: sentimentFilter === s ? sentimentColor(s) + '20' : '#0A0F1A',
+                  borderColor: sentimentFilter === s ? sentimentColor(s) + '50' : '#1E293B',
+                  color: sentimentFilter === s ? sentimentColor(s) : '#8B95A8'
+                }}
+              >
+                {sentimentLabel(s)}
+              </button>
+            ))}
+          </div>
+          
+          {/* Channel Select */}
+          <select
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            className="h-7 px-3 rounded-full bg-[#0A0F1A] border border-[#1E293B] text-xs font-medium text-[#8B95A8] focus:text-[#F1F5F9] focus:ring-[#00D4AA]/30 focus:border-[#00D4AA]/50 outline-none transition-colors"
+          >
+            <option value="">All Channels</option>
+            {Array.from(new Set(recs.map(r => r.channel_name))).sort().map(ch => (
+              <option key={ch} value={ch}>{ch}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Rec Cards */}
@@ -246,8 +294,8 @@ export function RecommendationsTab() {
           return (
             <div
               key={rec.id}
-              className={`bg-[#141B2D] border rounded-lg overflow-hidden transition-colors ${
-                isEditing ? 'border-[#00D4AA]/50' : 'border-[#1E293B]'
+              className={`bg-[#141B2D]/40 backdrop-blur-md border rounded-xl overflow-hidden transition-all duration-300 hover:bg-[#141B2D]/60 ${
+                isEditing ? 'border-[#00D4AA]/50 shadow-[0_0_15px_rgba(0,212,170,0.1)]' : 'border-[#1E293B]/60 hover:border-[#1E293B]'
               }`}
             >
               {/* Main row */}
@@ -430,10 +478,19 @@ export function RecommendationsTab() {
                   </div>
 
                   {/* Catalyst notes */}
-                  {rec.catalyst_notes && (
+                  {(rec.catalyst_notes || isEditing) && (
                     <div className="mt-3 pt-3 border-t border-[#1E293B]/50">
                       <label className="text-[10px] font-mono text-[#8B95A8] uppercase tracking-wider">Catalyst</label>
-                      <p className="text-xs text-[#8B95A8] mt-1">{rec.catalyst_notes}</p>
+                      {isEditing ? (
+                        <textarea
+                          value={editData.catalyst_notes ?? ''}
+                          onChange={(e) => setEditData(d => ({ ...d, catalyst_notes: e.target.value }))}
+                          className="w-full mt-1 min-h-[60px] p-2 text-xs font-mono bg-[#0A0F1A] border border-[#1E293B] text-[#F1F5F9] rounded-md focus:border-[#00D4AA]/50 outline-none resize-y"
+                          placeholder="Add catalyst notes..."
+                        />
+                      ) : (
+                        <p className="text-xs text-[#8B95A8] mt-1">{rec.catalyst_notes}</p>
+                      )}
                     </div>
                   )}
                 </div>

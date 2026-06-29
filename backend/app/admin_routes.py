@@ -35,6 +35,12 @@ class ChannelMerge(BaseModel):
     target_id: str
 
 
+class VideoUpdate(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=200)
+    video_summary: str | None = Field(None, max_length=5000)
+    published_at: str | None = None
+
+
 class RecommendationUpdate(BaseModel):
     ticker: str | None = Field(None, min_length=1, max_length=10)
     stock_name: str | None = Field(None, max_length=100)
@@ -215,6 +221,31 @@ async def merge_channels(body: ChannelMerge):
 
 
 # ─── Video Endpoints ───────────────────────────────────────────────────────────
+
+
+@router.patch("/videos/{video_id}")
+async def update_video(video_id: str, body: VideoUpdate):
+    """Update fields on a single video."""
+    update_data = body.model_dump(exclude_none=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    try:
+        client = _get_client()
+        response = (
+            client.table("videos")
+            .update(update_data)
+            .eq("video_id", video_id)
+            .execute()
+        )
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Video not found")
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update video {video_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
 
 @router.delete("/videos/{video_id}")

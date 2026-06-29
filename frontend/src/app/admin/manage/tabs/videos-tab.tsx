@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Trash2, RefreshCw, Search, Filter, CheckSquare, Square } from 'lucide-react'
+import { Loader2, Trash2, RefreshCw, Search, Filter, CheckSquare, Square, Pencil, Check, X, ExternalLink } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -72,6 +72,11 @@ export function VideosTab() {
   const [deleting, setDeleting] = useState(false)
   const [reextracting, setReextracting] = useState(false)
   const [reextractResult, setReextractResult] = useState<{ success: number; failed: number } | null>(null)
+  
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null)
+  const [editVideoTitle, setEditVideoTitle] = useState('')
+  const [editVideoPublishedAt, setEditVideoPublishedAt] = useState('')
+  const [savingVideo, setSavingVideo] = useState(false)
 
   const fetchVideos = useCallback(async () => {
     const supabase = createClient()
@@ -98,7 +103,7 @@ export function VideosTab() {
         recommendations(count)
       `)
       .order('extracted_at', { ascending: false })
-      .limit(200)
+      .limit(5000)
 
     if (channelFilter) {
       query = query.eq('channel_id', channelFilter)
@@ -211,6 +216,42 @@ export function VideosTab() {
     }
   }, [selected, fetchVideos])
 
+  // ─── Inline Edit ───
+
+  const handleSaveVideo = useCallback(async () => {
+    if (!editingVideoId) return
+    setSavingVideo(true)
+    try {
+      const headers = await getAuthHeaders()
+      const body: Record<string, string | null> = {}
+      if (editVideoTitle.trim()) body.title = editVideoTitle.trim()
+      
+      const published = editVideoPublishedAt.trim()
+      if (published) {
+        const d = new Date(published)
+        if (!isNaN(d.getTime())) {
+          body.published_at = d.toISOString()
+        }
+      }
+      
+      const res = await fetch(`${BACKEND_URL}/api/v1/admin/videos/${editingVideoId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        setVideos((prev) =>
+          prev.map((v) => v.video_id === editingVideoId ? { ...v, title: body.title || v.title, published_at: body.published_at || v.published_at } : v)
+        )
+      }
+    } catch (e) {
+      console.error('Failed to save video:', e)
+    } finally {
+      setSavingVideo(false)
+      setEditingVideoId(null)
+    }
+  }, [editingVideoId, editVideoTitle, editVideoPublishedAt])
+
   // ─── Loading ───
 
   if (loading) {
@@ -264,22 +305,25 @@ export function VideosTab() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B95A8]" />
           <Input
-            placeholder="Search videos..."
+            placeholder="Search videos... (Press '/' to focus)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] placeholder:text-[#8B95A8]/60"
+            className="pl-9 h-10 bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] placeholder:text-[#8B95A8]/60 focus-visible:ring-[#00D4AA]/30"
           />
         </div>
-        <select
-          value={channelFilter}
-          onChange={(e) => { setChannelFilter(e.target.value); setLoading(true) }}
-          className="h-9 px-3 rounded-md bg-[#0A0F1A] border border-[#1E293B] text-sm text-[#F1F5F9]"
-        >
-          <option value="">All channels</option>
-          {channels.map((ch) => (
-            <option key={ch.channel_id} value={ch.channel_id}>{ch.channel_name}</option>
-          ))}
-        </select>
+        
+        {channels.length > 0 && (
+          <select
+            value={channelFilter}
+            onChange={(e) => { setChannelFilter(e.target.value); setLoading(true); }}
+            className="h-10 px-3 rounded-md bg-[#0A0F1A] border border-[#1E293B] text-sm text-[#F1F5F9] focus:ring-[#00D4AA]/30 focus:border-[#00D4AA]/50 outline-none transition-colors"
+          >
+            <option value="">All channels</option>
+            {channels.map((ch) => (
+              <option key={ch.channel_id} value={ch.channel_id}>{ch.channel_name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Re-extract Result */}
@@ -335,17 +379,66 @@ export function VideosTab() {
 
               {/* Content */}
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-medium text-[#F1F5F9] truncate">
-                  {video.title || video.youtube_video_id}
-                </h3>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-[#8B95A8] font-mono">
-                  <span className="px-1.5 py-0.5 bg-[#0A0F1A] rounded text-[#00D4AA]">
-                    {video.channel_name}
-                  </span>
-                  <span>{video.rec_count} rec{video.rec_count !== 1 ? 's' : ''}</span>
-                  <span>{formatDuration(video.duration)}</span>
-                  <span>{formatDate(video.extracted_at)}</span>
-                </div>
+                {editingVideoId === video.video_id ? (
+                  <div className="space-y-2">
+                    <Input
+                      value={editVideoTitle}
+                      onChange={(e) => setEditVideoTitle(e.target.value)}
+                      className="h-8 text-sm bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] w-full max-w-md"
+                      placeholder="Video Title"
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={editVideoPublishedAt}
+                        onChange={(e) => setEditVideoPublishedAt(e.target.value)}
+                        className="h-8 text-sm bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] w-40 [color-scheme:dark]"
+                      />
+                      <button onClick={handleSaveVideo} disabled={savingVideo} className="p-1.5 text-[#00D4AA] hover:bg-[#00D4AA]/10 rounded transition-colors">
+                        {savingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      </button>
+                      <button onClick={() => setEditingVideoId(null)} className="p-1.5 text-[#8B95A8] hover:text-[#F1F5F9] rounded transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 group/title">
+                      <h3 className="text-sm font-medium text-[#F1F5F9] truncate" title={video.title || video.youtube_video_id}>
+                        {video.title || video.youtube_video_id}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setEditingVideoId(video.video_id);
+                          setEditVideoTitle(video.title || '');
+                          setEditVideoPublishedAt(video.published_at ? new Date(video.published_at).toISOString().split('T')[0] : '');
+                        }}
+                        className="text-[#8B95A8] hover:text-[#F1F5F9] opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-[#8B95A8] font-mono">
+                      <span className="px-1.5 py-0.5 bg-[#0A0F1A] rounded text-[#00D4AA] border border-[#00D4AA]/20">
+                        {video.channel_name}
+                      </span>
+                      <span>{video.rec_count} rec{video.rec_count !== 1 ? 's' : ''}</span>
+                      <span>{formatDuration(video.duration)}</span>
+                      <span>{formatDate(video.published_at || video.extracted_at)}</span>
+                      <a
+                        href={`https://youtube.com/watch?v=${video.youtube_video_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-[#8B95A8] hover:text-[#F1F5F9] transition-colors"
+                        title="Watch on YouTube"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Delete */}
