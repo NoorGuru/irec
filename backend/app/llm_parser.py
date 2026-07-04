@@ -25,7 +25,7 @@ class LLMParseError(Exception):
         self.raw_response = raw_response
         super().__init__(detail)
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-sonnet-5"
 
 # Type for an optional async retry callback: (attempt, max_retries, reason, delay) -> None
 AsyncRetryCallback = Callable[[int, int, str, float], None] | None
