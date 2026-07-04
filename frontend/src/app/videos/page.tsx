@@ -517,10 +517,39 @@ export default function VideosPage() {
     async function fetchData() {
       const supabase = createClient()
 
+      // Helper to fetch all pages of a query
+      async function fetchAll(
+        table: string,
+        selectStr: string,
+        orderBy?: { column: string; ascending: boolean }
+      ) {
+        let allData: any[] = []
+        const pageSize = 1000
+        let from = 0
+        
+        while (true) {
+          let query = supabase.from(table).select(selectStr).range(from, from + pageSize - 1)
+          if (orderBy) {
+            query = query.order(orderBy.column, { ascending: orderBy.ascending })
+          }
+          const { data, error } = await query
+          if (error) {
+            console.error(`Error fetching ${table}:`, error)
+            break
+          }
+          if (!data || data.length === 0) break
+          
+          allData = allData.concat(data)
+          if (data.length < pageSize) break
+          from += pageSize
+        }
+        return allData
+      }
+
       const [videosRes, recsRes] = await Promise.all([
-        supabase
-          .from('videos')
-          .select(`
+        fetchAll(
+          'videos',
+          `
             video_id,
             video_url,
             youtube_video_id,
@@ -531,17 +560,14 @@ export default function VideosPage() {
             duration,
             channel_id,
             channels!inner(channel_name, trust_weight)
-          `)
-          .order('published_at', { ascending: false })
-          .limit(20000), // Increase limit from default 1000
-        supabase
-          .from('recommendations')
-          .select('id, video_id, ticker, stock_name, sentiment, target_price, conviction_level')
-          .limit(20000), // Increase limit from default 1000
+          `,
+          { column: 'published_at', ascending: false }
+        ),
+        fetchAll('recommendations', 'id, video_id, ticker, stock_name, sentiment, target_price, conviction_level', { column: 'id', ascending: true })
       ])
 
-      const vids = (videosRes.data || []) as unknown as VideoRow[]
-      const recs = (recsRes.data || []) as unknown as RecommendationRow[]
+      const vids = (videosRes || []) as unknown as VideoRow[]
+      const recs = (recsRes || []) as unknown as RecommendationRow[]
 
       setVideos(enrichVideos(vids, recs))
       setLoading(false)

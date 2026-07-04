@@ -519,15 +519,43 @@ export default function ChannelsPage() {
     async function fetchData() {
       const supabase = createClient()
 
+      async function fetchAll(
+        table: string,
+        selectStr: string,
+        orderBy?: { column: string; ascending: boolean }
+      ) {
+        let allData: any[] = []
+        const pageSize = 1000
+        let from = 0
+        
+        while (true) {
+          let query = supabase.from(table).select(selectStr).range(from, from + pageSize - 1)
+          if (orderBy) {
+            query = query.order(orderBy.column, { ascending: orderBy.ascending })
+          }
+          const { data, error } = await query
+          if (error) {
+            console.error(`Error fetching ${table}:`, error)
+            break
+          }
+          if (!data || data.length === 0) break
+          
+          allData = allData.concat(data)
+          if (data.length < pageSize) break
+          from += pageSize
+        }
+        return allData
+      }
+
       const [channelsRes, videosRes, recsRes] = await Promise.all([
         supabase.from('channels').select('channel_id, channel_name, trust_weight, created_at, channel_thumbnail_url, youtube_channel_id'),
-        supabase.from('videos').select('video_id, channel_id, youtube_video_id, published_at').limit(20000), // Increase limit from default 1000
-        supabase.from('recommendations').select('ticker, sentiment, conviction_level, target_price, video_id').limit(20000), // Increase limit from default 1000
+        fetchAll('videos', 'video_id, channel_id, youtube_video_id, published_at', { column: 'published_at', ascending: false }),
+        fetchAll('recommendations', 'ticker, sentiment, conviction_level, target_price, video_id', { column: 'video_id', ascending: true }),
       ])
 
       const channels = (channelsRes.data || []) as ChannelData[]
-      const videos = (videosRes.data || []) as VideoData[]
-      const recs = (recsRes.data || []) as RecommendationData[]
+      const videos = (videosRes || []) as VideoData[]
+      const recs = (recsRes || []) as RecommendationData[]
 
       setProfiles(buildProfiles(channels, videos, recs))
       setLoading(false)
