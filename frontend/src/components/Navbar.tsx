@@ -291,7 +291,7 @@ export function Navbar() {
     { href: '/today', label: "Today", icon: TodayPlaysIcon },
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
   ]
-  const mobileMoreLinks = [
+  const mobileMoreLinks: Array<{ href?: string; onClick?: () => void; label: string; icon: any }> = [
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
