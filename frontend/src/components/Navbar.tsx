@@ -345,78 +345,20 @@ export function Navbar() {
               })}
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* User menu (less visible) */}
-              <div className="relative">
-                <button
-                  onClick={() => setMoreOpen(!moreOpen)}
-                  className="group flex items-center gap-2 px-3 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
-                  aria-label="User menu"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                  <span className="text-sm text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
-                    {session ? 'Account' : 'Login'}
-                  </span>
-                </button>
-
-                {/* Dropdown menu */}
-                {moreOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-xl border border-[#1E293B] bg-[#141B2D]/95 backdrop-blur-sm shadow-lg shadow-black/20 animate-in slide-in-from-top-2 fade-in duration-200">
-                    {session ? (
-                      <>
-                        <Link
-                          href="/admin"
-                          onClick={() => setMoreOpen(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm text-[#64748B] hover:text-[#00D4AA] hover:bg-[#0A0F1A]/20 transition-colors"
-                        >
-                          <AdminIcon active={false} />
-                          <span>Admin</span>
-                        </Link>
-                        <button
-                          onClick={async () => {
-                            const supabase = createClient()
-                            await supabase.auth.signOut()
-                            setSession(null)
-                            setMoreOpen(false)
-                          }}
-                          className="flex w-full items-center gap-3 px-4 py-3 text-sm text-[#64748B] hover:text-[#FF4D6A] hover:bg-[#0A0F1A]/20 transition-colors"
-                        >
-                          <LogoutIcon active={false} />
-                          <span>Logout</span>
-                        </button>
-                      </>
-                    ) : (
-                      <Link
-                        href="/admin/login"
-                        onClick={() => setMoreOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-sm text-[#64748B] hover:text-[#00D4AA] hover:bg-[#0A0F1A]/20 transition-colors"
-                      >
-                        <LoginIcon active={false} />
-                        <span>Login</span>
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
-                aria-label="Search tickers (⌘K)"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
-                  <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <span className="text-sm text-[#64748B] group-hover:text-[#8B95A8] transition-colors">Search</span>
-                <kbd className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#374151]">
-                  ⌘K
-                </kbd>
-              </button>
-            </div>
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+              aria-label="Search tickers (⌘K)"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
+                <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <span className="text-sm text-[#64748B] group-hover:text-[#8B95A8] transition-colors">Search</span>
+              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#374151]">
+                ⌘K
+              </kbd>
+            </button>
           </div>
         </div>
       </nav>
