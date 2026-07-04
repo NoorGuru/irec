@@ -283,7 +283,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }, { href: '/admin', label: 'Admin', icon: AdminIcon }] : [])
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
   ]
 
   const mobilePrimaryLinks = [
@@ -346,37 +346,62 @@ export function Navbar() {
             </div>
 
             <div className="flex items-center gap-2">
-              {session ? (
+              {/* User menu (less visible) */}
+              <div className="relative">
                 <button
-                  onClick={async () => {
-                    const supabase = createClient()
-                    await supabase.auth.signOut()
-                    setSession(null)
-                  }}
-                  className="group flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#FF4D6A]/30 hover:bg-[#141B2D] transition-all duration-200"
-                  aria-label="Logout"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#FF4D6A] transition-colors">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span className="text-sm text-[#64748B] group-hover:text-[#FF4D6A] transition-colors">Logout</span>
-                </button>
-              ) : (
-                <Link
-                  href="/admin/login"
-                  className="group flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
-                  aria-label="Login"
+                  onClick={() => setMoreOpen(!moreOpen)}
+                  className="group flex items-center gap-2 px-3 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+                  aria-label="User menu"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
-                  <span className="text-sm text-[#64748B] group-hover:text-[#00D4AA] transition-colors">Login</span>
-                </Link>
-              )}
+                  <span className="text-sm text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
+                    {session ? 'Account' : 'Login'}
+                  </span>
+                </button>
+
+                {/* Dropdown menu */}
+                {moreOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-xl border border-[#1E293B] bg-[#141B2D]/95 backdrop-blur-sm shadow-lg shadow-black/20 animate-in slide-in-from-top-2 fade-in duration-200">
+                    {session ? (
+                      <>
+                        <Link
+                          href="/admin"
+                          onClick={() => setMoreOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm text-[#64748B] hover:text-[#00D4AA] hover:bg-[#0A0F1A]/20 transition-colors"
+                        >
+                          <AdminIcon active={false} />
+                          <span>Admin</span>
+                        </Link>
+                        <button
+                          onClick={async () => {
+                            const supabase = createClient()
+                            await supabase.auth.signOut()
+                            setSession(null)
+                            setMoreOpen(false)
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-sm text-[#64748B] hover:text-[#FF4D6A] hover:bg-[#0A0F1A]/20 transition-colors"
+                        >
+                          <LogoutIcon active={false} />
+                          <span>Logout</span>
+                        </button>
+                      </>
+                    ) : (
+                      <Link
+                        href="/admin/login"
+                        onClick={() => setMoreOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-[#64748B] hover:text-[#00D4AA] hover:bg-[#0A0F1A]/20 transition-colors"
+                      >
+                        <LoginIcon active={false} />
+                        <span>Login</span>
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => setSearchOpen(true)}
                 className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
