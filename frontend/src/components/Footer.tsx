@@ -2,10 +2,21 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
   const [backendVersion, setBackendVersion] = useState<{ commit: string; build_date: string } | null>(null)
+  const [session, setSession] = useState<any>(null)
+
+  useEffect(() => {
+    async function checkSession() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
+    }
+    checkSession()
+  }, [])
 
   useEffect(() => {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || ''
@@ -74,20 +85,56 @@ export function Footer() {
 
         {/* Bottom strip */}
         <div className="mt-10 pt-6 border-t border-[#1E293B]/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* byline — the signature touch */}
-          <a
-            href="https://bynoor.io"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-center gap-1.5"
-          >
-            <span className="text-[10px] tracking-[0.2em] uppercase text-[#374151] group-hover:text-[#475569] transition-colors duration-300">
-              by
-            </span>
-            <span className="font-[family-name:var(--font-geist-mono)] text-xs font-medium tracking-[0.1em] text-[#64748B] group-hover:text-[#00D4AA] transition-colors duration-300">
-              noor
-            </span>
-          </a>
+          {/* byline and account links */}
+          <div className="flex items-center gap-4">
+            {/* byline — the signature touch */}
+            <a
+              href="https://bynoor.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-1.5"
+            >
+              <span className="text-[10px] tracking-[0.2em] uppercase text-[#374151] group-hover:text-[#475569] transition-colors duration-300">
+                by
+              </span>
+              <span className="font-[family-name:var(--font-geist-mono)] text-xs font-medium tracking-[0.1em] text-[#64748B] group-hover:text-[#00D4AA] transition-colors duration-300">
+                noor
+              </span>
+            </a>
+
+            {/* Login/Logout and Admin */}
+            <div className="flex items-center gap-3 text-[10px] font-[family-name:var(--font-geist-mono)] text-[#374151] tracking-wide">
+              <span aria-hidden="true" className="text-[#1E293B]">·</span>
+              {session ? (
+                <>
+                  <Link
+                    href="/admin"
+                    className="text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200"
+                  >
+                    Admin
+                  </Link>
+                  <span aria-hidden="true" className="text-[#1E293B]">·</span>
+                  <button
+                    onClick={async () => {
+                      const supabase = createClient()
+                      await supabase.auth.signOut()
+                      setSession(null)
+                    }}
+                    className="text-[#64748B] hover:text-[#FF4D6A] transition-colors duration-200"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/admin/login"
+                  className="text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200"
+                >
+                  Login
+                </Link>
+              )}
+            </div>
+          </div>
 
           {/* Meta */}
           <div className="flex items-center gap-3 text-[10px] font-[family-name:var(--font-geist-mono)] text-[#374151] tracking-wide">
