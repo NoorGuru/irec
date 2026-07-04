@@ -410,7 +410,7 @@ export default function PortfolioPage() {
                       className="group flex items-center gap-2 rounded-xl border border-[#1E293B] bg-[#0A0F1A]/50 px-3 py-1.5 transition-all duration-200 overflow-hidden shrink-0 text-[#64748B] hover:border-[#FF4D6A]/30 hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A]"
                     >
                       <RotateCcw className="h-4 w-4 group-hover:-rotate-180 transition-transform duration-500" />
-                      <span className="font-bold text-[10px] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider">Reset Hidden</span>
+                      <span className="font-bold text-[10px] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider hidden sm:block">Reset Hidden</span>
                     </button>
                   )}
                   
