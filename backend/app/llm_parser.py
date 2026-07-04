@@ -135,7 +135,10 @@ async def _call_anthropic(client: anthropic.AsyncAnthropic, transcript: str, met
     )
 
     # Extract text from response content blocks
-    response_text = message.content[0].text
+    response_text = ""
+    for block in message.content:
+        if hasattr(block, "text"):
+            response_text += block.text
 
     # Detect truncation: if the model hit the token limit, the JSON is incomplete
     if message.stop_reason == "max_tokens":

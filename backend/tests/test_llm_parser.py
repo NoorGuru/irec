@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import anthropic
 from fastapi import HTTPException
 
-from app.llm_parser import calculate_backoff_delay, parse_recommendations
+from app.llm_parser import calculate_backoff_delay, parse_recommendations, LLMParseError
 from app.schemas import VideoMetadata
 
 
@@ -125,8 +125,8 @@ async def test_parse_recommendations_validation_retry_success(metadata, valid_re
 
 
 @pytest.mark.asyncio
-async def test_parse_recommendations_validation_failure_502(metadata):
-    """Test that two validation failures raise HTTP 502."""
+async def test_parse_recommendations_validation_failure(metadata):
+    """Test that two validation failures raise LLMParseError."""
     invalid_json = "not valid json"
 
     mock_message = MagicMock()
@@ -136,11 +136,11 @@ async def test_parse_recommendations_validation_failure_502(metadata):
     mock_client.messages.create = AsyncMock(return_value=mock_message)
 
     with patch("app.llm_parser._build_client", return_value=mock_client):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(LLMParseError) as exc_info:
             await parse_recommendations("transcript text", metadata)
 
-    assert exc_info.value.status_code == 502
-    assert "Could not parse recommendations" in exc_info.value.detail
+    assert "Invalid JSON" in exc_info.value.detail
+    assert exc_info.value.raw_response == "not valid json"
 
 
 @pytest.mark.asyncio
@@ -242,4 +242,4 @@ async def test_parse_recommendations_uses_correct_model(metadata, valid_response
         await parse_recommendations("transcript", metadata)
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
-    assert call_kwargs["model"] == "claude-sonnet-4-20250514"
+    assert call_kwargs["model"] == "claude-sonnet-5"
