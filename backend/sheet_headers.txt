@@ -1,0 +1,1 @@
+Headers: ['Ticker', 'Market', 'Platform', 'Shares (Quantity)', 'Avg Cost', 'Live Price', 'Amount Paid', 'Market Value ($)', 'Total Gain/Loss ($)', 'Total Gain/Loss (%)', 'Allocation', 'Name', 'Sector', 'Industry', 'Market Cap', 'Cap Size', '1 Day Return ($)', '1 Day Return (%)', '1 Week Return (%)', '1 Month Return (%)', '1 Year Return (%)', 'YTD Return (%)', 'MIL Return (%)']
