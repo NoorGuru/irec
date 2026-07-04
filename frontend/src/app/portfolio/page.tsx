@@ -367,7 +367,7 @@ export default function PortfolioPage() {
 
             <div className="relative z-10 flex flex-col w-full lg:w-1/2">
               {/* Header */}
-              <div className="flex items-center justify-between lg:justify-start gap-4 mb-12">
+              <div className="flex flex-wrap items-center justify-between lg:justify-start gap-4 mb-12">
                 <h1 className="text-3xl font-black font-[family-name:var(--font-geist-mono)] tracking-tight text-[#F1F5F9] flex items-center gap-3">
                   <span className="text-[#00D4AA]">/</span>
                   <span>PORTFOLIO</span>
