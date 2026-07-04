@@ -283,7 +283,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }, { href: '/admin', label: 'Admin', icon: AdminIcon }] : [])
   ]
 
   const mobilePrimaryLinks = [
@@ -295,7 +295,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }, { href: '/admin', label: 'Admin', icon: AdminIcon }] : [])
   ]
 
   return (
@@ -345,20 +345,53 @@ export function Navbar() {
               })}
             </div>
 
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
-              aria-label="Search tickers (⌘K)"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
-                <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              <span className="text-sm text-[#64748B] group-hover:text-[#8B95A8] transition-colors">Search</span>
-              <kbd className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#374151]">
-                ⌘K
-              </kbd>
-            </button>
+            <div className="flex items-center gap-2">
+              {session ? (
+                <button
+                  onClick={async () => {
+                    const supabase = createClient()
+                    await supabase.auth.signOut()
+                    setSession(null)
+                  }}
+                  className="group flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#FF4D6A]/30 hover:bg-[#141B2D] transition-all duration-200"
+                  aria-label="Logout"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#FF4D6A] transition-colors">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-sm text-[#64748B] group-hover:text-[#FF4D6A] transition-colors">Logout</span>
+                </button>
+              ) : (
+                <Link
+                  href="/admin/login"
+                  className="group flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+                  aria-label="Login"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-sm text-[#64748B] group-hover:text-[#00D4AA] transition-colors">Login</span>
+                </Link>
+              )}
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="group flex items-center gap-2.5 px-3.5 py-2 rounded-full border border-[#1E293B]/80 bg-[#141B2D]/40 hover:border-[#00D4AA]/30 hover:bg-[#141B2D] transition-all duration-200"
+                aria-label="Search tickers (⌘K)"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="text-[#64748B] group-hover:text-[#00D4AA] transition-colors">
+                  <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="text-sm text-[#64748B] group-hover:text-[#8B95A8] transition-colors">Search</span>
+                <kbd className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#374151]">
+                  ⌘K
+                </kbd>
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -452,6 +485,37 @@ export function Navbar() {
             </svg>
             <span className="text-[10px] font-medium tracking-wide">Search</span>
           </button>
+          {session ? (
+            <button
+              onClick={async () => {
+                const supabase = createClient()
+                await supabase.auth.signOut()
+                setSession(null)
+              }}
+              className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg text-[#64748B] hover:text-[#FF4D6A] transition-colors"
+              aria-label="Logout"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-[10px] font-medium tracking-wide">Logout</span>
+            </button>
+          ) : (
+            <Link
+              href="/admin/login"
+              className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg text-[#64748B] hover:text-[#00D4AA] transition-colors"
+              aria-label="Login"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-[10px] font-medium tracking-wide">Login</span>
+            </Link>
+          )}
           <button
             onClick={() => setMoreOpen(!moreOpen)}
             className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${moreOpen ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
@@ -535,6 +599,16 @@ function RadarsIcon({ active }: { active: boolean }) {
       <circle cx="12" cy="12" r="2" fill="currentColor" />
       <path d="M12 2L12 6M12 18L12 22M2 12L6 12M18 12L22 12" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
       <path d="M12 12L18 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function AdminIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
