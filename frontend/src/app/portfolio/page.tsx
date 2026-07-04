@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, ArrowLeft, TrendingUp, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings, Search } from 'lucide-react'
+import { Activity, ArrowLeft, TrendingUp, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings, Search, PieChart, X, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import { useEffect, useState, useCallback, useMemo } from 'react'
@@ -9,7 +9,32 @@ import { useRouter } from 'next/navigation'
 
 export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<any[]>([])
+  const [allStocks, setAllStocks] = useState<any[]>([])
+  const [todayPlays, setTodayPlays] = useState<any[]>([])
+  const [dismissedPlays, setDismissedPlays] = useState<string[]>([])
+  const [showAllPlays, setShowAllPlays] = useState(false)
   const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('aura_dismissed_plays')
+      if (stored) {
+        setDismissedPlays(JSON.parse(stored))
+      }
+    } catch (e) {}
+  }, [])
+  
+  const handleDismissPlay = (ticker: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDismissedPlays(prev => {
+      const next = [...prev, ticker]
+      try {
+        localStorage.setItem('aura_dismissed_plays', JSON.stringify(next))
+      } catch (err) {}
+      return next
+    })
+  }
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [session, setSession] = useState<any>(null)
   const [sortBy, setSortBy] = useState<'weight' | 'sentiment' | 'upside' | 'ticker'>('weight')
@@ -30,15 +55,20 @@ export default function PortfolioPage() {
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
       
-      const [portRes, stocksRes] = await Promise.all([
+      const [portRes, stocksRes, todayRes] = await Promise.all([
         fetch(`${backendUrl}/api/v1/portfolio/`, {
           headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
         }).then(res => res.json()),
-        fetch(`${backendUrl}/api/v1/stocks?fresh=${fresh}`).then(res => res.json())
+        fetch(`${backendUrl}/api/v1/stocks?fresh=${fresh}`).then(res => res.json()),
+        fetch(`${backendUrl}/api/v1/today?days=30`).then(res => res.json()).catch(() => ({ plays: [] }))
       ])
       
       const portData = portRes.portfolio || []
       const stocksData = stocksRes.stocks || []
+      const playsData = todayRes.plays || []
+      
+      setAllStocks(stocksData)
+      setTodayPlays(playsData)
       
       const validPortData = portData.filter((p: any) => p.shares > 0)
       
@@ -115,6 +145,29 @@ export default function PortfolioPage() {
     return (prevUpside > currentUpside) ? prev : current;
   }) : null;
 
+  const allHotPlaysCandidates = useMemo(() => {
+    if (!todayPlays.length) return [];
+    // Just filter for positive sentiment/direction and exclude dismissed
+    return todayPlays.filter(p => p.direction === "BUY" && !dismissedPlays.includes(p.ticker));
+  }, [todayPlays, dismissedPlays]);
+
+  const hotPlays = useMemo(() => {
+    let limit = showAllPlays ? undefined : 6;
+    return allHotPlaysCandidates.slice(0, limit).map(c => {
+      const pItem = portfolio.find(p => p.ticker === c.ticker);
+      if (!pItem) return { ...c, ownedStatus: 'none', weightPercent: 0 };
+      
+      const positionValue = pItem.shares * pItem.average_cost;
+      const weightPercent = totalInvested > 0 ? (positionValue / totalInvested) * 100 : 0;
+      
+      return {
+        ...c,
+        ownedStatus: weightPercent > 2.0 ? 'heavy' : 'light',
+        weightPercent
+      };
+    });
+  }, [allHotPlaysCandidates, showAllPlays, portfolio, totalInvested]);
+
   const sortedPortfolio = useMemo(() => {
     let filtered = portfolio
     if (hideLowData) {
@@ -146,172 +199,218 @@ export default function PortfolioPage() {
   return (
     <div className="min-h-screen bg-[#0A0F1A] p-4 md:p-12">
       <div className="max-w-6xl mx-auto space-y-8 animate-fade-up">
-        <div className="bg-[#141B2D]/60 border border-[#1E293B] p-8 rounded-3xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#00D4AA]/5 blur-[100px] rounded-full pointer-events-none" />
-          
-          <div className="relative z-10">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#F1F5F9] mb-3 flex items-center gap-4">
-              <div className="p-3 bg-[#00D4AA]/10 rounded-xl border border-[#00D4AA]/20 text-[#00D4AA]">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <span>My Portfolio</span>
-              {session && (
-                <Link
-                  href="/admin"
-                  title="Admin Settings"
-                  className="p-1.5 text-[#64748B] hover:text-[#00D4AA] hover:bg-[#1E293B]/50 rounded-lg transition-all ml-1"
-                >
-                  <Settings className="h-5 w-5" />
-                </Link>
-              )}
-            </h1>
-            <p className="text-[#8B95A8] text-lg max-w-2xl">
-              Track real-time market conviction for the stocks you own. Data synced directly from your Google Sheet.
-            </p>
-          </div>
-
-          <button
-            onClick={handleSync}
-            disabled={syncStatus === 'loading' || syncStatus === 'success'}
-            className={`relative z-10 group flex items-center gap-3 rounded-xl border px-5 py-3 transition-all duration-200 overflow-hidden shrink-0 ${
-              syncStatus === 'success' ? 'bg-[#00D4AA]/10 border-[#00D4AA]/20 text-[#00D4AA]' :
-              syncStatus === 'error' ? 'bg-[#FF4D6A]/10 border-[#FF4D6A]/20 text-[#FF4D6A]' :
-              'bg-[#141B2D] border-[#1E293B] hover:border-[#00D4AA]/30 text-[#F1F5F9] hover:bg-[#1E293B]'
-            }`}
-          >
-            <div className="flex shrink-0 items-center justify-center">
-              {syncStatus === 'loading' && <Loader2 className="h-4.5 w-4.5 animate-spin text-[#00D4AA]" />}
-              {syncStatus === 'success' && <CheckCircle2 className="h-4.5 w-4.5" />}
-              {syncStatus === 'error' && <XCircle className="h-4.5 w-4.5" />}
-              {syncStatus === 'idle' && <Database className="h-4.5 w-4.5 text-[#00D4AA] group-hover:scale-110 transition-transform" />}
-            </div>
-            <span className="font-medium text-sm">
-              {syncStatus === 'loading' ? 'Syncing...' :
-               syncStatus === 'success' ? 'Synced!' :
-               syncStatus === 'error' ? 'Failed' :
-               'Sync Google Sheet'}
-            </span>
-          </button>
-        </div>
-
-        {/* Analytics Header */}
-        {!loading && totalHoldings > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#64748B] mb-2 font-[family-name:var(--font-geist-mono)]">Portfolio Overview</h2>
+        {/* HERO BILLBOARD & TITLE */}
+        <div className="space-y-8">
+          <div className="relative w-full rounded-[2.5rem] bg-[#141B2D]/40 border border-[#1E293B] p-8 md:p-12 overflow-hidden flex flex-col lg:flex-row items-start justify-between gap-12 group hover:border-[#00D4AA]/30 transition-colors duration-700">
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Financial Capitalization & Performance Card */}
-              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between gap-4 lg:col-span-2 relative overflow-hidden group hover:border-[#3B82F6]/30 transition-colors">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-[#00D4AA]/5 blur-3xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/10 transition-colors" />
+            {/* Massive animated background mesh */}
+            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#00D4AA]/5 blur-[150px] rounded-full pointer-events-none group-hover:bg-[#00D4AA]/10 group-hover:translate-x-10 transition-all duration-1000" />
+            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#3B82F6]/5 blur-[150px] rounded-full pointer-events-none group-hover:bg-[#3B82F6]/10 transition-all duration-1000" />
+
+            <div className="relative z-10 flex flex-col w-full lg:w-1/2">
+              {/* Embedded Title & Sync */}
+              <div className="flex items-center justify-between lg:justify-start gap-4 mb-12">
+                <h1 className="text-3xl font-black font-[family-name:var(--font-geist-mono)] tracking-tight text-[#F1F5F9] flex items-center gap-3">
+                  <span className="text-[#00D4AA]">/</span>
+                  <span>PORTFOLIO</span>
+                  {session && (
+                    <Link
+                      href="/admin"
+                      title="Admin Settings"
+                      className="p-1.5 text-[#64748B] hover:text-[#00D4AA] rounded-lg transition-all ml-1"
+                    >
+                      <Settings className="h-5 w-5" />
+                    </Link>
+                  )}
+                </h1>
                 
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-[#00D4AA]" />
-                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Portfolio Capitalization</span>
-                </div>
-                
-                <div className="flex flex-col md:flex-row justify-between gap-6 md:items-end">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Total Invested</p>
-                        <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
-                          ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Implied Target Value</p>
-                        <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
-                          ${totalTargetValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-start md:items-end border-t md:border-t-0 md:border-l border-[#1E293B] pt-4 md:pt-0 md:pl-6 shrink-0">
-                    <span className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold">Implied Analyst Return</span>
-                    <div className="flex items-baseline gap-2 mt-2">
-                      <span className={`text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] leading-none bg-clip-text text-transparent ${totalUpside >= 0 ? 'bg-gradient-to-r from-[#00D4AA] to-[#3B82F6]' : 'bg-gradient-to-r from-[#FF4D6A] to-[#F97316]'}`}>
-                        {totalUpside >= 0 ? '+' : ''}${totalUpside.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {dismissedPlays.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setDismissedPlays([])
+                        localStorage.removeItem('aura_dismissed_plays')
+                      }}
+                      className="group flex items-center gap-2 rounded-xl border border-[#1E293B] bg-[#0A0F1A]/50 px-3 py-1.5 transition-all duration-200 overflow-hidden shrink-0 text-[#64748B] hover:border-[#FF4D6A]/30 hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A]"
+                      title="Reset hidden stocks"
+                    >
+                      <RotateCcw className="h-4 w-4 group-hover:-rotate-180 transition-transform duration-500" />
+                      <span className="font-bold text-[10px] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider hidden sm:block">
+                        Reset Hidden
                       </span>
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={handleSync}
+                    disabled={syncStatus === 'loading' || syncStatus === 'success'}
+                    className={`group flex items-center gap-2 rounded-xl border px-3 py-1.5 transition-all duration-200 overflow-hidden shrink-0 ${
+                      syncStatus === 'success' ? 'bg-[#00D4AA]/10 border-[#00D4AA]/20 text-[#00D4AA]' :
+                      syncStatus === 'error' ? 'bg-[#FF4D6A]/10 border-[#FF4D6A]/20 text-[#FF4D6A]' :
+                      'bg-[#0A0F1A]/50 border-[#1E293B] hover:border-[#00D4AA]/30 text-[#F1F5F9] hover:bg-[#1E293B]/80'
+                    }`}
+                  >
+                    <div className="flex shrink-0 items-center justify-center">
+                      {syncStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-[#00D4AA]" />}
+                      {syncStatus === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                      {syncStatus === 'error' && <XCircle className="h-4 w-4" />}
+                      {syncStatus === 'idle' && <RefreshCw className="h-4 w-4 text-[#00D4AA] group-hover:rotate-180 transition-transform duration-500" />}
                     </div>
-                    <span className={`text-sm font-bold font-[family-name:var(--font-geist-mono)] mt-2 inline-flex px-2 py-0.5 rounded-md ${totalUpside >= 0 ? 'bg-[#00D4AA]/10 text-[#00D4AA]' : 'bg-[#FF4D6A]/10 text-[#FF4D6A]'}`}>
-                      {totalUpside >= 0 ? '+' : ''}{totalUpsidePercent.toFixed(1)}%
+                    <span className="font-bold text-[10px] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider hidden sm:block">
+                      {syncStatus === 'loading' ? 'Syncing...' :
+                       syncStatus === 'success' ? 'Synced' :
+                       syncStatus === 'error' ? 'Failed' :
+                       'Sync'}
                     </span>
-                  </div>
+                  </button>
                 </div>
               </div>
 
-              {/* Signal Strength & Conviction Card */}
-              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden group hover:border-[#3B82F6]/30 transition-colors">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#3B82F6]/5 blur-2xl rounded-full pointer-events-none group-hover:bg-[#3B82F6]/10 transition-colors" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Portfolio Conviction</span>
-                  <Activity className="h-4.5 w-4.5 text-[#8B95A8]/50" />
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#00D4AA]">Total Portfolio Value</span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Avg Sentiment</p>
-                    <div className="flex items-baseline gap-0.5 mt-1">
-                      <span className={`text-3xl font-bold font-[family-name:var(--font-geist-mono)] ${
-                        avgSentiment >= 1 ? 'text-[#00D4AA]' : 
-                        avgSentiment <= -1 ? 'text-[#FF4D6A]' : 
-                        'text-[#8B95A8]'
-                      }`}>
-                        {avgSentiment > 0 ? '+' : ''}{avgSentiment.toFixed(2)}
+                <h2 className="text-6xl md:text-7xl lg:text-8xl font-black font-[family-name:var(--font-geist-mono)] tracking-tighter text-[#F1F5F9] leading-none">
+                  ${loading ? '...' : totalInvested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </h2>
+              </div>
+              
+              {!loading && totalHoldings > 0 && (
+                <div className="flex flex-wrap items-center gap-y-4 gap-x-6 mt-8">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold mb-1">Implied Return</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className={`text-3xl md:text-4xl font-black font-[family-name:var(--font-geist-mono)] bg-clip-text text-transparent ${totalUpside >= 0 ? 'bg-gradient-to-r from-[#00D4AA] to-[#3B82F6]' : 'bg-gradient-to-r from-[#FF4D6A] to-[#F97316]'}`}>
+                        {totalUpside >= 0 ? '+' : ''}${totalUpside.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </span>
+                      <span className={`text-sm md:text-base font-bold font-[family-name:var(--font-geist-mono)] ${totalUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                        ({totalUpside >= 0 ? '+' : ''}{totalUpsidePercent.toFixed(1)}%)
                       </span>
                     </div>
                   </div>
                   
-                  <div>
-                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Avg Conviction</p>
-                    <div className="flex items-baseline gap-0.5 mt-1">
-                      <span className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{avgConviction.toFixed(1)}</span>
-                    </div>
+                  <div className="hidden md:block w-px h-12 bg-[#1E293B] mx-2" />
+                  
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold mb-1">Avg Conviction</span>
+                    <span className="text-3xl md:text-4xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
+                      {avgConviction.toFixed(1)}
+                    </span>
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Top Insights */}
-              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden group hover:border-[#00D4AA]/30 transition-colors">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4AA]/5 blur-2xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/10 transition-colors" />
-                
-                {/* Highest Upside */}
+            {/* Right Side: Insights Pills */}
+            {!loading && totalHoldings > 0 && (
+              <div className="relative z-10 flex flex-col justify-end gap-4 w-full lg:w-1/2 h-full lg:min-h-[250px]">
                 {highestUpside && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold">Highest Upside Pick</span>
-                    <div className="flex items-center justify-between mt-1 relative z-10">
+                  <div className="bg-[#0A0F1A]/50 border border-[#1E293B] p-5 rounded-2xl flex flex-col gap-2 backdrop-blur-md self-end w-full lg:w-[80%]">
+                    <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold">Highest Upside Pick</span>
+                    <div className="flex items-end justify-between gap-4">
                       <span className="text-3xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{highestUpside.ticker}</span>
-                      <span className="text-xl font-black font-[family-name:var(--font-geist-mono)] bg-clip-text text-transparent bg-gradient-to-r from-[#00D4AA] to-[#3B82F6]">
+                      <span className="text-xl md:text-2xl font-black font-[family-name:var(--font-geist-mono)] text-[#00D4AA]">
                         +{highestUpside.avg_target_price ? (((highestUpside.avg_target_price - highestUpside.average_cost) / highestUpside.average_cost) * 100).toFixed(0) : 0}%
                       </span>
                     </div>
                   </div>
                 )}
-
-                <div className="w-full h-px bg-[#1E293B] my-2" />
-
-                {/* Largest Holding */}
+                
                 {largestHolding && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold">Largest Holding</span>
-                    <div className="flex items-center justify-between mt-1 relative z-10">
-                      <span className="text-3xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{largestHolding.ticker}</span>
-                      <div className="flex flex-col items-end">
-                        <span className="text-lg font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-                          ${(largestHolding.shares * largestHolding.average_cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </span>
-                        <span className="text-[10px] font-bold font-[family-name:var(--font-geist-mono)] text-[#00D4AA] bg-[#00D4AA]/10 px-1.5 py-0.5 rounded mt-0.5">
-                          {(((largestHolding.shares * largestHolding.average_cost) / totalInvested) * 100).toFixed(1)}% Alloc
-                        </span>
+                  <div className="bg-[#0A0F1A]/50 border border-[#1E293B] p-5 rounded-2xl flex flex-col gap-2 backdrop-blur-md self-end w-full lg:w-[80%]">
+                    <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold">Largest Holding</span>
+                    <div className="flex items-end justify-between gap-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-3xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{largestHolding.ticker}</span>
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-[#1E293B]/60 border border-[#334155]/60 rounded-lg shadow-sm">
+                          <PieChart className="w-3 h-3 text-[#8B95A8]" />
+                          <span className="text-sm font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
+                            {(((largestHolding.shares * largestHolding.average_cost) / totalInvested) * 100).toFixed(1)}%
+                          </span>
+                        </div>
                       </div>
+                      <span className="text-xl md:text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
+                        ${(largestHolding.shares * largestHolding.average_cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
-        )}
+
+          {/* Hot Plays Section */}
+          {!loading && hotPlays.length > 0 && (
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-[#00D4AA] flex items-center gap-2">
+                    <span className="text-lg">🔥</span> Analyst Hot Plays to Consider
+                  </h2>
+                  {allHotPlaysCandidates.length > 6 && (
+                    <button
+                      onClick={() => setShowAllPlays(!showAllPlays)}
+                      className="text-[10px] uppercase tracking-widest font-bold text-[#64748B] hover:text-[#00D4AA] transition-colors bg-[#0A0F1A]/50 border border-[#1E293B] px-3 py-1.5 rounded-lg hover:bg-[#1E293B]/50"
+                    >
+                      {showAllPlays ? 'View Less' : `View All (${allHotPlaysCandidates.length})`}
+                    </button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {hotPlays.map((play) => (
+                    <Link 
+                      href={`/ticker?s=${play.ticker}`} 
+                      key={play.ticker}
+                      className="group relative bg-[#141B2D]/40 border border-[#1E293B] p-4 rounded-2xl hover:border-[#00D4AA]/50 hover:bg-[#1E293B]/40 transition-all duration-300 flex flex-col gap-3 overflow-hidden"
+                    >
+                      <button 
+                        onClick={(e) => handleDismissPlay(play.ticker, e)}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20"
+                        title="Dismiss recommendation"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                      
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-[#00D4AA]/10 blur-xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/20 z-0" />
+                      
+                      <div className="flex justify-between items-start relative z-10 pr-6">
+                        <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
+                          {play.ticker}
+                        </span>
+                        {play.ownedStatus === 'heavy' ? (
+                          <span className="text-[8px] bg-[#3B82F6]/10 text-[#3B82F6] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#3B82F6]/20">
+                            {play.weightPercent.toFixed(1)}%
+                          </span>
+                        ) : play.ownedStatus === 'light' ? (
+                          <span className="text-[8px] bg-[#00D4AA]/10 text-[#00D4AA] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#00D4AA]/20">
+                            {play.weightPercent.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-[8px] bg-[#8B95A8]/10 text-[#8B95A8] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#1E293B]">
+                            New
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col gap-1 relative z-10 mt-2">
+                        <span className="text-[9px] text-[#64748B] uppercase tracking-widest font-bold">Aura Score</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9]">
+                            {play.aura_score}
+                          </span>
+                          <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#00D4AA] bg-[#00D4AA]/10 px-1.5 py-0.5 rounded">
+                            +{play.consensus_sentiment.toFixed(2)} sent
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
         {/* Sort Controls */}
         {!loading && portfolio.length > 0 && (
@@ -436,10 +535,10 @@ export default function PortfolioPage() {
                     'bg-[#8B95A8] group-hover:shadow-[0_0_20px_rgba(139,149,168,0.4)]'
                   }`} />
 
-                  <div className="p-6 md:p-8 pl-8 md:pl-10 relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 md:gap-4">
+                  <div className="p-6 md:p-8 pl-8 md:pl-10 relative z-10 grid grid-cols-2 md:flex md:flex-row items-start md:items-center justify-between gap-y-8 gap-x-4 md:gap-4">
                     
                     {/* 1. TICKER & SENTIMENT (The BIG HERO) */}
-                    <div className="flex flex-col gap-3 w-full md:w-1/4">
+                    <div className="flex flex-col gap-3 col-span-2 md:w-1/4">
                       <div className="flex items-center gap-3">
                         <span className={`font-[family-name:var(--font-geist-mono)] text-5xl md:text-6xl font-black tracking-tighter text-[#F1F5F9] ${textHoverClass} transition-colors`}>
                           {p.ticker}
@@ -467,36 +566,35 @@ export default function PortfolioPage() {
                     </div>
 
                     {/* 2. HOLDING VALUE (Huge Numbers) */}
-                    <div className="flex flex-col w-full md:w-1/4">
+                    <div className="flex flex-col col-span-1 md:w-1/4">
                       <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold mb-1">My Holding</span>
-                      <span className="font-[family-name:var(--font-geist-mono)] text-4xl font-black text-[#F1F5F9]">
+                      <span className="font-[family-name:var(--font-geist-mono)] text-3xl sm:text-4xl font-black text-[#F1F5F9]">
                         ${positionValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                       </span>
-                      <div className="flex items-center gap-2 mt-2 text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
+                      <div className="flex items-center gap-2 mt-2 text-[10px] sm:text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
                         <span className="font-bold text-[#F1F5F9]">{p.shares}</span> shs <span className="text-[#334155]">@</span> ${p.average_cost} avg
                       </div>
-                      <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-[#00D4AA]/10 border border-[#00D4AA]/20 rounded-xl w-fit">
-                        <span className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse"></span>
-                        <span className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#00D4AA]">{weightPercent.toFixed(1)}%</span>
-                        <span className="text-[10px] text-[#00D4AA]/80 uppercase tracking-widest font-bold">Alloc</span>
+                      <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-[#1E293B]/60 border border-[#334155]/60 rounded-xl w-fit shadow-sm">
+                        <PieChart className="w-4 h-4 text-[#8B95A8]" />
+                        <span className="text-base sm:text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{weightPercent.toFixed(1)}%</span>
                       </div>
                     </div>
 
                     {/* 3. ANALYST UPSIDE (Huge Numbers) */}
-                    <div className="flex flex-col w-full md:w-1/4">
+                    <div className="flex flex-col col-span-1 md:w-1/4">
                       <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold mb-1">Analyst Target</span>
                       {p.avg_target_price ? (
                         <>
                           <div className="flex items-baseline gap-2">
-                            <span className="font-[family-name:var(--font-geist-mono)] text-4xl font-black text-[#F1F5F9]">
+                            <span className="font-[family-name:var(--font-geist-mono)] text-3xl sm:text-4xl font-black text-[#F1F5F9]">
                               ${Math.round(p.avg_target_price)}
                             </span>
                           </div>
                           <div className="flex flex-col gap-1 mt-2">
-                            <span className={`text-lg font-black font-[family-name:var(--font-geist-mono)] ${positionUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                            <span className={`text-base sm:text-lg font-black font-[family-name:var(--font-geist-mono)] ${positionUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
                               {positionUpside >= 0 ? '+' : ''}{positionUpsidePercent.toFixed(1)}% Upside
                             </span>
-                            <span className={`text-xs font-bold font-[family-name:var(--font-geist-mono)] ${positionUpside >= 0 ? 'text-[#00D4AA]/70' : 'text-[#FF4D6A]/70'}`}>
+                            <span className={`text-[10px] sm:text-xs font-bold font-[family-name:var(--font-geist-mono)] ${positionUpside >= 0 ? 'text-[#00D4AA]/70' : 'text-[#FF4D6A]/70'}`}>
                               ({positionUpside >= 0 ? '+' : ''}${Math.round(positionUpside).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
                             </span>
                           </div>
@@ -509,7 +607,7 @@ export default function PortfolioPage() {
                     </div>
 
                     {/* 4. CONVICTION STATS */}
-                    <div className="flex flex-col w-full md:w-[15%]">
+                    <div className="flex flex-col col-span-2 md:w-[15%] pt-4 md:pt-0 border-t border-[#1E293B]/50 md:border-none">
                       <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold mb-3">Signal Strength</span>
                       <ConvictionMini level={p.avg_conviction} />
                       <div className="flex flex-col gap-1 text-[11px] text-[#8B95A8] mt-3 font-medium">
