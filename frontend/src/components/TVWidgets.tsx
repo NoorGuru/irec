@@ -1,12 +1,19 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 
+// Maps internal ticker symbols to TradingView compatible symbols
+const mapTVSymbol = (sym: string) => {
+  if (sym === 'BRK-B') return 'BRK.B';
+  if (sym === 'BRK-A') return 'BRK.A';
+  return sym;
+};
+
 // 1. Symbol Overview Chart (More illustrative, native ranges)
 export function TVMiniChart({ symbol, sentiment }: { symbol: string, sentiment?: number }) {
   const container = useRef<HTMLDivElement>(null);
   
   // Pass the symbol directly; TradingView auto-resolves major US symbols like AAPL or BE.
-  const tvSymbol = symbol;
+  const tvSymbol = mapTVSymbol(symbol);
 
   useEffect(() => {
     let isMounted = true;
@@ -85,7 +92,7 @@ export function TVMiniChart({ symbol, sentiment }: { symbol: string, sentiment?:
 export function TVCompanyProfile({ symbol }: { symbol: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const tvSymbol = symbol;
+  const tvSymbol = mapTVSymbol(symbol);
 
   useEffect(() => {
     setIsLoading(true); // Reset loading state
@@ -139,7 +146,7 @@ export function TVCompanyProfile({ symbol }: { symbol: string }) {
 export function TVFundamentalData({ symbol }: { symbol: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const tvSymbol = symbol;
+  const tvSymbol = mapTVSymbol(symbol);
 
   useEffect(() => {
     setIsLoading(true); // Reset loading state

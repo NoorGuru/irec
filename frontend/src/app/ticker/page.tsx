@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
@@ -139,7 +139,16 @@ function VideoThumbnailLink({ youtubeVideoId }: { youtubeVideoId: string }) {
 
 function TickerContent() {
   const searchParams = useSearchParams()
-  const symbol = searchParams.get('s')
+  const router = useRouter()
+  const symbolRaw = searchParams.get('s')
+  
+  useEffect(() => {
+    if (symbolRaw?.toUpperCase() === 'GOOG') {
+      router.replace('/ticker?s=GOOGL')
+    }
+  }, [symbolRaw, router])
+
+  const symbol = symbolRaw?.toUpperCase() === 'GOOG' ? 'GOOGL' : symbolRaw
   
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])

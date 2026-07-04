@@ -23,6 +23,8 @@ class Recommendation(BaseModel):
         v = v.upper()
         v = re.sub(r"\s+", "", v)
         v = v.replace(".", "-")
+        if v == "GOOG":
+            return "GOOGL"
         return v
 
 

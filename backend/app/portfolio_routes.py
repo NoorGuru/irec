@@ -140,7 +140,7 @@ async def sync_portfolio(
         logger.warning(f"Error clearing old portfolio: {e}")
 
     TICKER_MAP = {
-        "GOOGL": "GOOG",
+        "GOOG": "GOOGL",
         "BRK.B": "BRK-B",
         "BRK/B": "BRK-B"
     }
