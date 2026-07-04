@@ -82,9 +82,9 @@ export function TickerRow({
     ? 'border-l-[#00D4AA] group-hover:shadow-[-4px_0_15px_-3px_rgba(0,212,170,0.3)]' 
     : direction === 'SELL' 
       ? 'border-l-[#FF4D6A] group-hover:shadow-[-4px_0_15px_-3px_rgba(255,77,106,0.3)]'
-      : 'border-l-[#8B95A8] group-hover:shadow-[-4px_0_15px_-3px_rgba(139,149,168,0.3)]'
+      : 'border-l-[#CBD5E1] group-hover:shadow-[-4px_0_15px_-3px_rgba(203,213,225,0.3)]'
 
-  const textHoverClass = direction === 'BUY' ? 'group-hover:text-[#00D4AA]' : direction === 'SELL' ? 'group-hover:text-[#FF4D6A]' : 'group-hover:text-[#8B95A8]'
+  const textHoverClass = direction === 'BUY' ? 'group-hover:text-[#00D4AA]' : direction === 'SELL' ? 'group-hover:text-[#FF4D6A]' : 'group-hover:text-[#CBD5E1]'
 
   return (
     <div className={`animate-fade-up ${staggerClass}`}>
@@ -94,7 +94,6 @@ export function TickerRow({
           group block relative w-full mb-3 rounded-r-xl rounded-l-sm bg-[#141B2D]/40 hover:bg-[#1E293B]/40 
           border border-transparent border-l-4 ${borderGlowClass}
           transition-all duration-300
-          ${isLowConfidence ? 'opacity-70 hover:opacity-100' : ''}
           ${isTop ? 'bg-[#141B2D]/60' : ''}
         `}
       >

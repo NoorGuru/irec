@@ -13,6 +13,7 @@ export default function PortfolioPage() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [session, setSession] = useState<any>(null)
   const [sortBy, setSortBy] = useState<'weight' | 'sentiment' | 'upside' | 'ticker'>('weight')
+  const [hideLowData, setHideLowData] = useState(false)
   const router = useRouter()
 
   const fetchPortfolio = useCallback(async () => {
@@ -103,7 +104,12 @@ export default function PortfolioPage() {
   const avgConviction = totalHoldings > 0 ? portfolio.reduce((acc, p) => acc + p.avg_conviction, 0) / totalHoldings : 0
 
   const sortedPortfolio = useMemo(() => {
-    return [...portfolio].sort((a, b) => {
+    let filtered = portfolio
+    if (hideLowData) {
+      filtered = filtered.filter(p => p.mention_count >= 3)
+    }
+
+    return [...filtered].sort((a, b) => {
       const aValue = a.shares * a.average_cost
       const bValue = b.shares * b.average_cost
       
@@ -116,7 +122,7 @@ export default function PortfolioPage() {
       if (sortBy === 'ticker') return a.ticker.localeCompare(b.ticker)
       return 0
     })
-  }, [portfolio, sortBy])
+  }, [portfolio, sortBy, hideLowData])
 
   return (
     <div className="min-h-screen bg-[#0A0F1A] p-4 md:p-12">
@@ -174,77 +180,83 @@ export default function PortfolioPage() {
           <div className="space-y-4">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-[#64748B] mb-2 font-[family-name:var(--font-geist-mono)]">Portfolio Overview</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Capital Allocation Card */}
-              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-[#00D4AA]/5 blur-2xl rounded-full pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Portfolio Capitalization</span>
-                  <DollarSign className="h-4.5 w-4.5 text-[#8B95A8]/50" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Total Invested</p>
-                    <p className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
-                      ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Financial Capitalization & Performance Card */}
+              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col md:flex-row justify-between gap-6 lg:col-span-2 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4AA]/5 blur-3xl rounded-full pointer-events-none" />
+                
+                {/* Left side: Capital inputs/outputs */}
+                <div className="flex-grow space-y-4">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-[#00D4AA]" />
+                    <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Portfolio Capitalization</span>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-[#00D4AA] uppercase tracking-wider">Implied Target</p>
-                    <p className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#00D4AA] mt-0.5">
-                      ${totalTargetValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Total Invested</p>
+                      <p className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
+                        ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Implied Target Value</p>
+                      <p className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
+                        ${totalTargetValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Upside Card */}
-              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-[#00FFD0]/5 blur-2xl rounded-full pointer-events-none" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Consensus Target Profit</span>
-                  <TrendingUp className="h-4.5 w-4.5 text-[#8B95A8]/50" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Implied Return</p>
-                  <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className={`text-2xl font-black font-[family-name:var(--font-geist-mono)] ${totalUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                {/* Right side: Calculated return highlight */}
+                <div className="flex flex-col justify-end min-w-[160px] md:text-right border-t md:border-t-0 md:border-l border-[#1E293B] pt-4 md:pt-0 md:pl-6 shrink-0">
+                  <span className="text-[10px] text-[#64748B] uppercase tracking-wider font-semibold">Implied Analyst Return</span>
+                  <div className="flex md:flex-col items-baseline md:items-end gap-2 md:gap-0 mt-1">
+                    <span className={`text-2xl font-black font-[family-name:var(--font-geist-mono)] leading-none ${totalUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
                       {totalUpside >= 0 ? '+' : ''}${totalUpside.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </span>
-                    <span className={`text-sm font-bold font-[family-name:var(--font-geist-mono)] ${totalUpside >= 0 ? 'text-[#00D4AA]/80' : 'text-[#FF4D6A]/80'}`}>
+                    <span className={`text-xs font-bold font-[family-name:var(--font-geist-mono)] mt-1.5 ${totalUpside >= 0 ? 'text-[#00D4AA]/80' : 'text-[#FF4D6A]/80'}`}>
                       ({totalUpside >= 0 ? '+' : ''}{totalUpsidePercent.toFixed(1)}%)
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Signal Strength Card */}
+              {/* Signal Strength & Conviction Card */}
               <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-[#3B82F6]/5 blur-2xl rounded-full pointer-events-none" />
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Community Sentiment</span>
+                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Portfolio Conviction</span>
                   <Activity className="h-4.5 w-4.5 text-[#8B95A8]/50" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Avg Sentiment</p>
                     <div className="flex items-baseline gap-0.5 mt-0.5">
-                      <span className={`text-xl font-bold font-[family-name:var(--font-geist-mono)] ${
+                      <span className={`text-lg font-bold font-[family-name:var(--font-geist-mono)] ${
                         avgSentiment >= 1 ? 'text-[#00D4AA]' : 
                         avgSentiment <= -1 ? 'text-[#FF4D6A]' : 
                         'text-[#8B95A8]'
                       }`}>
                         {avgSentiment > 0 ? '+' : ''}{avgSentiment.toFixed(2)}
                       </span>
-                      <span className="text-[10px] text-[#475569]">/2.0</span>
+                      <span className="text-[8px] text-[#475569]">/2.0</span>
                     </div>
                   </div>
+                  
                   <div>
                     <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Avg Conviction</p>
                     <div className="flex items-baseline gap-0.5 mt-0.5">
-                      <span className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{avgConviction.toFixed(1)}</span>
-                      <span className="text-[10px] text-[#475569]">/10</span>
+                      <span className="text-lg font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{avgConviction.toFixed(1)}</span>
+                      <span className="text-[8px] text-[#475569]">/10</span>
                     </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Holdings</p>
+                    <p className="text-lg font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
+                      {totalHoldings}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -256,10 +268,21 @@ export default function PortfolioPage() {
         {!loading && portfolio.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141B2D]/20 border border-[#1E293B] px-6 py-3.5 rounded-2xl">
             <span className="text-xs text-[#8B95A8] font-medium font-[family-name:var(--font-geist-mono)]">
-              Showing {portfolio.length} holdings
+              Showing {sortedPortfolio.length} holdings
             </span>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-[#64748B] mr-1.5 font-medium">Sort by:</span>
+              <button
+                onClick={() => setHideLowData(!hideLowData)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all mr-2 ${
+                  hideLowData
+                    ? 'bg-[#F59E0B]/10 border-[#F59E0B]/30 text-[#F59E0B] shadow-sm'
+                    : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
+                }`}
+              >
+                Hide Low Data
+              </button>
+              <div className="w-px h-4 bg-[#1E293B] mx-1 hidden sm:block"></div>
+              <span className="text-xs text-[#64748B] ml-1 mr-1.5 font-medium">Sort by:</span>
               <button
                 onClick={() => setSortBy('weight')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all ${
@@ -322,8 +345,8 @@ export default function PortfolioPage() {
                 ? 'border-l-[#00D4AA] group-hover:shadow-[-4px_0_15px_-3px_rgba(0,212,170,0.3)]' 
                 : direction === 'SELL' 
                   ? 'border-l-[#FF4D6A] group-hover:shadow-[-4px_0_15px_-3px_rgba(255,77,106,0.3)]'
-                  : 'border-l-[#8B95A8] group-hover:shadow-[-4px_0_15px_-3px_rgba(139,149,168,0.3)]'
-              const textHoverClass = direction === 'BUY' ? 'group-hover:text-[#00D4AA]' : direction === 'SELL' ? 'group-hover:text-[#FF4D6A]' : 'group-hover:text-[#8B95A8]'
+                  : 'border-l-[#CBD5E1] group-hover:shadow-[-4px_0_15px_-3px_rgba(203,213,225,0.3)]'
+              const textHoverClass = direction === 'BUY' ? 'group-hover:text-[#00D4AA]' : direction === 'SELL' ? 'group-hover:text-[#FF4D6A]' : 'group-hover:text-[#CBD5E1]'
               const isLowConfidence = p.mention_count < 3
               
               const positionValue = p.shares * p.average_cost
@@ -336,7 +359,7 @@ export default function PortfolioPage() {
                 <Link
                   href={`/ticker?s=${p.ticker}`}
                   key={p.ticker} 
-                  className={`group block relative w-full rounded-r-xl rounded-l-sm bg-[#141B2D]/40 hover:bg-[#1E293B]/40 border border-transparent border-l-4 ${borderGlowClass} transition-all duration-300 ${isLowConfidence ? 'opacity-70 hover:opacity-100' : ''}`}
+                  className={`group block relative w-full rounded-r-xl rounded-l-sm bg-[#141B2D]/40 hover:bg-[#1E293B]/40 border border-transparent border-l-4 ${borderGlowClass} transition-all duration-300`}
                 >
                   <div className="absolute inset-0 rounded-r-xl border-y border-r border-[#1E293B]/50 pointer-events-none transition-colors group-hover:border-white/5" />
                   

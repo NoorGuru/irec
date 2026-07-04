@@ -332,9 +332,9 @@
 }
 
 .sentiment-badge-neutral {
-  background: rgba(139, 149, 168, 0.08);
-  border: 1px solid rgba(139, 149, 168, 0.15);
-  color: var(--aura-muted);
+  background: rgba(203, 213, 225, 0.08);
+  border: 1px solid rgba(203, 213, 225, 0.15);
+  color: #CBD5E1;
 }
 
 .sentiment-badge-sell {
