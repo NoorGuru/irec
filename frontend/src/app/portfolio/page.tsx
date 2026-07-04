@@ -755,46 +755,48 @@ export default function PortfolioPage() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     {hotPlays.map((play) => (
-                      <div 
+                      <div
                         key={play.ticker}
                         className="group relative bg-[#141B2D]/40 border border-[#1E293B] p-4 rounded-2xl hover:border-[#00D4AA]/50 hover:bg-[#1E293B]/40 transition-all duration-300 flex flex-col gap-3 overflow-hidden"
                       >
                         {/* Absolute overlay link to prevent nested links */}
-                        <Link 
-                          href={`/ticker?s=${play.ticker}`} 
+                        <Link
+                          href={`/ticker?s=${play.ticker}`}
                           className="absolute inset-0 z-10"
                           aria-label={`View ${play.ticker} details`}
                         />
 
-                        <button 
-                          onClick={(e) => handleDismissPlay(play.ticker, e)}
-                          className="absolute top-2 right-2 p-1.5 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20 relative pointer-events-auto"
-                          title="Dismiss recommendation"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                        
                         <div className="absolute top-0 right-0 w-16 h-16 bg-[#00D4AA]/10 blur-xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/20 z-0" />
-                        
-                        <div className="flex justify-between items-start relative z-0 pointer-events-none pr-6">
-                          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
-                            {play.ticker}
-                          </span>
+
+                        <div className="flex justify-between items-start relative z-0 pointer-events-none">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors truncate">
+                              {play.ticker}
+                            </span>
+                          </div>
                           {play.ownedStatus === 'heavy' ? (
-                            <span className="text-[8px] bg-[#3B82F6]/10 text-[#3B82F6] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#3B82F6]/20">
+                            <span className="text-[8px] bg-[#3B82F6]/10 text-[#3B82F6] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#3B82F6]/20 ml-2 shrink-0">
                               {play.weightPercent.toFixed(1)}%
                             </span>
                           ) : play.ownedStatus === 'light' ? (
-                            <span className="text-[8px] bg-[#00D4AA]/10 text-[#00D4AA] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#00D4AA]/20">
+                            <span className="text-[8px] bg-[#00D4AA]/10 text-[#00D4AA] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#00D4AA]/20 ml-2 shrink-0">
                               {play.weightPercent.toFixed(1)}%
                             </span>
                           ) : (
-                            <span className="text-[8px] bg-[#8B95A8]/10 text-[#8B95A8] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#1E293B]">
+                            <span className="text-[8px] bg-[#8B95A8]/10 text-[#8B95A8] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#1E293B] ml-2 shrink-0">
                               New
                             </span>
                           )}
                         </div>
-                        
+
+                        <button
+                          onClick={(e) => handleDismissPlay(play.ticker, e)}
+                          className="absolute top-2 right-2 p-1 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20 pointer-events-auto"
+                          title="Dismiss recommendation"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+
                         <div className="flex flex-col gap-1 relative z-0 pointer-events-none mt-2">
                           <span className="text-[9px] text-[#64748B] uppercase tracking-widest font-bold">Aura Score</span>
                           <div className="flex items-center gap-2">
