@@ -5,12 +5,12 @@ import React, { useEffect, useRef, useState } from 'react';
 export function TVMiniChart({ symbol }: { symbol: string }) {
   const container = useRef<HTMLDivElement>(null);
   
-  // Format standard ticker like "AAPL" to "NASDAQ:AAPL" or just "AAPL" if not sure. 
-  // TradingView prefers an exchange prefix, but works without it for major stocks.
-  const tvSymbol = symbol.includes(":") ? symbol : `NASDAQ:${symbol}`;
+  // Pass the symbol directly; TradingView auto-resolves major US symbols like AAPL or BE.
+  const tvSymbol = symbol;
 
   useEffect(() => {
-    if (container.current && container.current.children.length === 0) {
+    if (container.current) {
+      container.current.innerHTML = ""; // Clear old widget DOM
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
       script.async = true;
@@ -39,13 +39,14 @@ export function TVMiniChart({ symbol }: { symbol: string }) {
 export function TVCompanyProfile({ symbol }: { symbol: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const tvSymbol = symbol.includes(":") ? symbol : `NASDAQ:${symbol}`;
+  const tvSymbol = symbol;
 
   useEffect(() => {
-    // Fail-safe timeout to remove loading state
+    setIsLoading(true); // Reset loading state
     const timer = setTimeout(() => setIsLoading(false), 1000);
 
-    if (container.current && container.current.children.length === 0) {
+    if (container.current) {
+      container.current.innerHTML = ""; // Clear old widget DOM
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
       script.async = true;
@@ -86,12 +87,14 @@ export function TVCompanyProfile({ symbol }: { symbol: string }) {
 export function TVFundamentalData({ symbol }: { symbol: string }) {
   const container = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const tvSymbol = symbol.includes(":") ? symbol : `NASDAQ:${symbol}`;
+  const tvSymbol = symbol;
 
   useEffect(() => {
+    setIsLoading(true); // Reset loading state
     const timer = setTimeout(() => setIsLoading(false), 1200);
 
-    if (container.current && container.current.children.length === 0) {
+    if (container.current) {
+      container.current.innerHTML = ""; // Clear old widget DOM
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
       script.async = true;

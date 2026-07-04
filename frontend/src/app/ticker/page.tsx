@@ -137,6 +137,7 @@ function TickerContent() {
         return
       }
 
+      setLoading(true)
       try {
         const supabase = createClient()
         const [recsRes, radarsRes] = await Promise.all([
@@ -158,7 +159,7 @@ function TickerContent() {
                 channels!inner(channel_name, trust_weight)
               )
             `)
-            .ilike("ticker", symbol),
+            .eq("ticker", symbol.toUpperCase()),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
             .then(res => res.ok ? res.json() : [])
             .catch(() => [])
@@ -225,8 +226,10 @@ function TickerContent() {
       <div className="max-w-4xl mx-auto">
         {/* Ticker header */}
         <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
-          <div className="flex items-start justify-between flex-wrap gap-4">
-            <div>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+            
+            {/* Left side: Ticker, Name, Radars */}
+            <div className="flex flex-col gap-4">
               <div className="flex flex-col">
                 <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9] leading-none">
                   {symbol.toUpperCase()}
@@ -235,9 +238,30 @@ function TickerContent() {
                   <p className="mt-2 text-lg text-[#8B95A8] font-semibold">{recommendations[0].stock_name}</p>
                 )}
               </div>
+
+              {activeRadars.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeRadars.map(radar => (
+                    <Link
+                      key={radar.slug}
+                      href={`/radars/${radar.slug}`}
+                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
+                      style={{ 
+                        boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
+                      }}
+                    >
+                      <span className="text-xs font-bold" style={{ color: radar.theme_color }}>✦</span>
+                      <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
+                        Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex flex-col items-end gap-4">
-              <div className="flex items-center gap-2">
+
+            {/* Right side: Menu Links */}
+            <div className="flex items-center gap-2 self-start md:mt-2">
               <a
                 href={`https://finance.yahoo.com/quote/${symbol.toUpperCase()}`}
                 target="_blank"
@@ -367,27 +391,6 @@ function TickerContent() {
                   </div>
                 )}
               </div>
-              </div>
-
-              {activeRadars.length > 0 && (
-                <div className="flex flex-wrap justify-end gap-2 mt-1">
-                  {activeRadars.map(radar => (
-                    <Link
-                      key={radar.slug}
-                      href={`/radars/${radar.slug}`}
-                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
-                      style={{ 
-                        boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
-                      }}
-                    >
-                      <span className="text-xs font-bold" style={{ color: radar.theme_color }}>✦</span>
-                      <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
-                        Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </header>
@@ -483,11 +486,11 @@ function TickerContent() {
 
         {/* Rich Data Widgets */}
         <div className="mb-10 flex flex-col gap-4 w-full animate-fade-up stagger-3">
-          <ExpandableWidget title="Company Profile" color="#00D4AA">
+          <ExpandableWidget key={`${symbol}-profile`} title="Company Profile" color="#00D4AA">
             <TVCompanyProfile symbol={symbol} />
           </ExpandableWidget>
           
-          <ExpandableWidget title="Fundamental Data" color="#3B82F6">
+          <ExpandableWidget key={`${symbol}-financials`} title="Fundamental Data" color="#3B82F6">
             <TVFundamentalData symbol={symbol} />
           </ExpandableWidget>
         </div>

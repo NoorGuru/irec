@@ -3,64 +3,14 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { Activity } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import HolographicCard from '@/components/HolographicCard'
 import PulseField from '@/components/PulseField'
 import TextScramble from '@/components/TextScramble'
 import RadarCard from '@/components/ui/radar-card'
 import Loading from '@/components/ui/loading'
-import { RecommendationRow, AggregatedTicker, RadarResponse } from '@/lib/types'
+import { AggregatedTicker, RadarResponse } from '@/lib/types'
 import { TickerRow, PulseBar, getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
 
-function aggregateRecommendations(
-  recommendations: RecommendationRow[]
-): AggregatedTicker[] {
-  const grouped = new Map<
-    string,
-    { sentiments: { value: number; weight: number }[]; prices: number[]; convictions: number[]; count: number; channels: Set<string>; stock_name: string }
-  >()
-
-  for (const rec of recommendations) {
-    const ticker = rec.ticker
-    if (!grouped.has(ticker)) {
-      grouped.set(ticker, { sentiments: [], prices: [], convictions: [], count: 0, channels: new Set(), stock_name: rec.stock_name || '' })
-    }
-    const group = grouped.get(ticker)!
-    const trustWeight = rec.videos.channels.trust_weight
-    group.sentiments.push({ value: rec.sentiment, weight: trustWeight })
-    if (rec.target_price !== null) {
-      group.prices.push(rec.target_price)
-    }
-    group.convictions.push(rec.conviction_level)
-    group.channels.add(rec.videos.channel_id)
-    group.count++
-    if (rec.stock_name && !group.stock_name) {
-      group.stock_name = rec.stock_name
-    }
-  }
-
-  const results: AggregatedTicker[] = []
-
-  for (const [ticker, group] of grouped) {
-    const weightedSum = group.sentiments.reduce((sum, s) => sum + s.value * s.weight, 0)
-    const totalWeight = group.sentiments.reduce((sum, s) => sum + s.weight, 0)
-    const rawSentiment = totalWeight > 0 ? weightedSum / totalWeight : 0
-    const confidence = Math.min(group.count / 3, 1)
-    const consensus_sentiment = Math.round(rawSentiment * confidence * 100) / 100
-
-    const avg_target_price =
-      group.prices.length > 0
-        ? group.prices.reduce((sum, p) => sum + p, 0) / group.prices.length
-        : null
-
-    const avg_conviction = group.convictions.reduce((s, c) => s + c, 0) / group.convictions.length
-
-    results.push({ ticker, stock_name: group.stock_name, consensus_sentiment, avg_target_price, avg_conviction, mention_count: group.count, analyst_count: group.channels.size })
-  }
-
-  results.sort((a, b) => b.mention_count - a.mention_count)
-  return results
-}
 
 function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   if (aggregated.length === 0) return null
@@ -348,31 +298,17 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const supabase = createClient()
-
-        const [recsRes, radarsRes] = await Promise.all([
-          supabase
-            .from("recommendations")
-            .select(`
-              ticker,
-              stock_name,
-              sentiment,
-              target_price,
-              conviction_level,
-              videos!inner(
-                channel_id,
-                channels!inner(trust_weight)
-              )
-            `),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+        const [pulseRes, radarsRes] = await Promise.all([
+          fetch(`${backendUrl}/api/v1/home/pulse`)
+            .then(res => res.ok ? res.json() : { aggregated: [] })
+            .catch(() => ({ aggregated: [] })),
+          fetch(`${backendUrl}/api/v1/radars`)
             .then(res => res.ok ? res.json() : [])
             .catch(() => [])
         ])
 
-        const agg = recsRes.data
-          ? aggregateRecommendations(recsRes.data as unknown as RecommendationRow[])
-          : []
-        setAggregated(agg)
+        setAggregated(pulseRes.aggregated || [])
         setRadars(radarsRes)
       } catch (error) {
         console.error("Failed to fetch data:", error)
