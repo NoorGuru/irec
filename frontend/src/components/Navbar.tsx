@@ -283,7 +283,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: DashboardIcon }] : [])
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
   ]
 
   const mobilePrimaryLinks = [
@@ -295,7 +295,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: DashboardIcon }] : [])
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
   ]
 
   return (
@@ -469,6 +469,15 @@ export function Navbar() {
 }
 
 /* ─── Icons ─── */
+
+function PortfolioIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M22 12A10 10 0 0 0 12 2v10z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
 
 function DashboardIcon({ active }: { active: boolean }) {
   return (
