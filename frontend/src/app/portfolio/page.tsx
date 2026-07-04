@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, ArrowLeft, TrendingUp, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings } from 'lucide-react'
+import { Activity, ArrowLeft, TrendingUp, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings, Search } from 'lucide-react'
 import Link from 'next/link'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import { useEffect, useState, useCallback, useMemo } from 'react'
@@ -14,9 +14,10 @@ export default function PortfolioPage() {
   const [session, setSession] = useState<any>(null)
   const [sortBy, setSortBy] = useState<'weight' | 'sentiment' | 'upside' | 'ticker'>('weight')
   const [hideLowData, setHideLowData] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const router = useRouter()
 
-  const fetchPortfolio = useCallback(async () => {
+  const fetchPortfolio = useCallback(async (fresh: boolean = false) => {
     const supabase = createClient()
     const { data: { session: sessionData } } = await supabase.auth.getSession()
     
@@ -33,7 +34,7 @@ export default function PortfolioPage() {
         fetch(`${backendUrl}/api/v1/portfolio/`, {
           headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
         }).then(res => res.json()),
-        fetch(`${backendUrl}/api/v1/stocks`).then(res => res.json())
+        fetch(`${backendUrl}/api/v1/stocks?fresh=${fresh}`).then(res => res.json())
       ])
       
       const portData = portRes.portfolio || []
@@ -65,7 +66,9 @@ export default function PortfolioPage() {
   }, [fetchPortfolio])
 
   const handleSync = async () => {
-    if (!session?.provider_token) {
+    const providerToken = session?.provider_token || (typeof window !== 'undefined' ? localStorage.getItem('google_provider_token') : null)
+    
+    if (!providerToken) {
       alert('No Google Sheets access found. Please sign out and sign back in to grant permission.')
       return
     }
@@ -78,13 +81,13 @@ export default function PortfolioPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ provider_token: session.provider_token })
+        body: JSON.stringify({ provider_token: providerToken })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Failed to sync portfolio')
       
       setSyncStatus('success')
-      await fetchPortfolio() // refresh data!
+      await fetchPortfolio(true) // refresh data and bust backend cache!
       setTimeout(() => setSyncStatus('idle'), 3000)
     } catch (err: any) {
       console.error(err)
@@ -108,6 +111,13 @@ export default function PortfolioPage() {
     if (hideLowData) {
       filtered = filtered.filter(p => p.mention_count >= 3)
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(p => 
+        p.ticker.toLowerCase().includes(q) || 
+        (p.stock_name && p.stock_name.toLowerCase().includes(q))
+      )
+    }
 
     return [...filtered].sort((a, b) => {
       const aValue = a.shares * a.average_cost
@@ -122,7 +132,7 @@ export default function PortfolioPage() {
       if (sortBy === 'ticker') return a.ticker.localeCompare(b.ticker)
       return 0
     })
-  }, [portfolio, sortBy, hideLowData])
+  }, [portfolio, sortBy, hideLowData, searchQuery])
 
   return (
     <div className="min-h-screen bg-[#0A0F1A] p-4 md:p-12">
@@ -266,10 +276,24 @@ export default function PortfolioPage() {
 
         {/* Sort Controls */}
         {!loading && portfolio.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141B2D]/20 border border-[#1E293B] px-6 py-3.5 rounded-2xl">
-            <span className="text-xs text-[#8B95A8] font-medium font-[family-name:var(--font-geist-mono)]">
-              Showing {sortedPortfolio.length} holdings
-            </span>
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-[#141B2D]/20 border border-[#1E293B] px-6 py-4 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+              <span className="text-xs text-[#8B95A8] font-medium font-[family-name:var(--font-geist-mono)] whitespace-nowrap">
+                Showing {sortedPortfolio.length} holdings
+              </span>
+              
+              <div className="relative w-full max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748B]" />
+                <input
+                  type="text"
+                  placeholder="Search ticker or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#0A0F1A]/50 border border-[#1E293B] rounded-lg pl-9 pr-4 py-1.5 text-sm text-[#F1F5F9] placeholder:text-[#64748B] focus:outline-none focus:border-[#00D4AA]/50 focus:ring-1 focus:ring-[#00D4AA]/50 transition-all"
+                />
+              </div>
+            </div>
+
             <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 onClick={() => setHideLowData(!hideLowData)}

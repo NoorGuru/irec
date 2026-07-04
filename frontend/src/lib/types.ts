@@ -69,6 +69,7 @@ export interface StockDirectoryItem {
   analyst_count: number
   last_mentioned_at: string | null
   overall_sentiment: number | null
+  raw_sentiment?: number | null
   avg_target_price: number | null
   avg_conviction: number | null
 }

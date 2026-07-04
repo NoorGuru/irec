@@ -19,6 +19,14 @@ export default function AuthCallbackPage() {
         return
       }
 
+      // Save the Google provider token to local storage so we can use it to sync the portfolio
+      if (session.provider_token) {
+        localStorage.setItem('google_provider_token', session.provider_token)
+      }
+      if (session.provider_refresh_token) {
+        localStorage.setItem('google_provider_refresh_token', session.provider_refresh_token)
+      }
+
       // Check if authenticated user is the owner
       const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || ''
       if (session.user.email?.toLowerCase() !== ownerEmail.toLowerCase()) {

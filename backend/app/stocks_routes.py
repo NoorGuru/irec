@@ -47,7 +47,7 @@ class HomePulseResponse(BaseModel):
 
 
 @router.get("/stocks", response_model=StocksDirectoryResponse)
-async def get_stocks_directory(request: Request, response: Response):
+async def get_stocks_directory(request: Request, response: Response, fresh: bool = False):
     """Fetch public directory of all tracked stocks with their latest prices and unified aggregated metrics."""
     try:
         cache_key = "stocks_directory_v6"
@@ -58,7 +58,7 @@ async def get_stocks_directory(request: Request, response: Response):
             cache_updated = parse_iso_datetime(cached_data.get("last_updated"))
             latest_ext_dt = parse_iso_datetime(latest_extraction)
             
-            if cache_updated >= latest_ext_dt:
+            if cache_updated >= latest_ext_dt and not fresh:
                 payload = cached_data["payload"]
                 etag = f'W/"{payload.get("generated_at")}"'
                 if request.headers.get("if-none-match") == etag:
@@ -76,13 +76,23 @@ async def get_stocks_directory(request: Request, response: Response):
         
         tickers = [m["ticker"] for m in meta_data]
         
-        # Get names, sentiment, targets, and conviction from recommendations
-        recs_res = client.table("recommendations").select("ticker, stock_name, sentiment, target_price, conviction_level").execute()
-        recs_data = recs_res.data or []
+        # Get names, sentiment, targets, and conviction from recommendations that have valid videos and channels
+        # Note: We must paginate because there can be >1000 recommendations and Supabase defaults to 1000.
+        recs_data = []
+        page_size = 1000
+        for i in range(20): # handle up to 20,000 recommendations
+            res = client.table("recommendations").select("ticker, stock_name, sentiment, target_price, conviction_level, videos!inner(channels!inner(trust_weight))").range(i * page_size, (i + 1) * page_size - 1).execute()
+            if not res.data:
+                break
+            recs_data.extend(res.data)
+            if len(res.data) < page_size:
+                break
         
         names_map = {}
         sentiment_map = {}
         sentiment_counts = {}
+        weighted_sentiment_map = {}
+        total_trust_weight = {}
         target_map = {}
         target_counts = {}
         conviction_map = {}
@@ -95,8 +105,16 @@ async def get_stocks_directory(request: Request, response: Response):
             
             s = r.get("sentiment")
             if s is not None:
+                # videos and channels are strictly inner joined, so this structure exists
+                videos = r.get("videos")
+                tw = 1.0
+                if videos and "channels" in videos and "trust_weight" in videos["channels"]:
+                    tw = videos["channels"]["trust_weight"]
+                
                 sentiment_map[t] = sentiment_map.get(t, 0) + s
                 sentiment_counts[t] = sentiment_counts.get(t, 0) + 1
+                weighted_sentiment_map[t] = weighted_sentiment_map.get(t, 0) + (s * tw)
+                total_trust_weight[t] = total_trust_weight.get(t, 0) + tw
                 
             tp = r.get("target_price")
             if tp is not None:
@@ -114,18 +132,26 @@ async def get_stocks_directory(request: Request, response: Response):
         for m in meta_data:
             t = m["ticker"]
             
-
             overall_sentiment = None
+            raw_sentiment_val = None
             if sentiment_counts.get(t, 0) > 0:
-                overall_sentiment = sentiment_map[t] / sentiment_counts[t]
+                # Raw unweighted sentiment (matches Ticker page "Raw Sentiment")
+                raw_sentiment_val = round(sentiment_map[t] / sentiment_counts[t], 2)
+                
+                # Consensus Sentiment (trust-weighted & confidence-dampened, matches Ticker "Consensus")
+                tw = total_trust_weight.get(t, 0)
+                w_sum = weighted_sentiment_map.get(t, 0)
+                raw_weighted = w_sum / tw if tw > 0 else 0
+                confidence = min(sentiment_counts[t] / 3, 1)
+                overall_sentiment = round(raw_weighted * confidence, 2)
                 
             avg_target_price = None
             if target_counts.get(t, 0) > 0:
-                avg_target_price = target_map[t] / target_counts[t]
+                avg_target_price = round(target_map[t] / target_counts[t], 2)
                 
             avg_conviction = None
             if conviction_counts.get(t, 0) > 0:
-                avg_conviction = conviction_map[t] / conviction_counts[t]
+                avg_conviction = round(conviction_map[t] / conviction_counts[t], 2)
                 
             item = StockDirectoryItem(
                 ticker=t,
@@ -136,8 +162,8 @@ async def get_stocks_directory(request: Request, response: Response):
                 mention_count_30d=m.get("mention_count_30d", 0),
                 analyst_count=m.get("analyst_count", 0),
                 last_mentioned_at=m.get("last_mentioned_at"),
-
                 overall_sentiment=overall_sentiment,
+                raw_sentiment=raw_sentiment_val,
                 avg_target_price=avg_target_price,
                 avg_conviction=avg_conviction
             )
