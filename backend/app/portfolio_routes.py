@@ -42,7 +42,7 @@ async def get_portfolio(
         raise HTTPException(status_code=401, detail="User ID not found in token")
 
     supabase = _get_client()
-    resp = supabase.table("user_portfolio").select("ticker, shares, average_cost, updated_at").eq("user_id", user_id).execute()
+    resp = supabase.table("user_portfolio").select("ticker, shares, average_cost, current_price, total_return_pct, daily_change_pct, weekly_change_pct, monthly_change_pct, ytd_return_pct, 1y_return_pct, sector, cap_size, updated_at").eq("user_id", user_id).execute()
     
     return {"status": "success", "portfolio": resp.data or []}
 
@@ -84,7 +84,7 @@ async def sync_portfolio(
     
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/{SHEET_RANGE}"
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             resp = await client.get(
                 url,
@@ -118,28 +118,25 @@ async def sync_portfolio(
             ticker_idx = idx
             break
             
-    shares_idx = -1
-    for idx, h in enumerate(headers):
-        if 'share' in h or 'qty' in h or 'quantity' in h:
-            shares_idx = idx
-            break
-            
-    cost_idx = -1
-    # Prioritize 'avg' or 'cost' over 'price' so we don't accidentally pick 'Current Price'
-    for idx, h in enumerate(headers):
-        if 'avg' in h or 'cost' in h:
-            cost_idx = idx
-            break
-    if cost_idx == -1:
-        for idx, h in enumerate(headers):
-            if 'price' in h:
-                cost_idx = idx
-                break
+    shares_idx = next((i for i, h in enumerate(headers) if 'share' in h or 'qty' in h or 'quantity' in h), -1)
+    cost_idx = next((i for i, h in enumerate(headers) if 'avg cost' in h or 'avg' in h), -1)
+    
+    # New Analytics Indexes
+    price_idx = next((i for i, h in enumerate(headers) if 'live price' in h or 'current price' in h), -1)
+    sector_idx = next((i for i, h in enumerate(headers) if 'sector' in h), -1)
+    cap_size_idx = next((i for i, h in enumerate(headers) if h == 'cap size'), -1)
+    
+    # Momentum Indexes
+    daily_idx = next((i for i, h in enumerate(headers) if '1 day return (%)' in h), -1)
+    weekly_idx = next((i for i, h in enumerate(headers) if '1 week return (%)' in h), -1)
+    monthly_idx = next((i for i, h in enumerate(headers) if '1 month return (%)' in h), -1)
+    ytd_idx = next((i for i, h in enumerate(headers) if 'ytd return (%)' in h), -1)
+    one_year_idx = next((i for i, h in enumerate(headers) if '1 year return (%)' in h), -1)
+    total_rtn_idx = next((i for i, h in enumerate(headers) if 'total gain/loss (%)' in h), -1)
 
     # 4. Insert/Upsert into Supabase user_portfolio
     supabase = _get_client()
     
-    # Delete existing portfolio for a clean sync
     try:
         supabase.table("user_portfolio").delete().eq("user_id", user_id).execute()
     except Exception as e:
@@ -150,6 +147,35 @@ async def sync_portfolio(
         "BRK.B": "BRK-B",
         "BRK/B": "BRK-B"
     }
+
+    def safe_float(val: str, default=0.0):
+        try:
+            cleaned = str(val).replace(',', '').replace('$', '').replace('%', '').strip()
+            return float(cleaned) if cleaned else default
+        except Exception:
+            return default
+            
+    def classify_cap_size(val_str):
+        if not val_str:
+            return 'Unknown'
+        if any(w in val_str.lower() for w in ['mega', 'large', 'mid', 'small', 'micro']):
+            return val_str
+        try:
+            val = float(str(val_str).replace('$', '').replace(',', '').strip())
+            # If value is unscaled (e.g. 2 trillion), convert to billions
+            if val > 1_000_000:
+                val = val / 1_000_000_000
+                
+            if val >= 200:
+                return 'Mega'
+            elif val >= 10:
+                return 'Large'
+            elif val >= 2:
+                return 'Mid'
+            else:
+                return 'Small'
+        except:
+            return 'Unknown'
 
     portfolio_agg = {}
     
@@ -162,26 +188,36 @@ async def sync_portfolio(
             
         ticker = TICKER_MAP.get(ticker, ticker)
             
-        shares = 0.0
-        if shares_idx != -1 and len(row) > shares_idx:
-            try:
-                val = str(row[shares_idx]).replace(',', '').strip()
-                if val:
-                    shares = float(val)
-            except Exception:
-                pass
-                
-        cost = 0.0
-        if cost_idx != -1 and len(row) > cost_idx:
-            try:
-                val = str(row[cost_idx]).replace(',', '').replace('$', '').strip()
-                if val:
-                    cost = float(val)
-            except Exception:
-                pass
+        shares = safe_float(row[shares_idx]) if shares_idx != -1 and len(row) > shares_idx else 0.0
+        cost = safe_float(row[cost_idx]) if cost_idx != -1 and len(row) > cost_idx else 0.0
+        
+        current_price = safe_float(row[price_idx]) if price_idx != -1 and len(row) > price_idx else None
+        total_rtn = safe_float(row[total_rtn_idx]) if total_rtn_idx != -1 and len(row) > total_rtn_idx else None
+        daily_pct = safe_float(row[daily_idx]) if daily_idx != -1 and len(row) > daily_idx else None
+        weekly_pct = safe_float(row[weekly_idx]) if weekly_idx != -1 and len(row) > weekly_idx else None
+        monthly_pct = safe_float(row[monthly_idx]) if monthly_idx != -1 and len(row) > monthly_idx else None
+        ytd_pct = safe_float(row[ytd_idx]) if ytd_idx != -1 and len(row) > ytd_idx else None
+        one_year_pct = safe_float(row[one_year_idx]) if one_year_idx != -1 and len(row) > one_year_idx else None
+        
+        sector = str(row[sector_idx]).strip() if sector_idx != -1 and len(row) > sector_idx else None
+        
+        raw_cap = str(row[cap_size_idx]).strip() if cap_size_idx != -1 and len(row) > cap_size_idx else None
+        cap_size = classify_cap_size(raw_cap)
 
         if ticker not in portfolio_agg:
-            portfolio_agg[ticker] = {"shares": 0.0, "total_cost": 0.0}
+            portfolio_agg[ticker] = {
+                "shares": 0.0, 
+                "total_cost": 0.0,
+                "current_price": current_price,
+                "total_return_pct": total_rtn,
+                "daily_change_pct": daily_pct,
+                "weekly_change_pct": weekly_pct,
+                "monthly_change_pct": monthly_pct,
+                "ytd_return_pct": ytd_pct,
+                "1y_return_pct": one_year_pct,
+                "sector": sector,
+                "cap_size": cap_size
+            }
             
         portfolio_agg[ticker]["shares"] += shares
         portfolio_agg[ticker]["total_cost"] += (shares * cost)
@@ -198,6 +234,15 @@ async def sync_portfolio(
             "ticker": ticker,
             "shares": data["shares"],
             "average_cost": round(avg_cost, 2),
+            "current_price": data["current_price"],
+            "total_return_pct": data["total_return_pct"],
+            "daily_change_pct": data["daily_change_pct"],
+            "weekly_change_pct": data["weekly_change_pct"],
+            "monthly_change_pct": data["monthly_change_pct"],
+            "ytd_return_pct": data["ytd_return_pct"],
+            "1y_return_pct": data["1y_return_pct"],
+            "sector": data["sector"],
+            "cap_size": data["cap_size"]
         })
 
     if inserts:
