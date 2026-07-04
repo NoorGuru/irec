@@ -7,6 +7,24 @@ import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
 import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 import { TVMiniChart, TVCompanyProfile, TVFundamentalData, ExpandableWidget } from '@/components/TVWidgets'
+import { Briefcase, DollarSign, ArrowLeft, Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  crown: Crown,
+  spark: Sparkles,
+  microchip: Cpu,
+  dna: Dna,
+  bitcoin: Bitcoin,
+  shield: Shield,
+  processor: Cpu,
+  cloud: Cloud,
+  sun: Sun,
+  dollar: DollarSign,
+  creditCard: CreditCard,
+  globe: Globe,
+  lock: Lock,
+  satellite: Satellite,
+}
 
 interface Recommendation {
   ticker: string
@@ -125,6 +143,7 @@ function TickerContent() {
   
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
+  const [position, setPosition] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showMoreLinks, setShowMoreLinks] = useState(false)
 
@@ -140,6 +159,18 @@ function TickerContent() {
       setLoading(true)
       try {
         const supabase = createClient()
+        
+        // Fetch User Position
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const { data } = await supabase
+            .from("user_portfolio")
+            .select("*")
+            .eq("ticker", symbol.toUpperCase())
+            .single()
+          if (data) setPosition(data)
+        }
+
         const [recsRes, radarsRes] = await Promise.all([
           supabase
             .from("recommendations")
@@ -196,7 +227,7 @@ function TickerContent() {
   if (isInvalid || recommendations.length === 0) {
     return (
       <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h1 className="mt-8 font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
             {symbol?.toUpperCase() || '?'}
           </h1>
@@ -210,7 +241,8 @@ function TickerContent() {
   const avgSentiment = recommendations.reduce((s, r) => s + r.sentiment, 0) / recommendations.length
   const avgConviction = recommendations.reduce((s, r) => s + r.conviction_level, 0) / recommendations.length
   const prices = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
-  const avgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null
+  const rawAvgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null
+  const avgPrice = rawAvgPrice !== null ? Math.round(rawAvgPrice) : null
 
   // Consensus score (same formula as homepage — trust-weighted + confidence-dampened)
   const weightedSum = recommendations.reduce((s, r) => s + r.sentiment * r.videos.channels.trust_weight, 0)
@@ -223,13 +255,13 @@ function TickerContent() {
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Ticker header */}
         <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             
             {/* Left side: Ticker, Name, Radars */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 flex-1">
               <div className="flex flex-col">
                 <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9] leading-none">
                   {symbol.toUpperCase()}
@@ -241,23 +273,29 @@ function TickerContent() {
 
               {activeRadars.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
-                  {activeRadars.map(radar => (
-                    <Link
-                      key={radar.slug}
-                      href={`/radars/${radar.slug}`}
-                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
-                      style={{ 
-                        boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
-                      }}
-                    >
-                      <span className="text-xs font-bold" style={{ color: radar.theme_color }}>✦</span>
-                      <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
-                        Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
-                      </span>
-                    </Link>
-                  ))}
+                  {activeRadars.map(radar => {
+                    const RadarIcon = ICON_MAP[radar.icon] || Activity
+                    return (
+                      <Link
+                        key={radar.slug}
+                        href={`/radars/${radar.slug}`}
+                        className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
+                        style={{ 
+                          boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
+                          borderLeftColor: radar.theme_color,
+                          borderLeftWidth: '2px'
+                        }}
+                      >
+                        <RadarIcon className="w-3.5 h-3.5" style={{ color: radar.theme_color }} />
+                        <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
+                          Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
+                        </span>
+                      </Link>
+                    )
+                  })}
                 </div>
               )}
+
             </div>
 
             {/* Right side: Menu Links */}
@@ -394,6 +432,71 @@ function TickerContent() {
             </div>
           </div>
         </header>
+
+        {/* Personal Position Widget - Full Width */}
+        {position && (
+          <Link 
+            href="/portfolio"
+            className="mb-8 group flex flex-col gap-4 bg-[#141B2D]/90 backdrop-blur-xl border border-[#00D4AA]/20 hover:border-[#00D4AA]/50 p-5 rounded-2xl w-full shadow-lg hover:shadow-[#00D4AA]/10 transition-all duration-300 relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4AA]/10 blur-3xl rounded-full pointer-events-none" />
+            
+            <div className="flex items-center justify-between w-full relative z-10">
+              <div className="flex items-center gap-2 text-[#00D4AA]">
+                <Briefcase className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-widest">My Private Position</span>
+              </div>
+              <ArrowLeft className="w-4 h-4 rotate-180 text-[#8B95A8] group-hover:text-[#00D4AA] transition-colors group-hover:translate-x-1 duration-300" />
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full relative z-10">
+              <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B]">
+                <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Shares</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#F1F5F9]">{position.shares}</span>
+              </div>
+              
+              <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B]">
+                <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Avg Cost</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#F1F5F9]">
+                  ${position.average_cost}
+                </span>
+              </div>
+              
+              <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B]">
+                <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Total Invested</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#F1F5F9]">
+                  ${(position.shares * position.average_cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+              
+              <div className="flex flex-col bg-[#00D4AA]/5 p-3 rounded-xl border border-[#00D4AA]/20 relative overflow-hidden group/target">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-[100%] group-hover/target:animate-[shimmer_1.5s_infinite]" />
+                <span className="text-[10px] text-[#00D4AA] uppercase tracking-wider mb-1 font-semibold">Target Value</span>
+                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#00D4AA]">
+                  {avgPrice ? `$${(position.shares * avgPrice).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                </span>
+              </div>
+            </div>
+            
+            {avgPrice && (
+              <div className="w-full relative z-10 pt-1">
+                <div className={`w-full p-2.5 rounded-lg border text-center font-[family-name:var(--font-geist-mono)] text-sm font-bold tracking-wide transition-colors flex items-center justify-center gap-2 ${
+                  (avgPrice > position.average_cost) 
+                    ? 'bg-[#00D4AA]/10 border-[#00D4AA]/20 text-[#00D4AA]' 
+                    : 'bg-[#FF4D6A]/10 border-[#FF4D6A]/20 text-[#FF4D6A]'
+                }`}>
+                  <span>Implied Analyst Upside:</span>
+                  <span>
+                    {avgPrice > position.average_cost ? '+' : ''}{(((avgPrice - position.average_cost) / position.average_cost) * 100).toFixed(1)}% 
+                  </span>
+                  <span className="opacity-70">
+                    ({avgPrice > position.average_cost ? '+' : ''}${((position.shares * avgPrice) - (position.shares * position.average_cost)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
+                  </span>
+                </div>
+              </div>
+            )}
+          </Link>
+        )}
 
         <div className="mb-4 space-y-4 w-full">
           <div className="w-full rounded-xl overflow-hidden bg-[#141B2D] border border-white/5 shadow-2xl shadow-black/50">

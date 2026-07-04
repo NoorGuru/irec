@@ -27,12 +27,15 @@ function CommandPalette({
   const [allTickers, setAllTickers] = useState<TickerResult[]>([])
   const [loaded, setLoaded] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [session, setSession] = useState<any>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open || loaded) return
     async function fetchTickers() {
       const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
       const { data } = await supabase
         .from('recommendations')
         .select('ticker, stock_name')
@@ -165,6 +168,14 @@ function CommandPalette({
               aria-controls="cmd-results"
               aria-activedescendant={selectedIndex >= 0 ? `cmd-result-${selectedIndex}` : undefined}
             />
+            <nav className="hidden md:flex items-center space-x-6">
+              <Link
+                href="/directory"
+                className="text-sm font-medium text-[#8B95A8] hover:text-[#00D4AA] transition-colors tracking-wide"
+              >
+                Directory
+              </Link>
+            </nav>
             <kbd className="hidden md:flex items-center mr-4 px-2 py-1 rounded-md bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#475569]">
               ESC
             </kbd>
@@ -228,6 +239,16 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [session, setSession] = useState<any>(null)
+
+  useEffect(() => {
+    async function checkSession() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      setSession(session)
+    }
+    checkSession()
+  }, [])
 
   useEffect(() => {
     function onScroll() {
@@ -262,6 +283,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: DashboardIcon }] : [])
   ]
 
   const mobilePrimaryLinks = [
@@ -273,6 +295,7 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: DashboardIcon }] : [])
   ]
 
   return (

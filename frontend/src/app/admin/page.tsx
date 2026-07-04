@@ -25,6 +25,7 @@ import {
   Play,
   Clock,
   RefreshCw,
+  TrendingUp,
 } from 'lucide-react'
 
 // ─── Types ───
@@ -276,6 +277,8 @@ export default function AdminHubPage() {
       setTimeout(() => setCacheStatus('idle'), 3000)
     }
   }
+
+
 
   // Auth check
   useEffect(() => {
@@ -873,6 +876,7 @@ export default function AdminHubPage() {
                     <p className="text-[11px] text-[#64748B] mt-1">Wipe server cache</p>
                   </div>
                 </button>
+
               </div>
             )}
           </section>
