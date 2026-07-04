@@ -532,7 +532,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score") -> Toda
         play_tickers = [p.ticker for p in plays]
         five_days_ago = (now - timedelta(days=5)).isoformat()
         try:
-            prices_res = client.table("stock_prices").select("*").in_("ticker", play_tickers).gte("fetched_at", five_days_ago).execute()
+            prices_res = client.table("stock_prices").select("*").in_("ticker", play_tickers).gte("fetched_at", five_days_ago).order("fetched_at", desc=True).execute()
             prices_data = prices_res.data or []
             # Sort by fetched_at desc to get the latest per ticker
             prices_data.sort(key=lambda x: x["fetched_at"], reverse=True)
