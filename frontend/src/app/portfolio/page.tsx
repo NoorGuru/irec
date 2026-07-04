@@ -16,6 +16,7 @@ export default function PortfolioPage() {
   const [showBalances, setShowBalances] = useState(false)
   const [radars, setRadars] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingHotPlays, setLoadingHotPlays] = useState<boolean>(true)
   
   useEffect(() => {
     try {
@@ -53,27 +54,23 @@ export default function PortfolioPage() {
       return
     }
     setSession(sessionData)
+    setLoadingHotPlays(true)
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
       
-      const [portRes, stocksRes, todayRes, radarsRes] = await Promise.all([
+      // Phase 1: Load holdings and stock stats immediately
+      const [portRes, stocksRes] = await Promise.all([
         fetch(`${backendUrl}/api/v1/portfolio/`, {
           headers: { 'Authorization': `Bearer ${sessionData.access_token}` }
         }).then(res => res.json()),
-        fetch(`${backendUrl}/api/v1/stocks?fresh=${fresh}`).then(res => res.json()),
-        fetch(`${backendUrl}/api/v1/today?days=30`).then(res => res.json()).catch(() => ({ plays: [] })),
-        fetch(`${backendUrl}/api/v1/radars`).then(res => res.json()).catch(() => [])
+        fetch(`${backendUrl}/api/v1/stocks?fresh=${fresh}`).then(res => res.json())
       ])
       
       const portData = portRes.portfolio || []
       const stocksData = stocksRes.stocks || []
-      const playsData = todayRes.plays || []
-      const radarsData = Array.isArray(radarsRes) ? radarsRes : []
       
       setAllStocks(stocksData)
-      setTodayPlays(playsData)
-      setRadars(radarsData)
       
       const validPortData = portData.filter((p: any) => p.shares > 0)
       
@@ -96,10 +93,31 @@ export default function PortfolioPage() {
       })
       
       setPortfolio(merged)
+      setLoading(false) // Holdings render instantly!
+
+      // Phase 2: Load radars in the background
+      fetch(`${backendUrl}/api/v1/radars`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setRadars(data)
+        })
+        .catch(err => console.error("Error loading radars:", err))
+
+      // Phase 3: Load Hot Plays in the background
+      fetch(`${backendUrl}/api/v1/today?days=30`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.plays) setTodayPlays(data.plays)
+        })
+        .catch(err => console.error("Error loading hot plays:", err))
+        .finally(() => {
+          setLoadingHotPlays(false)
+        })
+
     } catch (err) {
       console.error(err)
-    } finally {
       setLoading(false)
+      setLoadingHotPlays(false)
     }
   }, [router])
 
@@ -706,13 +724,13 @@ export default function PortfolioPage() {
           </div>
 
           {/* Hot Plays Section */}
-          {!loading && hotPlays.length > 0 && (
+          {!loading && (loadingHotPlays || hotPlays.length > 0) && (
               <div className="space-y-4 pt-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-[#00D4AA] flex items-center gap-2">
                     <span className="text-lg">🔥</span> Analyst Hot Plays to Consider
                   </h2>
-                  {allHotPlaysCandidates.length > 6 && (
+                  {!loadingHotPlays && allHotPlaysCandidates.length > 6 && (
                     <button
                       onClick={() => setShowAllPlays(!showAllPlays)}
                       className="text-[10px] uppercase tracking-widest font-bold text-[#64748B] hover:text-[#00D4AA] transition-colors bg-[#0A0F1A]/50 border border-[#1E293B] px-3 py-1.5 rounded-lg hover:bg-[#1E293B]/50"
@@ -722,62 +740,76 @@ export default function PortfolioPage() {
                   )}
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  {hotPlays.map((play) => (
-                    <div 
-                      key={play.ticker}
-                      className="group relative bg-[#141B2D]/40 border border-[#1E293B] p-4 rounded-2xl hover:border-[#00D4AA]/50 hover:bg-[#1E293B]/40 transition-all duration-300 flex flex-col gap-3 overflow-hidden"
-                    >
-                      {/* Absolute overlay link to prevent nested links */}
-                      <Link 
-                        href={`/ticker?s=${play.ticker}`} 
-                        className="absolute inset-0 z-10"
-                        aria-label={`View ${play.ticker} details`}
-                      />
-
-                      <button 
-                        onClick={(e) => handleDismissPlay(play.ticker, e)}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20 relative pointer-events-auto"
-                        title="Dismiss recommendation"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      
-                      <div className="absolute top-0 right-0 w-16 h-16 bg-[#00D4AA]/10 blur-xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/20 z-0" />
-                      
-                      <div className="flex justify-between items-start relative z-0 pointer-events-none pr-6">
-                        <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
-                          {play.ticker}
-                        </span>
-                        {play.ownedStatus === 'heavy' ? (
-                          <span className="text-[8px] bg-[#3B82F6]/10 text-[#3B82F6] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#3B82F6]/20">
-                            {play.weightPercent.toFixed(1)}%
-                          </span>
-                        ) : play.ownedStatus === 'light' ? (
-                          <span className="text-[8px] bg-[#00D4AA]/10 text-[#00D4AA] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#00D4AA]/20">
-                            {play.weightPercent.toFixed(1)}%
-                          </span>
-                        ) : (
-                          <span className="text-[8px] bg-[#8B95A8]/10 text-[#8B95A8] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#1E293B]">
-                            New
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex flex-col gap-1 relative z-0 pointer-events-none mt-2">
-                        <span className="text-[9px] text-[#64748B] uppercase tracking-widest font-bold">Aura Score</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9]">
-                            {play.aura_score}
-                          </span>
-                          <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#00D4AA] bg-[#00D4AA]/10 px-1.5 py-0.5 rounded">
-                            +{play.consensus_sentiment.toFixed(1)} sent
-                          </span>
+                {loadingHotPlays ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-pulse">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="bg-[#141B2D]/20 border border-[#1E293B] p-4 rounded-2xl h-[100px] flex flex-col justify-between">
+                        <div className="h-6 w-12 bg-[#1E293B]/40 rounded" />
+                        <div className="space-y-1.5">
+                          <div className="h-2 w-16 bg-[#1E293B]/40 rounded" />
+                          <div className="h-4 w-8 bg-[#1E293B]/40 rounded" />
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    {hotPlays.map((play) => (
+                      <div 
+                        key={play.ticker}
+                        className="group relative bg-[#141B2D]/40 border border-[#1E293B] p-4 rounded-2xl hover:border-[#00D4AA]/50 hover:bg-[#1E293B]/40 transition-all duration-300 flex flex-col gap-3 overflow-hidden"
+                      >
+                        {/* Absolute overlay link to prevent nested links */}
+                        <Link 
+                          href={`/ticker?s=${play.ticker}`} 
+                          className="absolute inset-0 z-10"
+                          aria-label={`View ${play.ticker} details`}
+                        />
+
+                        <button 
+                          onClick={(e) => handleDismissPlay(play.ticker, e)}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20 relative pointer-events-auto"
+                          title="Dismiss recommendation"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                        
+                        <div className="absolute top-0 right-0 w-16 h-16 bg-[#00D4AA]/10 blur-xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/20 z-0" />
+                        
+                        <div className="flex justify-between items-start relative z-0 pointer-events-none pr-6">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
+                            {play.ticker}
+                          </span>
+                          {play.ownedStatus === 'heavy' ? (
+                            <span className="text-[8px] bg-[#3B82F6]/10 text-[#3B82F6] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#3B82F6]/20">
+                              {play.weightPercent.toFixed(1)}%
+                            </span>
+                          ) : play.ownedStatus === 'light' ? (
+                            <span className="text-[8px] bg-[#00D4AA]/10 text-[#00D4AA] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#00D4AA]/20">
+                              {play.weightPercent.toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className="text-[8px] bg-[#8B95A8]/10 text-[#8B95A8] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-[#1E293B]">
+                              New
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-col gap-1 relative z-0 pointer-events-none mt-2">
+                          <span className="text-[9px] text-[#64748B] uppercase tracking-widest font-bold">Aura Score</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9]">
+                              {play.aura_score}
+                            </span>
+                            <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#00D4AA] bg-[#00D4AA]/10 px-1.5 py-0.5 rounded">
+                              +{play.consensus_sentiment.toFixed(1)} sent
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
