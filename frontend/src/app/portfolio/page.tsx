@@ -340,7 +340,109 @@ export default function PortfolioPage() {
                 >
                   <div className="absolute inset-0 rounded-r-xl border-y border-r border-[#1E293B]/50 pointer-events-none transition-colors group-hover:border-white/5" />
                   
-                  <div className="p-4 md:p-6 w-full flex flex-col md:grid md:grid-cols-[1.2fr_1.8fr_1.2fr_1.5fr_1.2fr_1.8fr_auto] md:items-center gap-4 md:gap-6 relative z-10">
+                  {/* Mobile Layout */}
+                  <div className="p-5 w-full md:hidden flex flex-col gap-4 relative z-10">
+                    {/* Row 1: Ticker Info & Weight */}
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-[family-name:var(--font-geist-mono)] text-xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
+                            {p.ticker}
+                          </span>
+                          {isLowConfidence && (
+                            <span className="text-[8px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">low data</span>
+                          )}
+                        </div>
+                        {p.stock_name && (
+                          <span className="text-[11px] text-[#64748B] truncate max-w-[200px] mt-0.5">{p.stock_name}</span>
+                        )}
+                      </div>
+                      
+                      <div className="text-right flex flex-col items-end">
+                        <span className="text-[10px] uppercase tracking-wider text-[#64748B] font-semibold">Allocation</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#00D4AA]">
+                          {weightPercent.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Sentiment Pulse */}
+                    <div className="bg-[#0A0F1A]/30 border border-[#1E293B]/40 p-3.5 rounded-xl flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] uppercase tracking-wider text-[#64748B] font-semibold">Consensus Sentiment</span>
+                        <div className="flex items-center gap-2">
+                          <span className={getSentimentBadgeClass(p.consensus_sentiment)}>
+                            {getSentimentLabel(p.consensus_sentiment)}
+                          </span>
+                          <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">
+                            {p.consensus_sentiment > 0 ? '+' : ''}{p.consensus_sentiment.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <PulseBar value={p.consensus_sentiment} isTop={false} />
+                    </div>
+
+                    {/* Row 3: Grid of holding & investment stats */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* My Holding */}
+                      <div className="bg-[#0A0F1A]/30 border border-[#1E293B]/40 p-3 rounded-xl flex flex-col justify-between min-h-[70px]">
+                        <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">My Holding</span>
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#F1F5F9]">{p.shares}</span>
+                          <span className="text-[10px] text-[#64748B]">shares</span>
+                        </div>
+                        <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#8B95A8] mt-0.5">
+                          Avg: ${p.average_cost}
+                        </span>
+                      </div>
+
+                      {/* Invested Value */}
+                      <div className="bg-[#0A0F1A]/30 border border-[#1E293B]/40 p-3 rounded-xl flex flex-col justify-between min-h-[70px]">
+                        <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">Invested Value</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#F1F5F9] mt-1">
+                          ${positionValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                        <span className="text-[9px] text-[#64748B]">At Cost</span>
+                      </div>
+
+                      {/* Conviction */}
+                      <div className="bg-[#0A0F1A]/30 border border-[#1E293B]/40 p-3 rounded-xl flex flex-col justify-between min-h-[70px]">
+                        <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">Conviction Strength</span>
+                        <div className="mt-1">
+                          <ConvictionMini level={p.avg_conviction} />
+                        </div>
+                        <div className="flex items-center gap-1 text-[9px] text-[#8B95A8] mt-1">
+                          <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#F1F5F9]">{p.mention_count}</span>
+                          <span>recs ({p.analyst_count} sources)</span>
+                        </div>
+                      </div>
+
+                      {/* Analyst Target */}
+                      <div className="bg-[#0A0F1A]/30 border border-[#1E293B]/40 p-3 rounded-xl flex flex-col justify-between min-h-[70px]">
+                        <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">Analyst Target</span>
+                        {p.avg_target_price ? (
+                          <div className="mt-1">
+                            <div className="flex items-center gap-1">
+                              <span className="font-[family-name:var(--font-geist-mono)] text-base font-bold text-[#00D4AA]">
+                                ${Math.round(p.avg_target_price)}
+                              </span>
+                              <span className={`text-[10px] font-bold font-[family-name:var(--font-geist-mono)] ${positionUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                                ({positionUpside >= 0 ? '+' : ''}{positionUpsidePercent.toFixed(0)}%)
+                              </span>
+                            </div>
+                            <span className={`text-[9px] font-[family-name:var(--font-geist-mono)] block truncate mt-0.5 ${positionUpside >= 0 ? 'text-[#00D4AA]/80' : 'text-[#FF4D6A]/80'}`}>
+                              {positionUpside >= 0 ? '+' : ''}${Math.round(positionUpside).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#475569] font-medium mt-1">No target</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout */}
+                  <div className="hidden md:grid p-6 w-full md:grid-cols-[1.2fr_1.8fr_1.2fr_1.5fr_1.2fr_1.8fr_auto] items-center gap-6 relative z-10">
                     
                     {/* Ticker & Name & Weight */}
                     <div className="flex flex-col justify-center min-w-0">
