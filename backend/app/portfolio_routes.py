@@ -125,10 +125,16 @@ async def sync_portfolio(
             break
             
     cost_idx = -1
+    # Prioritize 'avg' or 'cost' over 'price' so we don't accidentally pick 'Current Price'
     for idx, h in enumerate(headers):
-        if 'cost' in h or 'avg' in h or 'price' in h:
+        if 'avg' in h or 'cost' in h:
             cost_idx = idx
             break
+    if cost_idx == -1:
+        for idx, h in enumerate(headers):
+            if 'price' in h:
+                cost_idx = idx
+                break
 
     # 4. Insert/Upsert into Supabase user_portfolio
     supabase = _get_client()

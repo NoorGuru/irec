@@ -269,7 +269,7 @@ export default function PortfolioPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-[#00D4AA]">Total Portfolio Value</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-[#00D4AA]">Total Invested (Cost Basis)</span>
                 </div>
                 
                 <h2 className="text-6xl md:text-7xl lg:text-8xl font-black font-[family-name:var(--font-geist-mono)] tracking-tighter text-[#F1F5F9] leading-none">
