@@ -460,7 +460,7 @@ export function Navbar() {
                     <button
                       key={index}
                       onClick={() => {
-                        item.onClick()
+                        item.onClick?.()
                         setMoreOpen(false)
                       }}
                       className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors text-[#64748B] hover:text-[#FF4D6A]`}
