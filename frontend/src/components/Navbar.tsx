@@ -295,7 +295,20 @@ export function Navbar() {
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
     { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }, { href: '/admin', label: 'Admin', icon: AdminIcon }] : [])
+    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }, { href: '/admin', label: 'Admin', icon: AdminIcon }] : []),
+    ...(session ? [
+      {
+        label: 'Logout',
+        icon: LogoutIcon,
+        onClick: async () => {
+          const supabase = createClient()
+          await supabase.auth.signOut()
+          setSession(null)
+        }
+      }
+    ] : [
+      { href: '/admin/login', label: 'Login', icon: LoginIcon }
+    ])
   ]
 
   return (
@@ -419,22 +432,41 @@ export function Navbar() {
         {/* Secondary Navigation Row (More Menu) */}
         {moreOpen && (
           <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200">
-            {mobileMoreLinks.map((link) => {
-              const isActive = pathname?.startsWith(link.href)
-              const Icon = link.icon
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMoreOpen(false)}
-                  className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-                >
-                  <div className="relative">
-                    <Icon active={!!isActive} />
-                  </div>
-                  <span className="text-[10px] font-medium tracking-wide">{link.label}</span>
-                </Link>
-              )
+            {mobileMoreLinks.map((item, index) => {
+              const isActive = item.href && pathname?.startsWith(item.href)
+              const Icon = item.icon
+              if (item.href) {
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMoreOpen(false)}
+                    className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${isActive ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
+                  >
+                    <div className="relative">
+                      <Icon active={!!isActive} />
+                    </div>
+                    <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
+                  </Link>
+                )
+              } else if (item.onClick) {
+                return (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      item.onClick()
+                      setMoreOpen(false)
+                    }}
+                    className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors text-[#64748B] hover:text-[#FF4D6A]`}
+                  >
+                    <div className="relative">
+                      <Icon active={false} />
+                    </div>
+                    <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
+                  </button>
+                )
+              }
+              return null
             })}
           </div>
         )}
@@ -485,37 +517,6 @@ export function Navbar() {
             </svg>
             <span className="text-[10px] font-medium tracking-wide">Search</span>
           </button>
-          {session ? (
-            <button
-              onClick={async () => {
-                const supabase = createClient()
-                await supabase.auth.signOut()
-                setSession(null)
-              }}
-              className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg text-[#64748B] hover:text-[#FF4D6A] transition-colors"
-              aria-label="Logout"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="text-[10px] font-medium tracking-wide">Logout</span>
-            </button>
-          ) : (
-            <Link
-              href="/admin/login"
-              className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg text-[#64748B] hover:text-[#00D4AA] transition-colors"
-              aria-label="Login"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-current">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="text-[10px] font-medium tracking-wide">Login</span>
-            </Link>
-          )}
           <button
             onClick={() => setMoreOpen(!moreOpen)}
             className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${moreOpen ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
@@ -609,6 +610,26 @@ function AdminIcon({ active }: { active: boolean }) {
       <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function LoginIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#00D4AA]' : 'text-current'}>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points="10 17 15 12 10 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="15" y1="12" x2="3" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function LogoutIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className={active ? 'text-[#FF4D6A]' : 'text-current'}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points="16 17 21 12 16 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
