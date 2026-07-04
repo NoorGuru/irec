@@ -3,7 +3,7 @@
 import { Activity, ArrowLeft, TrendingUp, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -12,6 +12,7 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [session, setSession] = useState<any>(null)
+  const [sortBy, setSortBy] = useState<'weight' | 'sentiment' | 'upside' | 'ticker'>('weight')
   const router = useRouter()
 
   const fetchPortfolio = useCallback(async () => {
@@ -94,9 +95,28 @@ export default function PortfolioPage() {
 
   // Calculate analytics
   const totalHoldings = portfolio.length
-  const avgSentiment = totalHoldings > 0 ? portfolio.reduce((acc, p) => acc + p.consensus_sentiment, 0) / totalHoldings : 0
-  const totalMentions = portfolio.reduce((acc, p) => acc + p.mention_count, 0)
   const totalInvested = portfolio.reduce((acc, p) => acc + (p.shares * p.average_cost), 0)
+  const totalTargetValue = portfolio.reduce((acc, p) => acc + (p.shares * (p.avg_target_price || p.average_cost)), 0)
+  const totalUpside = totalTargetValue - totalInvested
+  const totalUpsidePercent = totalInvested > 0 ? (totalUpside / totalInvested) * 100 : 0
+  const avgSentiment = totalHoldings > 0 ? portfolio.reduce((acc, p) => acc + p.consensus_sentiment, 0) / totalHoldings : 0
+  const avgConviction = totalHoldings > 0 ? portfolio.reduce((acc, p) => acc + p.avg_conviction, 0) / totalHoldings : 0
+
+  const sortedPortfolio = useMemo(() => {
+    return [...portfolio].sort((a, b) => {
+      const aValue = a.shares * a.average_cost
+      const bValue = b.shares * b.average_cost
+      
+      const aUpside = a.avg_target_price ? ((a.avg_target_price - a.average_cost) / a.average_cost) : -9999
+      const bUpside = b.avg_target_price ? ((b.avg_target_price - b.average_cost) / b.average_cost) : -9999
+
+      if (sortBy === 'weight') return bValue - aValue
+      if (sortBy === 'sentiment') return b.consensus_sentiment - a.consensus_sentiment
+      if (sortBy === 'upside') return bUpside - aUpside
+      if (sortBy === 'ticker') return a.ticker.localeCompare(b.ticker)
+      return 0
+    })
+  }, [portfolio, sortBy])
 
   return (
     <div className="min-h-screen bg-[#0A0F1A] p-4 md:p-12">
@@ -151,48 +171,135 @@ export default function PortfolioPage() {
 
         {/* Analytics Header */}
         {!loading && totalHoldings > 0 && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-[#141B2D]/40 border border-[#1E293B] p-5 rounded-2xl flex items-center justify-between">
-              <div>
-                <p className="text-xs text-[#64748B] font-medium uppercase tracking-wider mb-1">Total Holdings</p>
-                <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{totalHoldings}</p>
-              </div>
-              <Briefcase className="h-8 w-8 text-[#8B95A8]/30 hidden sm:block" />
-            </div>
+          <div className="space-y-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#64748B] mb-2 font-[family-name:var(--font-geist-mono)]">Portfolio Overview</h2>
             
-            <div className="bg-[#141B2D]/40 border border-[#1E293B] p-5 rounded-2xl flex items-center justify-between">
-              <div>
-                <p className="text-xs text-[#64748B] font-medium uppercase tracking-wider mb-1">Total Invested</p>
-                <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                  ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Capital Allocation Card */}
+              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#00D4AA]/5 blur-2xl rounded-full pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Portfolio Capitalization</span>
+                  <DollarSign className="h-4.5 w-4.5 text-[#8B95A8]/50" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Total Invested</p>
+                    <p className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] mt-0.5">
+                      ${totalInvested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#00D4AA] uppercase tracking-wider">Implied Target</p>
+                    <p className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#00D4AA] mt-0.5">
+                      ${totalTargetValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <DollarSign className="h-8 w-8 text-[#8B95A8]/30 hidden sm:block" />
-            </div>
 
-            <div className="bg-[#141B2D]/40 border border-[#1E293B] p-5 rounded-2xl flex items-center justify-between">
-              <div>
-                <p className="text-xs text-[#64748B] font-medium uppercase tracking-wider mb-1">Avg Sentiment</p>
-                <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                  <span className={
-                    avgSentiment >= 1 ? 'text-[#00D4AA]' : 
-                    avgSentiment <= -1 ? 'text-[#FF4D6A]' : 
-                    'text-[#8B95A8]'
-                  }>
-                    {avgSentiment > 0 ? '+' : ''}{avgSentiment.toFixed(2)}
-                  </span>
-                  <span className="text-sm text-[#475569] ml-1 font-normal">/ 2.0</span>
-                </p>
+              {/* Upside Card */}
+              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#00FFD0]/5 blur-2xl rounded-full pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Consensus Target Profit</span>
+                  <TrendingUp className="h-4.5 w-4.5 text-[#8B95A8]/50" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Implied Return</p>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <span className={`text-2xl font-black font-[family-name:var(--font-geist-mono)] ${totalUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                      {totalUpside >= 0 ? '+' : ''}${totalUpside.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                    <span className={`text-sm font-bold font-[family-name:var(--font-geist-mono)] ${totalUpside >= 0 ? 'text-[#00D4AA]/80' : 'text-[#FF4D6A]/80'}`}>
+                      ({totalUpside >= 0 ? '+' : ''}{totalUpsidePercent.toFixed(1)}%)
+                    </span>
+                  </div>
+                </div>
               </div>
-              <Activity className="h-8 w-8 text-[#8B95A8]/30 hidden sm:block" />
+
+              {/* Signal Strength Card */}
+              <div className="bg-[#141B2D]/40 border border-[#1E293B] p-6 rounded-2xl flex flex-col justify-between space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#3B82F6]/5 blur-2xl rounded-full pointer-events-none" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#64748B] font-medium uppercase tracking-wider">Community Sentiment</span>
+                  <Activity className="h-4.5 w-4.5 text-[#8B95A8]/50" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Avg Sentiment</p>
+                    <div className="flex items-baseline gap-0.5 mt-0.5">
+                      <span className={`text-xl font-bold font-[family-name:var(--font-geist-mono)] ${
+                        avgSentiment >= 1 ? 'text-[#00D4AA]' : 
+                        avgSentiment <= -1 ? 'text-[#FF4D6A]' : 
+                        'text-[#8B95A8]'
+                      }`}>
+                        {avgSentiment > 0 ? '+' : ''}{avgSentiment.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] text-[#475569]">/2.0</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#64748B] uppercase tracking-wider">Avg Conviction</p>
+                    <div className="flex items-baseline gap-0.5 mt-0.5">
+                      <span className="text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{avgConviction.toFixed(1)}</span>
+                      <span className="text-[10px] text-[#475569]">/10</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <div className="bg-[#141B2D]/40 border border-[#1E293B] p-5 rounded-2xl flex items-center justify-between">
-              <div>
-                <p className="text-xs text-[#64748B] font-medium uppercase tracking-wider mb-1">Recent Mentions</p>
-                <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{totalMentions}</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-[#8B95A8]/30 hidden sm:block" />
+          </div>
+        )}
+
+        {/* Sort Controls */}
+        {!loading && portfolio.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141B2D]/20 border border-[#1E293B] px-6 py-3.5 rounded-2xl">
+            <span className="text-xs text-[#8B95A8] font-medium font-[family-name:var(--font-geist-mono)]">
+              Showing {portfolio.length} holdings
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-[#64748B] mr-1.5 font-medium">Sort by:</span>
+              <button
+                onClick={() => setSortBy('weight')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all ${
+                  sortBy === 'weight'
+                    ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA] shadow-sm'
+                    : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
+                }`}
+              >
+                Portfolio Weight
+              </button>
+              <button
+                onClick={() => setSortBy('sentiment')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all ${
+                  sortBy === 'sentiment'
+                    ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA] shadow-sm'
+                    : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
+                }`}
+              >
+                Sentiment Score
+              </button>
+              <button
+                onClick={() => setSortBy('upside')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all ${
+                  sortBy === 'upside'
+                    ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA] shadow-sm'
+                    : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
+                }`}
+              >
+                Implied Upside
+              </button>
+              <button
+                onClick={() => setSortBy('ticker')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all ${
+                  sortBy === 'ticker'
+                    ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA] shadow-sm'
+                    : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
+                }`}
+              >
+                Symbol
+              </button>
             </div>
           </div>
         )}
@@ -209,7 +316,7 @@ export default function PortfolioPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {portfolio.map((p, index) => {
+            {sortedPortfolio.map((p, index) => {
               const direction = p.consensus_sentiment >= 0.5 ? 'BUY' : p.consensus_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL'
               const borderGlowClass = direction === 'BUY' 
                 ? 'border-l-[#00D4AA] group-hover:shadow-[-4px_0_15px_-3px_rgba(0,212,170,0.3)]' 
@@ -218,6 +325,12 @@ export default function PortfolioPage() {
                   : 'border-l-[#8B95A8] group-hover:shadow-[-4px_0_15px_-3px_rgba(139,149,168,0.3)]'
               const textHoverClass = direction === 'BUY' ? 'group-hover:text-[#00D4AA]' : direction === 'SELL' ? 'group-hover:text-[#FF4D6A]' : 'group-hover:text-[#8B95A8]'
               const isLowConfidence = p.mention_count < 3
+              
+              const positionValue = p.shares * p.average_cost
+              const weightPercent = totalInvested > 0 ? (positionValue / totalInvested) * 100 : 0
+              
+              const positionUpside = p.avg_target_price ? (p.avg_target_price - p.average_cost) * p.shares : 0
+              const positionUpsidePercent = p.avg_target_price ? ((p.avg_target_price - p.average_cost) / p.average_cost) * 100 : 0
 
               return (
                 <Link
@@ -227,67 +340,103 @@ export default function PortfolioPage() {
                 >
                   <div className="absolute inset-0 rounded-r-xl border-y border-r border-[#1E293B]/50 pointer-events-none transition-colors group-hover:border-white/5" />
                   
-                  <div className="p-4 md:p-6 w-full flex flex-col md:grid md:grid-cols-[1.5fr_2fr_1.5fr_1.5fr_auto] md:items-center gap-4 md:gap-6 relative z-10">
+                  <div className="p-4 md:p-6 w-full flex flex-col md:grid md:grid-cols-[1.2fr_1.8fr_1.2fr_1.5fr_1.2fr_1.8fr_auto] md:items-center gap-4 md:gap-6 relative z-10">
                     
-                    {/* Ticker & Name */}
+                    {/* Ticker & Name & Weight */}
                     <div className="flex flex-col justify-center min-w-0">
-                      <div className="flex items-baseline gap-3 overflow-hidden">
-                        <span className={`font-[family-name:var(--font-geist-mono)] text-2xl md:text-3xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
+                      <div className="flex items-baseline gap-2.5 overflow-hidden">
+                        <span className={`font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold tracking-wide text-[#F1F5F9] ${textHoverClass} transition-colors`}>
                           {p.ticker}
                         </span>
                         {isLowConfidence && (
-                          <span className="inline-flex items-center text-[9px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1.5 py-0.5 rounded">low data</span>
+                          <span className="inline-flex items-center text-[8px] text-[#F59E0B]/70 bg-[#F59E0B]/5 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">low data</span>
                         )}
                       </div>
                       {p.stock_name && (
-                        <span className="text-xs text-[#64748B] truncate mt-1">{p.stock_name}</span>
+                        <span className="text-[10px] text-[#64748B] truncate mt-0.5">{p.stock_name}</span>
                       )}
+                      <span className="text-[10px] font-bold font-[family-name:var(--font-geist-mono)] text-[#00D4AA]/80 mt-1">
+                        Weight: {weightPercent.toFixed(1)}%
+                      </span>
                     </div>
 
                     {/* Aura Sentiment */}
-                    <div className="flex flex-col justify-center w-full max-w-[200px]">
+                    <div className="flex flex-col justify-center w-full">
                       <div className="flex justify-between items-end mb-1">
                         <span className={getSentimentBadgeClass(p.consensus_sentiment)}>
                           {getSentimentLabel(p.consensus_sentiment)}
                         </span>
                         <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B]">
-                          {p.consensus_sentiment.toFixed(2)}
+                          {p.consensus_sentiment > 0 ? '+' : ''}{p.consensus_sentiment.toFixed(2)}
                         </span>
                       </div>
                       <PulseBar value={p.consensus_sentiment} isTop={false} />
                     </div>
 
                     {/* Aura Stats */}
-                    <div className="flex flex-col justify-center gap-1.5 border-l border-[#1E293B]/60 pl-4 h-full">
+                    <div className="flex flex-col justify-center gap-1 border-l border-[#1E293B]/60 pl-4 h-full">
+                      <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">Conviction</span>
                       <ConvictionMini level={p.avg_conviction} />
-                      <div className="flex items-center gap-1 text-[10px] text-[#8B95A8]">
+                      <div className="flex items-center gap-1 text-[9px] text-[#8B95A8] mt-0.5">
                         <span className="font-[family-name:var(--font-geist-mono)] font-semibold text-[#F1F5F9]">{p.mention_count}</span>
-                        <span>mentions</span>
-                        <span className="mx-1">•</span>
+                        <span>recs</span>
+                        <span className="mx-0.5">•</span>
                         <span className="font-[family-name:var(--font-geist-mono)] font-semibold text-[#F1F5F9]">{p.analyst_count}</span>
-                        <span>analysts</span>
+                        <span>sources</span>
                       </div>
                     </div>
 
                     {/* Personal Holdings */}
-                    <div className="flex flex-col gap-2 border-l border-[#1E293B]/60 pl-4">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="w-3.5 h-3.5 text-[#00D4AA]" />
-                        <span className="text-xs text-[#8B95A8] font-medium w-16">Shares</span>
-                        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#00D4AA]">{p.shares}</span>
+                    <div className="flex flex-col gap-1 border-l border-[#1E293B]/60 pl-4 h-full justify-center">
+                      <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">My Holding</span>
+                      <div className="flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5 text-[#8B95A8]/50" />
+                        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">{p.shares}</span>
+                        <span className="text-[10px] text-[#64748B] font-medium">shares</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-3.5 h-3.5 text-[#F59E0B]" />
-                        <span className="text-xs text-[#8B95A8] font-medium w-16">Avg Cost</span>
-                        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F59E0B]">
-                          {p.currency === 'USD' ? '$' : ''}{p.average_cost}
+                      <div className="flex items-center gap-1.5">
+                        <DollarSign className="w-3.5 h-3.5 text-[#8B95A8]/50" />
+                        <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#8B95A8]">Avg cost:</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">
+                          ${p.average_cost}
                         </span>
                       </div>
                     </div>
 
+                    {/* Capital Invested */}
+                    <div className="flex flex-col gap-1 border-l border-[#1E293B]/60 pl-4 h-full justify-center">
+                      <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">Invested Value</span>
+                      <span className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9]">
+                        ${positionValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </span>
+                      <span className="text-[9px] text-[#64748B] uppercase tracking-wider">At Cost Basis</span>
+                    </div>
+
+                    {/* Analyst Target & Upside */}
+                    <div className="flex flex-col gap-1 border-l border-[#1E293B]/60 pl-4 h-full justify-center">
+                      <span className="text-[9px] text-[#64748B] uppercase tracking-wider font-semibold">Consensus Target</span>
+                      {p.avg_target_price ? (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#00D4AA]">
+                              ${Math.round(p.avg_target_price)}
+                            </span>
+                            <span className={`text-[10px] font-bold font-[family-name:var(--font-geist-mono)] ${positionUpside >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                              ({positionUpside >= 0 ? '+' : ''}{positionUpsidePercent.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <span className={`text-[9px] font-[family-name:var(--font-geist-mono)] font-semibold ${positionUpside >= 0 ? 'text-[#00D4AA]/80' : 'text-[#FF4D6A]/80'}`}>
+                            {positionUpside >= 0 ? '+' : ''}${Math.round(positionUpside).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} value
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-[family-name:var(--font-geist-mono)] text-sm text-[#475569] font-medium">No target</span>
+                      )}
+                    </div>
+
                     {/* Chevron */}
                     <div className={`hidden md:flex text-[#64748B] ${textHoverClass} transition-colors justify-self-end`}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover:translate-x-1 transition-transform">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover:translate-x-1 transition-transform">
                         <path d="M9 18l6-6-6-6" />
                       </svg>
                     </div>
