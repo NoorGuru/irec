@@ -987,7 +987,7 @@ export default function PortfolioPage() {
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       {/* Left: Ticker & Badges */}
                       <div className="flex flex-col gap-3">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <span className={`font-[family-name:var(--font-geist-mono)] text-5xl md:text-6xl font-black tracking-tighter text-[#F1F5F9] ${textHoverClass} transition-colors`}>
                             {p.ticker}
                           </span>
