@@ -521,8 +521,8 @@ export default function ChannelsPage() {
 
       const [channelsRes, videosRes, recsRes] = await Promise.all([
         supabase.from('channels').select('channel_id, channel_name, trust_weight, created_at, channel_thumbnail_url, youtube_channel_id'),
-        supabase.from('videos').select('video_id, channel_id, youtube_video_id, published_at'),
-        supabase.from('recommendations').select('ticker, sentiment, conviction_level, target_price, video_id'),
+        supabase.from('videos').select('video_id, channel_id, youtube_video_id, published_at').limit(20000), // Increase limit from default 1000
+        supabase.from('recommendations').select('ticker, sentiment, conviction_level, target_price, video_id').limit(20000), // Increase limit from default 1000
       ])
 
       const channels = (channelsRes.data || []) as ChannelData[]

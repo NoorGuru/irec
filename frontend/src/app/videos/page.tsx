@@ -532,10 +532,12 @@ export default function VideosPage() {
             channel_id,
             channels!inner(channel_name, trust_weight)
           `)
-          .order('published_at', { ascending: false }),
+          .order('published_at', { ascending: false })
+          .limit(20000), // Increase limit from default 1000
         supabase
           .from('recommendations')
-          .select('id, video_id, ticker, stock_name, sentiment, target_price, conviction_level'),
+          .select('id, video_id, ticker, stock_name, sentiment, target_price, conviction_level')
+          .limit(20000), // Increase limit from default 1000
       ])
 
       const vids = (videosRes.data || []) as unknown as VideoRow[]
