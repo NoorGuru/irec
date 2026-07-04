@@ -1,37 +1,83 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 
-// 1. Mini Chart (Great for cards)
-export function TVMiniChart({ symbol }: { symbol: string }) {
+// 1. Symbol Overview Chart (More illustrative, native ranges)
+export function TVMiniChart({ symbol, sentiment }: { symbol: string, sentiment?: number }) {
   const container = useRef<HTMLDivElement>(null);
   
   // Pass the symbol directly; TradingView auto-resolves major US symbols like AAPL or BE.
   const tvSymbol = symbol;
 
   useEffect(() => {
-    if (container.current) {
+    let isMounted = true;
+    
+    const loadWidget = () => {
+      if (!isMounted || !container.current) return;
       container.current.innerHTML = ""; // Clear old widget DOM
+      
       const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js";
       script.async = true;
       script.innerHTML = JSON.stringify({
-        "symbol": tvSymbol,
+        "symbols": [
+          [
+            tvSymbol,
+            `${tvSymbol}|1D`
+          ]
+        ],
+        "chartOnly": false,
         "width": "100%",
         "height": "100%",
         "locale": "en",
-        "dateRange": "12M",
         "colorTheme": "dark",
-        "trendLineColor": "#00D4AA",
-        "underLineColor": "rgba(0, 212, 170, 0.3)",
-        "underLineBottomColor": "rgba(0, 212, 170, 0)",
         "isTransparent": true,
-        "autosize": true
+        "autosize": true,
+        "showVolume": false,
+        "showMA": false,
+        "hideDateRanges": false,
+        "hideMarketStatus": false,
+        "hideSymbolLogo": false,
+        "scalePosition": "right",
+        "scaleMode": "Normal",
+        "fontFamily": "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
+        "fontSize": "10",
+        "noTimeScale": false,
+        "valuesTracking": "1",
+        "changeMode": "price-and-percent",
+        "chartType": "area",
+        "lineWidth": 2,
+        "lineType": 0,
+        "dateRanges": [
+          "1d|1",
+          "1m|30",
+          "3m|60",
+          "ytd|1D",
+          "12m|1D",
+          "60m|1W",
+          "all|1M"
+        ]
       });
       container.current.appendChild(script);
-    }
-  }, [tvSymbol]);
+    };
+    
+    // Use a timeout to debounce strict mode issues and execute the async function
+    const timer = setTimeout(() => {
+      loadWidget();
+    }, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [tvSymbol, sentiment]);
   
-  return <div className="tradingview-widget-container" ref={container} style={{ height: 220, width: "100%" }} />;
+  return (
+    <div className="w-full flex flex-col relative" style={{ height: 380 }}>
+      <div className="flex-1 w-full relative">
+        <div className="absolute inset-0 tradingview-widget-container" ref={container} />
+      </div>
+    </div>
+  );
 }
 
 
@@ -44,8 +90,10 @@ export function TVCompanyProfile({ symbol }: { symbol: string }) {
   useEffect(() => {
     setIsLoading(true); // Reset loading state
     const timer = setTimeout(() => setIsLoading(false), 1000);
+    let isMounted = true;
 
-    if (container.current) {
+    const loadWidget = setTimeout(() => {
+      if (!isMounted || !container.current) return;
       container.current.innerHTML = ""; // Clear old widget DOM
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js";
@@ -59,9 +107,13 @@ export function TVCompanyProfile({ symbol }: { symbol: string }) {
         "locale": "en"
       });
       container.current.appendChild(script);
-    }
+    }, 100);
     
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearTimeout(loadWidget);
+    };
   }, [tvSymbol]);
   
   return (
@@ -92,8 +144,10 @@ export function TVFundamentalData({ symbol }: { symbol: string }) {
   useEffect(() => {
     setIsLoading(true); // Reset loading state
     const timer = setTimeout(() => setIsLoading(false), 1200);
+    let isMounted = true;
 
-    if (container.current) {
+    const loadWidget = setTimeout(() => {
+      if (!isMounted || !container.current) return;
       container.current.innerHTML = ""; // Clear old widget DOM
       const script = document.createElement("script");
       script.src = "https://s3.tradingview.com/external-embedding/embed-widget-financials.js";
@@ -109,9 +163,13 @@ export function TVFundamentalData({ symbol }: { symbol: string }) {
         "locale": "en"
       });
       container.current.appendChild(script);
-    }
+    }, 100);
     
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearTimeout(loadWidget);
+    };
   }, [tvSymbol]);
   
   return (

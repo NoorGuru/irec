@@ -284,3 +284,46 @@ async def get_home_pulse(request: Request, response: Response):
         logger.error(f"Error fetching home pulse data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+class PerformanceResponse(BaseModel):
+    symbol: str
+    range: str
+    is_up: bool
+    change_percent: float
+
+@router.get("/{symbol}/performance", response_model=PerformanceResponse)
+async def get_stock_performance(symbol: str, range: str = "12M"):
+    """Fetch historical performance for a ticker over a given range to determine if it is up or down."""
+    import yfinance as yf
+    
+    range_map = {
+        "1M": "1mo",
+        "3M": "3mo",
+        "12M": "1y",
+        "60M": "5y",
+        "ALL": "max"
+    }
+    yf_range = range_map.get(range, "1y")
+    
+    try:
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period=yf_range)
+        
+        if hist.empty:
+            return PerformanceResponse(symbol=symbol, range=range, is_up=True, change_percent=0.0)
+            
+        start_price = float(hist['Close'].iloc[0])
+        end_price = float(hist['Close'].iloc[-1])
+        
+        change_pct = ((end_price - start_price) / start_price) * 100 if start_price > 0 else 0.0
+        
+        return PerformanceResponse(
+            symbol=symbol,
+            range=range,
+            is_up=change_pct >= 0,
+            change_percent=change_pct
+        )
+    except Exception as e:
+        logger.error(f"Error fetching performance for {symbol}: {e}")
+        # Default to positive if error
+        return PerformanceResponse(symbol=symbol, range=range, is_up=True, change_percent=0.0)
+
