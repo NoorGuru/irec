@@ -212,18 +212,26 @@ async def get_home_pulse(request: Request, response: Response):
         now = datetime.now(timezone.utc)
         
         # Querying recommendations and joins
-        recs_res = client.table("recommendations").select("""
-            ticker,
-            stock_name,
-            sentiment,
-            target_price,
-            conviction_level,
-            videos!inner(
-                channel_id,
-                channels!inner(trust_weight)
-            )
-        """).execute()
-        recs_data = recs_res.data or []
+        # Note: We must paginate because there can be >1000 recommendations and Supabase defaults to 1000.
+        recs_data = []
+        page_size = 1000
+        for i in range(20): # handle up to 20,000 recommendations
+            res = client.table("recommendations").select("""
+                ticker,
+                stock_name,
+                sentiment,
+                target_price,
+                conviction_level,
+                videos!inner(
+                    channel_id,
+                    channels!inner(trust_weight)
+                )
+            """).range(i * page_size, (i + 1) * page_size - 1).execute()
+            if not res.data:
+                break
+            recs_data.extend(res.data)
+            if len(res.data) < page_size:
+                break
 
         grouped = {}
         for r in recs_data:
