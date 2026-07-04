@@ -928,9 +928,9 @@ export default function PortfolioPage() {
               const textHoverClass = isProfit ? 'group-hover:text-[#00D4AA]' : 'group-hover:text-[#FF4D6A]'
 
               // --- AI ACTION ENGINE LOGIC ---
-              const sectorTotalWeight = Object.entries(sectorWeights)
-                .filter(([s]) => s === p.sector)
-                .reduce((acc, [_, w]) => acc + (w as number), 0)
+              const sectorTotalWeight = sectorWeights
+                .filter(sw => sw.sector === p.sector)
+                .reduce((acc, sw) => acc + sw.percent, 0)
               
               let aiInsight = ""
               let aiIcon = ""
