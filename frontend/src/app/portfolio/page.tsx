@@ -724,14 +724,20 @@ export default function PortfolioPage() {
                 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {hotPlays.map((play) => (
-                    <Link 
-                      href={`/ticker?s=${play.ticker}`} 
+                    <div 
                       key={play.ticker}
                       className="group relative bg-[#141B2D]/40 border border-[#1E293B] p-4 rounded-2xl hover:border-[#00D4AA]/50 hover:bg-[#1E293B]/40 transition-all duration-300 flex flex-col gap-3 overflow-hidden"
                     >
+                      {/* Absolute overlay link to prevent nested links */}
+                      <Link 
+                        href={`/ticker?s=${play.ticker}`} 
+                        className="absolute inset-0 z-10"
+                        aria-label={`View ${play.ticker} details`}
+                      />
+
                       <button 
                         onClick={(e) => handleDismissPlay(play.ticker, e)}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20"
+                        className="absolute top-2 right-2 p-1.5 rounded-lg text-[#64748B] hover:bg-[#FF4D6A]/10 hover:text-[#FF4D6A] opacity-0 group-hover:opacity-100 transition-all z-20 relative pointer-events-auto"
                         title="Dismiss recommendation"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -739,7 +745,7 @@ export default function PortfolioPage() {
                       
                       <div className="absolute top-0 right-0 w-16 h-16 bg-[#00D4AA]/10 blur-xl rounded-full pointer-events-none group-hover:bg-[#00D4AA]/20 z-0" />
                       
-                      <div className="flex justify-between items-start relative z-10 pr-6">
+                      <div className="flex justify-between items-start relative z-0 pointer-events-none pr-6">
                         <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors">
                           {play.ticker}
                         </span>
@@ -758,7 +764,7 @@ export default function PortfolioPage() {
                         )}
                       </div>
                       
-                      <div className="flex flex-col gap-1 relative z-10 mt-2">
+                      <div className="flex flex-col gap-1 relative z-0 pointer-events-none mt-2">
                         <span className="text-[9px] text-[#64748B] uppercase tracking-widest font-bold">Aura Score</span>
                         <div className="flex items-center gap-2">
                           <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9]">
@@ -769,7 +775,7 @@ export default function PortfolioPage() {
                           </span>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -921,11 +927,17 @@ export default function PortfolioPage() {
               }
 
               return (
-                <Link
-                  href={`/ticker?s=${p.ticker}`}
+                <div
                   key={p.ticker} 
-                  className={`group block relative w-full rounded-3xl bg-[#141B2D]/40 hover:bg-[#1E293B]/60 border border-[#1E293B]/50 transition-all duration-500 overflow-hidden backdrop-blur-xl ${borderGlowClass}`}
+                  className={`group relative w-full rounded-3xl bg-[#141B2D]/40 hover:bg-[#1E293B]/60 border border-[#1E293B]/50 transition-all duration-500 overflow-hidden backdrop-blur-xl ${borderGlowClass}`}
                 >
+                  {/* Absolute overlay link to prevent nested links */}
+                  <Link 
+                    href={`/ticker?s=${p.ticker}`} 
+                    className="absolute inset-0 z-10"
+                    aria-label={`View ${p.ticker} details`}
+                  />
+
                   <div className={`absolute top-0 right-0 w-[400px] h-[400px] blur-[100px] rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${
                     isProfit ? 'bg-[#00D4AA]/5' : 'bg-[#FF4D6A]/5'
                   }`} />
@@ -935,7 +947,7 @@ export default function PortfolioPage() {
                     'bg-[#FF4D6A] group-hover:shadow-[0_0_20px_rgba(255,77,106,0.4)]'
                   }`} />
 
-                  <div className="p-6 md:p-8 pl-8 md:pl-10 relative z-10 flex flex-col gap-8">
+                  <div className="p-6 md:p-8 pl-8 md:pl-10 relative z-0 pointer-events-none flex flex-col gap-8">
                     
                     {/* ROW 1: HEADER */}
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
@@ -956,7 +968,7 @@ export default function PortfolioPage() {
                             </span>
                           )}
                           {radars.filter((r: any) => r.tickers?.includes(p.ticker)).map((radar: any) => (
-                            <Link href={`/radars/${radar.slug}`} key={radar.slug} onClick={(e) => e.stopPropagation()} style={{ color: radar.theme_color, borderColor: `${radar.theme_color}40`, backgroundColor: `${radar.theme_color}10` }} className="px-2 py-1 border text-[9px] font-bold uppercase tracking-widest rounded-lg shadow-sm flex items-center gap-1 hover:opacity-80 transition-opacity">
+                            <Link href={`/radars/${radar.slug}`} key={radar.slug} onClick={(e) => e.stopPropagation()} style={{ color: radar.theme_color, borderColor: `${radar.theme_color}40`, backgroundColor: `${radar.theme_color}10` }} className="relative z-20 pointer-events-auto px-2 py-1 border text-[9px] font-bold uppercase tracking-widest rounded-lg shadow-sm flex items-center gap-1 hover:opacity-80 transition-opacity">
                               <Activity className="w-2.5 h-2.5" />
                               {radar.name}
                             </Link>
@@ -1105,7 +1117,7 @@ export default function PortfolioPage() {
                     </div>
 
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>

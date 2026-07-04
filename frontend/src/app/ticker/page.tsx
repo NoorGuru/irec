@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
 import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 import { TVMiniChart, TVCompanyProfile, TVFundamentalData, ExpandableWidget } from '@/components/TVWidgets'
-import { Briefcase, DollarSign, ArrowLeft, Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
+import { Briefcase, DollarSign, ArrowLeft, Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, CreditCard, Globe, Lock, Satellite, Plus, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   crown: Crown,
@@ -153,6 +153,7 @@ function TickerContent() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
   const [position, setPosition] = useState<any>(null)
+  const [isPositionExpanded, setIsPositionExpanded] = useState<boolean>(false)
   const [loading, setLoading] = useState(true)
   const [showMoreLinks, setShowMoreLinks] = useState(false)
 
@@ -308,7 +309,7 @@ function TickerContent() {
             </div>
 
             {/* Right side: Menu Links */}
-            <div className="flex items-center gap-2 self-start md:mt-2">
+            <div className="flex flex-wrap items-center gap-2 self-start md:mt-2">
               <a
                 href={`https://finance.yahoo.com/quote/${symbol.toUpperCase()}`}
                 target="_blank"
@@ -444,69 +445,194 @@ function TickerContent() {
 
         {/* Personal Position Widget - Full Width */}
         {position && (
-          <Link 
-            href="/portfolio"
-            className="mb-8 group flex flex-col gap-4 bg-[#141B2D]/90 backdrop-blur-xl border border-[#00D4AA]/20 hover:border-[#00D4AA]/50 p-5 rounded-2xl w-full shadow-lg hover:shadow-[#00D4AA]/10 transition-all duration-300 relative overflow-hidden"
+          <div 
+            className="mb-8 flex flex-col gap-4 bg-[#141B2D]/90 backdrop-blur-xl border border-[#00D4AA]/20 p-5 rounded-2xl w-full shadow-lg relative overflow-hidden transition-all duration-300"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4AA]/10 blur-3xl rounded-full pointer-events-none" />
             
             <div className="flex items-center justify-between w-full relative z-10">
-              <div className="flex items-center gap-2 text-[#00D4AA]">
+              <div 
+                className="flex items-center gap-2 text-[#00D4AA] cursor-pointer select-none"
+                onClick={() => setIsPositionExpanded(!isPositionExpanded)}
+              >
                 <Briefcase className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-widest">My Private Position</span>
+                <span className="text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">PORTFOLIO EXPOSURE</span>
+                {isPositionExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-[#8B95A8]" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-[#8B95A8]" />
+                )}
               </div>
-              <ArrowLeft className="w-4 h-4 rotate-180 text-[#8B95A8] group-hover:text-[#00D4AA] transition-colors group-hover:translate-x-1 duration-300" />
+              <Link 
+                href="/portfolio"
+                className="text-xs text-[#8B95A8] hover:text-[#00D4AA] transition-colors flex items-center gap-1 font-semibold"
+              >
+                <span>View Portfolio</span>
+                <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+              </Link>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full relative z-10">
-              <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B]">
-                <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Shares</span>
-                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#F1F5F9]">{position.shares}</span>
-              </div>
-              
-              <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B]">
-                <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Avg Cost</span>
-                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#F1F5F9]">
-                  ${position.average_cost}
-                </span>
-              </div>
-              
-              <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B]">
-                <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Total Invested</span>
-                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#F1F5F9]">
-                  ${(position.shares * position.average_cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </span>
-              </div>
-              
-              <div className="flex flex-col bg-[#00D4AA]/5 p-3 rounded-xl border border-[#00D4AA]/20 relative overflow-hidden group/target">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-[100%] group-hover/target:animate-[shimmer_1.5s_infinite]" />
-                <span className="text-[10px] text-[#00D4AA] uppercase tracking-wider mb-1 font-semibold">Target Value</span>
-                <span className="font-[family-name:var(--font-geist-mono)] text-xl font-bold text-[#00D4AA]">
-                  {avgPrice ? `$${(position.shares * avgPrice).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
-                </span>
-              </div>
-            </div>
-            
-            {avgPrice && (
-              <div className="w-full relative z-10 pt-1">
-                <div className={`w-full p-2.5 rounded-lg border text-center font-[family-name:var(--font-geist-mono)] text-sm font-bold tracking-wide transition-colors flex items-center justify-center gap-2 ${
-                  (avgPrice > position.average_cost) 
-                    ? 'bg-[#00D4AA]/10 border-[#00D4AA]/20 text-[#00D4AA]' 
-                    : 'bg-[#FF4D6A]/10 border-[#FF4D6A]/20 text-[#FF4D6A]'
-                }`}>
-                  <span>Implied Analyst Upside:</span>
-                  <span>
-                    {avgPrice > position.average_cost ? '+' : ''}{(((avgPrice - position.average_cost) / position.average_cost) * 100).toFixed(1)}% 
-                  </span>
-                  <span className="opacity-70">
-                    ({avgPrice > position.average_cost ? '+' : ''}${((position.shares * avgPrice) - (position.shares * position.average_cost)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
-                  </span>
+            {isPositionExpanded && (
+              <>
+                {/* --- CREATIVE GRID LAYOUT --- */}
+                {(() => {
+                  const hasPrice = position.current_price != null && position.current_price > 0;
+                  const invested = position.shares * position.average_cost;
+                  const currentValue = hasPrice ? position.shares * position.current_price : null;
+                  
+                  // Use computed PnL instead of trusting Google Sheet percentage formatting
+                  const totalPnLDollars = currentValue ? currentValue - invested : null;
+                  const totalPnLPct = currentValue ? ((position.current_price - position.average_cost) / position.average_cost) * 100 : position.total_return_pct;
+
+                  const isProfit = (totalPnLPct || 0) >= 0;
+                  const pnlColor = isProfit ? 'text-[#00D4AA]' : 'text-[#FF4D6A]';
+                  const pnlBg = isProfit ? 'bg-[#00D4AA]/10' : 'bg-[#FF4D6A]/10';
+                  const pnlBorder = isProfit ? 'border-[#00D4AA]/20' : 'border-[#FF4D6A]/20';
+                  
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full relative z-10">
+                      
+                      {/* Main Pricing Box - spans 2 cols */}
+                      <div className={`col-span-2 sm:col-span-2 flex flex-col justify-between p-4 rounded-xl border ${pnlBorder} ${pnlBg} relative overflow-hidden group`}>
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-[100%] group-hover:animate-[shimmer_1.5s_infinite]" />
+                        <span className={`text-[10px] uppercase tracking-widest mb-2 font-bold ${pnlColor}`}>Pricing & Return</span>
+                        <div className="flex items-center justify-between mt-1 relative z-10">
+                          <div>
+                            <div className="text-[10px] text-[#8B95A8] uppercase mb-0.5 font-semibold">Avg Cost</div>
+                            <div className="font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold text-[#F1F5F9]">
+                              ${position.average_cost}
+                            </div>
+                          </div>
+                          <ArrowLeft className={`w-5 h-5 rotate-180 opacity-50 ${pnlColor}`} />
+                          <div className="text-right">
+                            <div className="text-[10px] text-[#8B95A8] uppercase mb-0.5 font-semibold">Live Price</div>
+                            <div className={`font-[family-name:var(--font-geist-mono)] text-xl md:text-2xl font-bold ${pnlColor}`}>
+                              {position.current_price ? `$${position.current_price.toFixed(2)}` : '—'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total P/L */}
+                      <div className="flex flex-col bg-[#0A0F1A]/40 p-4 rounded-xl border border-[#1E293B] justify-center items-center text-center">
+                        <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Total P/L</span>
+                        <div className="flex flex-col items-center justify-center">
+                          <span className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold leading-none ${pnlColor}`}>
+                            {totalPnLDollars != null ? `${isProfit ? '+' : ''}$${Math.abs(totalPnLDollars).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                          </span>
+                          <span className={`font-[family-name:var(--font-geist-mono)] text-sm font-semibold opacity-80 mt-1 ${pnlColor}`}>
+                            {totalPnLPct != null ? `${isProfit ? '+' : ''}${totalPnLPct.toFixed(1)}%` : '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Values */}
+                      <div className="flex flex-col bg-[#0A0F1A]/40 p-4 rounded-xl border border-[#1E293B] justify-between">
+                        <div>
+                          <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-0.5 block">Current Value</span>
+                          <span className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9]">
+                            {currentValue != null ? `$${currentValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                          </span>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-[#1E293B]/50 flex justify-between items-end">
+                          <div>
+                            <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-0.5 block">Invested</span>
+                            <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#8B95A8]">
+                              ${invested.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-0.5 block">Shares</span>
+                            <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#8B95A8]">{position.shares}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* AI Target Value (Spans 2 cols) */}
+                      <div className="col-span-2 flex flex-col bg-[#00D4AA]/5 p-4 rounded-xl border border-[#00D4AA]/20 justify-center group/target relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-[100%] group-hover/target:animate-[shimmer_1.5s_infinite]" />
+                        <span className="text-[10px] text-[#00D4AA] uppercase tracking-wider mb-1 font-semibold relative z-10">Consensus Target Value</span>
+                        <div className="flex items-baseline gap-2 relative z-10">
+                          <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#00D4AA]">
+                            {avgPrice ? `$${(position.shares * avgPrice).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '—'}
+                          </span>
+                          {avgPrice && (
+                            <span className={`text-xs font-[family-name:var(--font-geist-mono)] font-bold ${avgPrice > position.average_cost ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                              ({avgPrice > position.average_cost ? '+' : ''}{(((avgPrice - position.average_cost) / position.average_cost) * 100).toFixed(1)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Sector */}
+                      <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B] justify-center">
+                        <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Sector</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-sm md:text-base font-bold text-[#F1F5F9] truncate" title={position.sector || 'Unknown'}>
+                          {position.sector || '—'}
+                        </span>
+                      </div>
+
+                      {/* Cap Size */}
+                      <div className="flex flex-col bg-[#0A0F1A]/40 p-3 rounded-xl border border-[#1E293B] justify-center">
+                        <span className="text-[10px] text-[#8B95A8] uppercase tracking-wider mb-1">Cap Size</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] text-sm md:text-base font-bold text-[#F1F5F9]">
+                          {position.cap_size || '—'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* AI Insight Row */}
+                <div className="flex flex-col md:flex-row gap-3 w-full relative z-10 pt-1">
+                  <div className="flex-1 p-2.5 rounded-lg border border-[#1E293B] bg-[#0A0F1A]/60 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#00D4AA] shrink-0" />
+                    <span className="text-[11px] text-[#8B95A8] leading-tight">
+                      <strong className="text-[#F1F5F9] font-semibold">AI Context: </strong>
+                      {avgSentiment >= 0.5 && avgPrice && avgPrice > position.average_cost
+                        ? "Wall St aligns with your conviction. Analysts project further upside from your cost basis."
+                        : avgSentiment <= -0.5
+                        ? "Analysts are bearish on this position. Consider reviewing your conviction."
+                        : avgPrice && position.average_cost > avgPrice
+                        ? "Your cost basis sits above the Wall St average target. Monitor for headwinds."
+                        : "Your position is holding steady with broader Wall St consensus."}
+                    </span>
+                  </div>
                 </div>
-              </div>
+
+                {/* Momentum Horizontal Bar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-[family-name:var(--font-geist-mono)] text-[11px] sm:text-xs mt-3 relative z-10 w-full">
+                  <div className="flex justify-between items-center bg-[#0A0F1A]/60 border border-[#1E293B] px-3 py-1.5 rounded-lg">
+                    <span className="text-[#8B95A8] uppercase font-bold tracking-widest">1D</span>
+                    <span className={`font-bold ${(position.daily_change_pct || 0) >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                      {(position.daily_change_pct || 0) > 0 ? '+' : ''}{position.daily_change_pct != null ? position.daily_change_pct.toFixed(1) : '-'}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#0A0F1A]/60 border border-[#1E293B] px-3 py-1.5 rounded-lg">
+                    <span className="text-[#8B95A8] uppercase font-bold tracking-widest">1W</span>
+                    <span className={`font-bold ${(position.weekly_change_pct || 0) >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                      {(position.weekly_change_pct || 0) > 0 ? '+' : ''}{position.weekly_change_pct != null ? position.weekly_change_pct.toFixed(1) : '-'}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#0A0F1A]/60 border border-[#1E293B] px-3 py-1.5 rounded-lg">
+                    <span className="text-[#8B95A8] uppercase font-bold tracking-widest">YTD</span>
+                    <span className={`font-bold ${(position.ytd_return_pct || 0) >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                      {(position.ytd_return_pct || 0) > 0 ? '+' : ''}{position.ytd_return_pct != null ? position.ytd_return_pct.toFixed(1) : '-'}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#0A0F1A]/60 border border-[#1E293B] px-3 py-1.5 rounded-lg">
+                    <span className="text-[#8B95A8] uppercase font-bold tracking-widest">1Y</span>
+                    <span className={`font-bold ${(position['1y_return_pct'] || 0) >= 0 ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}>
+                      {(position['1y_return_pct'] || 0) > 0 ? '+' : ''}{position['1y_return_pct'] != null ? position['1y_return_pct'].toFixed(1) : '-'}%
+                    </span>
+                  </div>
+                </div>
+              </>
             )}
-          </Link>
+          </div>
         )}
 
+          {/* Rich Data Widgets */}
         <div className="mb-4 space-y-4 w-full">
           <div className="w-full rounded-xl overflow-hidden bg-[#141B2D] border border-white/5 shadow-2xl shadow-black/50">
             <TVMiniChart symbol={symbol} sentiment={avgSentiment} />
