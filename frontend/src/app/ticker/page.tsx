@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
 import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
+import { TVMiniChart, TVCompanyProfile, TVFundamentalData, ExpandableWidget } from '@/components/TVWidgets'
 
 interface Recommendation {
   ticker: string
@@ -124,7 +125,6 @@ function TickerContent() {
   
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
-  const [priceData, setPriceData] = useState<{ current_price: number, price_change_pct: number | null, price_fetched_at: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [showMoreLinks, setShowMoreLinks] = useState(false)
 
@@ -139,7 +139,7 @@ function TickerContent() {
 
       try {
         const supabase = createClient()
-        const [recsRes, radarsRes, pricesRes] = await Promise.all([
+        const [recsRes, radarsRes] = await Promise.all([
           supabase
             .from("recommendations")
             .select(`
@@ -161,13 +161,7 @@ function TickerContent() {
             .ilike("ticker", symbol),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
             .then(res => res.ok ? res.json() : [])
-            .catch(() => []),
-          supabase
-            .from("stock_prices")
-            .select("*")
-            .eq("ticker", symbol.toUpperCase())
-            .order("fetched_at", { ascending: false })
-            .limit(1)
+            .catch(() => [])
         ])
 
         const sorted = ((recsRes.data as unknown as Recommendation[]) || []).sort((a, b) => {
@@ -176,12 +170,6 @@ function TickerContent() {
 
         setRecommendations(sorted)
         setRadars(radarsRes)
-        
-        if (pricesRes.data && pricesRes.data.length > 0) {
-          const p = pricesRes.data[0]
-          const change = (p.open_price && p.open_price > 0) ? ((p.price - p.open_price) / p.open_price) * 100 : null
-          setPriceData({ current_price: p.price, price_change_pct: change, price_fetched_at: p.fetched_at })
-        }
       } catch (error) {
         console.error("Failed to fetch data:", error)
       } finally {
@@ -239,89 +227,17 @@ function TickerContent() {
         <header className="mt-8 mb-10 animate-fade-up stagger-1 relative z-10 overflow-visible">
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <div className="flex flex-col mb-4">
+              <div className="flex flex-col">
                 <h1 className="font-[family-name:var(--font-geist-mono)] text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9] leading-none">
                   {symbol.toUpperCase()}
                 </h1>
                 {recommendations[0]?.stock_name && (
-                  <p className="mt-2 mb-4 text-lg text-[#8B95A8] font-semibold">{recommendations[0].stock_name}</p>
-                )}
-                
-                {priceData && (
-                  <div className="relative group/price flex flex-row items-center md:flex-col md:items-start md:justify-center mb-1 md:mb-2 bg-[#0A0F1A]/80 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 md:p-3 w-max overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
-                    {/* Ambient background glow based on sentiment */}
-                    {priceData.price_change_pct != null && (
-                      <div 
-                        className={`absolute inset-0 opacity-20 group-hover/price:opacity-30 transition-opacity duration-500 blur-xl ${
-                          priceData.price_change_pct >= 0 ? 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#00D4AA]/40 to-transparent' : 'bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#FF4D6A]/40 to-transparent'
-                        }`}
-                      />
-                    )}
-                    
-                    <div className="relative z-10 flex items-end gap-3">
-                      <span className="font-[family-name:var(--font-geist-mono)] text-2xl md:text-3xl font-black text-[#F1F5F9] leading-none tracking-tighter drop-shadow-md">
-                        ${priceData.current_price.toFixed(2)}
-                      </span>
-                      {priceData.price_change_pct != null && (
-                        <span 
-                          className={`flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-xs md:text-sm font-bold mb-0.5 px-2 py-0.5 rounded-md border backdrop-blur-md ${
-                            priceData.price_change_pct >= 0 
-                              ? 'bg-[#00D4AA]/10 text-[#00FFD0] border-[#00D4AA]/20 shadow-[0_0_10px_rgba(0,212,170,0.1)]' 
-                              : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20 shadow-[0_0_10px_rgba(255,77,106,0.1)]'
-                          }`}
-                          title="Change since market open"
-                        >
-                          {priceData.price_change_pct > 0 ? '+' : ''}{priceData.price_change_pct.toFixed(2)}%
-                        </span>
-                      )}
-                    </div>
-                    {priceData.price_fetched_at && (
-                      <div className="relative z-10 flex items-center gap-1.5 ml-4 md:ml-0 md:mt-2">
-                        <div className="relative flex h-1.5 w-1.5">
-                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                            priceData.price_change_pct && priceData.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
-                          }`}></span>
-                          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-                            priceData.price_change_pct && priceData.price_change_pct >= 0 ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
-                          }`}></span>
-                        </div>
-                        <span 
-                          className="font-[family-name:var(--font-geist-mono)] text-[9px] md:text-[10px] text-[#8B95A8] uppercase tracking-widest cursor-help"
-                          title={`Fetched at ${formatLocalTime(priceData.price_fetched_at)}`}
-                        >
-                          {formatMarketTime(priceData.price_fetched_at)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <p className="mt-2 text-lg text-[#8B95A8] font-semibold">{recommendations[0].stock_name}</p>
                 )}
               </div>
-              
-              {activeRadars.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {activeRadars.map(radar => (
-                    <Link
-                      key={radar.slug}
-                      href={`/radars/${radar.slug}`}
-                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
-                      style={{ 
-                        boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
-                      }}
-                    >
-                      <span className="text-xs font-bold" style={{ color: radar.theme_color }}>✦</span>
-                      <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
-                        Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              <p className="mt-4 text-sm text-[#64748B]">
-                {recommendations.length} recommendation{recommendations.length !== 1 ? 's' : ''} from YouTube analysts
-              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end gap-4">
+              <div className="flex items-center gap-2">
               <a
                 href={`https://finance.yahoo.com/quote/${symbol.toUpperCase()}`}
                 target="_blank"
@@ -451,9 +367,37 @@ function TickerContent() {
                   </div>
                 )}
               </div>
+              </div>
+
+              {activeRadars.length > 0 && (
+                <div className="flex flex-wrap justify-end gap-2 mt-1">
+                  {activeRadars.map(radar => (
+                    <Link
+                      key={radar.slug}
+                      href={`/radars/${radar.slug}`}
+                      className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#141B2D]/60 backdrop-blur-md border border-white/5 hover:border-white/10 transition-all duration-300"
+                      style={{ 
+                        boxShadow: `0 4px 20px -10px ${radar.theme_color}40`,
+                      }}
+                    >
+                      <span className="text-xs font-bold" style={{ color: radar.theme_color }}>✦</span>
+                      <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors">
+                        Part of the <span className="font-semibold text-[#F1F5F9]">{radar.name}</span> Radar
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </header>
+
+        <div className="mb-4 space-y-4 w-full">
+          <div className="w-full rounded-xl overflow-hidden bg-[#141B2D] border border-white/5 shadow-2xl shadow-black/50">
+            <TVMiniChart symbol={symbol} />
+          </div>
+        </div>
+
 
         {/* Summary stats */}
         <div className="relative z-0 grid grid-cols-2 md:grid-cols-4 gap-3 mb-10 animate-fade-up stagger-2">
@@ -537,8 +481,41 @@ function TickerContent() {
           </div>
         </div>
 
+        {/* Rich Data Widgets */}
+        <div className="mb-10 flex flex-col gap-4 w-full animate-fade-up stagger-3">
+          <ExpandableWidget title="Company Profile" color="#00D4AA">
+            <TVCompanyProfile symbol={symbol} />
+          </ExpandableWidget>
+          
+          <ExpandableWidget title="Fundamental Data" color="#3B82F6">
+            <TVFundamentalData symbol={symbol} />
+          </ExpandableWidget>
+        </div>
+
+        {/* Videos Section Header */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-up stagger-3 pt-6 border-t border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF4D6A]/20 to-[#FF4D6A]/5 border border-[#FF4D6A]/20">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF4D6A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path>
+                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="#FF4D6A"></polygon>
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-[family-name:var(--font-geist-mono)] font-bold text-[#F1F5F9]">Analyst Signals</h2>
+              <p className="text-xs text-[#8B95A8]">Deep dive videos from top financial channels</p>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <span className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] border border-[#1E293B] bg-[#141B2D] px-3 py-1.5 rounded-full flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA]"></span>
+              {recommendations.length} {recommendations.length === 1 ? 'Signal' : 'Signals'} Found
+            </span>
+          </div>
+        </div>
+
         {/* Recommendations list */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {recommendations.map((rec, index) => (
             <div
               key={index}

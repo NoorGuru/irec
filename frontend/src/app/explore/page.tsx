@@ -9,7 +9,7 @@ import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import Loading from '@/components/ui/loading'
 
-type SortField = 'ticker' | 'price' | 'change' | 'score' | 'mentions' | 'sentiment' | 'conviction' | 'target'
+type SortField = 'ticker' | 'score' | 'mentions' | 'sentiment' | 'conviction' | 'target'
 type SortOrder = 'asc' | 'desc'
 
 interface RatingFilter {
@@ -156,8 +156,6 @@ export default function ExplorePage() {
       }
 
       // 3. Fallback filtering for sorts
-      if (sortField === 'price' && s.current_price == null) return false
-      if (sortField === 'change' && s.price_change_pct == null) return false
 
       return true
     })
@@ -173,12 +171,6 @@ export default function ExplorePage() {
       } else if (sortField === 'score') {
         valA = a.priority_score
         valB = b.priority_score
-      } else if (sortField === 'change') {
-        valA = a.price_change_pct ?? -9999
-        valB = b.price_change_pct ?? -9999
-      } else if (sortField === 'price') {
-        valA = a.current_price ?? -9999
-        valB = b.current_price ?? -9999
       } else if (sortField === 'mentions') {
         valA = a.mention_count_30d
         valB = b.mention_count_30d
@@ -260,8 +252,6 @@ export default function ExplorePage() {
                   <option value="sentiment">Sort: Sentiment</option>
                   <option value="conviction">Sort: Conviction</option>
                   <option value="target">Sort: Target</option>
-                  <option value="change">Sort: 24H Change</option>
-                  <option value="price">Sort: Price</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
               </div>
@@ -329,12 +319,6 @@ export default function ExplorePage() {
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('ticker')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Asset <SortIcon field="ticker" /></div>
                   </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('price')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Price <SortIcon field="price" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('change')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">24H <SortIcon field="change" /></div>
-                  </th>
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('target')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Target <SortIcon field="target" /></div>
                   </th>
@@ -376,22 +360,7 @@ export default function ExplorePage() {
                           <span className="text-[10px] text-[#64748B] max-w-[160px] truncate mt-1">{stock.stock_name || 'Unknown'}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-sm font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                            {stock.current_price != null ? `$${stock.current_price.toFixed(2)}` : '—'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        {stock.price_change_pct != null ? (
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold font-[family-name:var(--font-geist-mono)] border ${stock.price_change_pct >= 0 ? 'bg-[#00D4AA]/10 text-[#00D4AA] border-[#00D4AA]/20' : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20'}`}>
-                            {stock.price_change_pct > 0 ? '+' : ''}{stock.price_change_pct.toFixed(2)}%
-                          </span>
-                        ) : (
-                          <span className="text-[#64748B]">—</span>
-                        )}
-                      </td>
+
                       <td className="px-5 py-4">
                         {stock.avg_target_price !== null ? (
                           <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
@@ -464,16 +433,7 @@ export default function ExplorePage() {
                     </div>
                     <span className="text-[11px] text-[#64748B] truncate max-w-[180px] mt-0.5">{stock.stock_name || 'Unknown'}</span>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <span className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                      {stock.current_price != null ? `$${stock.current_price.toFixed(2)}` : '—'}
-                    </span>
-                    {stock.price_change_pct != null && (
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold font-[family-name:var(--font-geist-mono)] border ${stock.price_change_pct >= 0 ? 'bg-[#00D4AA]/10 text-[#00D4AA] border-[#00D4AA]/20' : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border-[#FF4D6A]/20'}`}>
-                        {stock.price_change_pct > 0 ? '+' : ''}{stock.price_change_pct.toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
+
                 </div>
 
                 <div className="flex items-center gap-4 mb-3">

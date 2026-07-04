@@ -226,34 +226,6 @@ async def get_radar_plays_data() -> dict:
             "latest_mention_date": latest_mention_date
         })
 
-    # Inject latest stock prices
-    if plays:
-        play_tickers = [p["ticker"] for p in plays]
-        five_days_ago = (now - timedelta(days=5)).isoformat()
-        try:
-            prices_res = client.table("stock_prices").select("*").in_("ticker", play_tickers).gte("fetched_at", five_days_ago).execute()
-            prices_data = prices_res.data or []
-            prices_data.sort(key=lambda x: x["fetched_at"], reverse=True)
-            
-            latest_prices = {}
-            for row in prices_data:
-                if row["ticker"] not in latest_prices:
-                    latest_prices[row["ticker"]] = row
-                    
-            for play in plays:
-                price_row = latest_prices.get(play["ticker"])
-                if price_row:
-                    play["current_price"] = price_row["price"]
-                    play["price_fetched_at"] = price_row["fetched_at"]
-                    op = price_row.get("open_price")
-                    if op and op > 0:
-                        play["price_change_pct"] = round(((play["current_price"] - op) / op) * 100, 2)
-                else:
-                    play["current_price"] = None
-                    play["price_change_pct"] = None
-                    play["price_fetched_at"] = None
-        except Exception as e:
-            logger.error(f"Failed to fetch prices for radar plays: {e}")
 
     payload = {
         "plays": plays,
@@ -290,9 +262,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
                 "agreement_pct": play.get("agreement_pct", 0),
                 "top_catalyst": play.get("top_catalyst", ""),
                 "latest_mention_date": play.get("latest_mention_date"),
-                "current_price": play.get("current_price"),
-                "price_change_pct": play.get("price_change_pct"),
-                "price_fetched_at": play.get("price_fetched_at")
+
             })
         else:
             # Create a zero-stat placeholder for tickers with no recent plays
@@ -310,9 +280,7 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
                 "agreement_pct": 0,
                 "top_catalyst": "No recent plays.",
                 "latest_mention_date": None,
-                "current_price": None,
-                "price_change_pct": None,
-                "price_fetched_at": None
+
             })
             
     if not radar_plays:

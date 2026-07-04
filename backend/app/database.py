@@ -534,12 +534,9 @@ async def set_cache(key: str, payload: dict) -> None:
 
 
 async def get_latest_extraction_time() -> str | None:
-    """Get the latest timestamp between video extractions and stock price updates."""
+    """Get the latest timestamp for video extractions."""
     try:
         client = _get_client()
-        vid_time = None
-        price_time = None
-        
         vid_res = (
             client.table("videos")
             .select("extracted_at")
@@ -548,21 +545,8 @@ async def get_latest_extraction_time() -> str | None:
             .execute()
         )
         if vid_res.data:
-            vid_time = vid_res.data[0]["extracted_at"]
-            
-        price_res = (
-            client.table("stock_prices")
-            .select("fetched_at")
-            .order("fetched_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        if price_res.data:
-            price_time = price_res.data[0]["fetched_at"]
-            
-        if vid_time and price_time:
-            return max(vid_time, price_time)
-        return vid_time or price_time
+            return vid_res.data[0]["extracted_at"]
+        return None
     except Exception as e:
         logger.warning(f"Failed to get latest extraction time: {e}")
         return None

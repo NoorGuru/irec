@@ -24,9 +24,7 @@ class StockDirectoryItem(BaseModel):
     mention_count_30d: int
     analyst_count: int
     last_mentioned_at: str | None = None
-    current_price: float | None = None
-    price_change_pct: float | None = None
-    price_fetched_at: str | None = None
+
     overall_sentiment: float | None = None
     avg_target_price: float | None = None
     avg_conviction: float | None = None
@@ -97,34 +95,13 @@ async def get_stocks_directory(request: Request, response: Response):
                 conviction_map[t] = conviction_map.get(t, 0) + cl
                 conviction_counts[t] = conviction_counts.get(t, 0) + 1
                 
-        # Get latest prices
-        five_days_ago = (now - timedelta(days=5)).isoformat()
-        prices_res = client.table("stock_prices").select("*").in_("ticker", tickers).gte("fetched_at", five_days_ago).execute()
-        prices_data = prices_res.data or []
-        prices_data.sort(key=lambda x: x["fetched_at"], reverse=True)
-        
-        latest_prices = {}
-        for p in prices_data:
-            if p["ticker"] not in latest_prices:
-                latest_prices[p["ticker"]] = p
-                
+
         # Assemble
         result_stocks = []
         for m in meta_data:
             t = m["ticker"]
             
-            price_data = latest_prices.get(t)
-            current_price = None
-            price_change_pct = None
-            price_fetched_at = None
-            
-            if price_data:
-                current_price = price_data.get("price")
-                price_fetched_at = price_data.get("fetched_at")
-                op = price_data.get("open_price")
-                if op and op > 0 and current_price:
-                    price_change_pct = round(((current_price - op) / op) * 100, 2)
-                    
+
             overall_sentiment = None
             if sentiment_counts.get(t, 0) > 0:
                 overall_sentiment = sentiment_map[t] / sentiment_counts[t]
@@ -146,9 +123,7 @@ async def get_stocks_directory(request: Request, response: Response):
                 mention_count_30d=m.get("mention_count_30d", 0),
                 analyst_count=m.get("analyst_count", 0),
                 last_mentioned_at=m.get("last_mentioned_at"),
-                current_price=current_price,
-                price_change_pct=price_change_pct,
-                price_fetched_at=price_fetched_at,
+
                 overall_sentiment=overall_sentiment,
                 avg_target_price=avg_target_price,
                 avg_conviction=avg_conviction
