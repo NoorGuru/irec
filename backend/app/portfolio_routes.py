@@ -182,15 +182,16 @@ async def sync_portfolio(
 
     inserts = []
     for ticker, data in portfolio_agg.items():
-        avg_cost = None
-        if data["shares"] > 0:
-            avg_cost = data["total_cost"] / data["shares"]
+        if data["shares"] <= 0:
+            continue
+            
+        avg_cost = data["total_cost"] / data["shares"]
             
         inserts.append({
             "user_id": user_id,
             "ticker": ticker,
-            "shares": data["shares"] if data["shares"] > 0 else None,
-            "average_cost": round(avg_cost, 2) if avg_cost is not None else None,
+            "shares": data["shares"],
+            "average_cost": round(avg_cost, 2),
         })
 
     if inserts:
