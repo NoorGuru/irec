@@ -35,7 +35,11 @@ export default function AuthCallbackPage() {
         return
       }
 
-      router.replace('/admin')
+      const nextUrl = localStorage.getItem('auth_next')
+      if (nextUrl) {
+        localStorage.removeItem('auth_next')
+      }
+      router.replace(nextUrl || '/admin')
     }
 
     handleCallback()

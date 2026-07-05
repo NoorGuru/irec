@@ -55,18 +55,30 @@ export function Footer() {
           </div>
 
           {/* Right: links — compact, mono */}
-          <nav className="flex items-center gap-6" aria-label="Footer navigation">
-            <Link
-              href="/today"
-              className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
-            >
-              today&apos;s plays
-            </Link>
+          <nav className="flex flex-wrap items-center gap-4 md:gap-6" aria-label="Footer navigation">
             <Link
               href="/"
               className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
             >
+              home
+            </Link>
+            <Link
+              href="/today"
+              className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
+            >
+              today
+            </Link>
+            <Link
+              href="/explore"
+              className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
+            >
               explore
+            </Link>
+            <Link
+              href="/radars"
+              className="text-xs font-[family-name:var(--font-geist-mono)] text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200 tracking-wide"
+            >
+              radars
             </Link>
             <Link
               href="/channels"
@@ -102,38 +114,7 @@ export function Footer() {
               </span>
             </a>
 
-            {/* Login/Logout and Admin */}
-            <div className="flex items-center gap-3 text-[10px] font-[family-name:var(--font-geist-mono)] text-[#374151] tracking-wide">
-              <span aria-hidden="true" className="text-[#1E293B]">·</span>
-              {session ? (
-                <>
-                  <Link
-                    href="/admin"
-                    className="text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200"
-                  >
-                    Admin
-                  </Link>
-                  <span aria-hidden="true" className="text-[#1E293B]">·</span>
-                  <button
-                    onClick={async () => {
-                      const supabase = createClient()
-                      await supabase.auth.signOut()
-                      setSession(null)
-                    }}
-                    className="text-[#64748B] hover:text-[#FF4D6A] transition-colors duration-200"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href="/admin/login"
-                  className="text-[#64748B] hover:text-[#00D4AA] transition-colors duration-200"
-                >
-                  Login
-                </Link>
-              )}
-            </div>
+
           </div>
 
           {/* Meta */}

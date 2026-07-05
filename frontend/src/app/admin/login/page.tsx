@@ -23,7 +23,13 @@ function LoginContent() {
     setMounted(true)
   }, [])
 
-    const handleLogin = async () => {
+  const handleLogin = async () => {
+    const nextUrl = searchParams.get('next')
+    if (nextUrl) {
+      localStorage.setItem('auth_next', nextUrl)
+    } else {
+      localStorage.removeItem('auth_next')
+    }
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',

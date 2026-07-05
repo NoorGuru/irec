@@ -386,55 +386,7 @@ export function Navbar() {
         {/* Secondary Navigation Row (More Menu) */}
         {moreOpen && (
           <>
-            {/* Admin/Logout row (only when logged in) */}
-            {session && (
-              <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200">
-                {/* Admin link */}
-                <Link
-                  href="/admin"
-                  onClick={() => setMoreOpen(false)}
-                  className={`flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors ${pathname?.startsWith('/admin') ? 'text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-                >
-                  <div className="relative">
-                    <AdminIcon active={pathname?.startsWith('/admin')} />
-                  </div>
-                  <span className="text-[10px] font-medium tracking-wide">Admin</span>
-                </Link>
 
-                {/* Logout button */}
-                <button
-                  onClick={async () => {
-                    const supabase = createClient()
-                    await supabase.auth.signOut()
-                    setSession(null)
-                    setMoreOpen(false)
-                  }}
-                  className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors text-[#64748B] hover:text-[#FF4D6A]"
-                >
-                  <div className="relative">
-                    <LogoutIcon active={false} />
-                  </div>
-                  <span className="text-[10px] font-medium tracking-wide">Logout</span>
-                </button>
-              </div>
-            )}
-
-            {/* Login row (only when not logged in) */}
-            {!session && (
-              <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200">
-                {/* Login link */}
-                <Link
-                  href="/admin/login"
-                  onClick={() => setMoreOpen(false)}
-                  className="flex flex-col items-center justify-center gap-0.5 px-4 py-1 h-full w-full rounded-lg transition-colors text-[#64748B] hover:text-[#00D4AA]"
-                >
-                  <div className="relative">
-                    <LoginIcon active={false} />
-                  </div>
-                  <span className="text-[10px] font-medium tracking-wide">Login</span>
-                </Link>
-              </div>
-            )}
 
             {/* Main more links row */}
             <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200 delay-75">
