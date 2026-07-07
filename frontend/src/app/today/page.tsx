@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Activity, Grid, Layers, ChevronLeft, ChevronRight, Info, AlertTriangle, Sparkles,
-  ArrowRight, ArrowLeft, Maximize
+  ArrowRight, ArrowLeft, Maximize, Server
 } from 'lucide-react'
 
 // Custom Youtube Icon SVG
@@ -587,6 +587,103 @@ function SkeletonCard() {
   )
 }
 
+// --- Terminal List (Compact Leaderboard) ---
+
+function TerminalList({ plays, sortBy, activeTab }: { plays: Play[], sortBy: SortOption, activeTab: 'BUY' | 'SELL' }) {
+  const router = useRouter()
+  if (plays.length === 0) return null
+
+  const isBuy = activeTab === 'BUY'
+  const activeColorText = isBuy ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'
+  const activeColorBg = isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'
+  
+  const maxMetric = Math.max(...plays.map(p => {
+    if (sortBy === 'aura_score') return p.aura_score
+    if (sortBy === 'mentions') return p.recent_mentions
+    if (sortBy === 'conviction') return p.avg_conviction
+    if (sortBy === 'consensus_sentiment') return Math.abs(p.consensus_sentiment)
+    return 0
+  }), 1)
+
+  return (
+    <div className="w-full flex flex-col animate-fade-up pb-8 md:pb-0 bg-[#141B2D]/20 backdrop-blur-md rounded-3xl border border-[#1E293B]/60 overflow-hidden shadow-2xl">
+      {/* Table Header (Desktop only) */}
+      <div className="hidden md:flex items-center px-6 py-4 bg-[#0A0F1A]/80 border-b border-[#1E293B] text-[10px] font-black font-[family-name:var(--font-geist-mono)] text-[#64748B] uppercase tracking-widest">
+        <div className="w-16 shrink-0">Rank</div>
+        <div className="w-32 shrink-0">Ticker</div>
+        <div className="flex-1">Company</div>
+        <div className="w-48 text-right pr-2">
+          {sortLabel[sortBy]} <span className={activeColorText}>•</span>
+        </div>
+        <div className="w-6"></div>
+      </div>
+      
+      {/* Table Rows */}
+      <div className="flex flex-col">
+        {plays.map((play, idx) => {
+          const metricValue = 
+            sortBy === 'aura_score' ? play.aura_score :
+            sortBy === 'mentions' ? play.recent_mentions :
+            sortBy === 'conviction' ? play.avg_conviction :
+            Math.abs(play.consensus_sentiment)
+
+          const fillPct = (metricValue / maxMetric) * 100
+
+          return (
+            <div
+              key={play.ticker}
+              onClick={() => router.push(`/ticker?s=${play.ticker}`)}
+              className="group relative flex items-center px-4 py-3.5 md:px-6 md:py-4 border-b border-[#1E293B]/30 last:border-b-0 hover:bg-[#1E293B]/40 transition-colors duration-200 cursor-pointer overflow-hidden"
+            >
+              {/* Subtle hover gradient */}
+              <div className={`absolute inset-0 bg-gradient-to-r ${isBuy ? 'from-[#00D4AA]/0 via-[#00D4AA]/5 to-transparent' : 'from-[#FF4D6A]/0 via-[#FF4D6A]/5 to-transparent'} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
+
+              {/* 1. Rank */}
+              <div className="w-10 md:w-16 shrink-0 text-sm md:text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#475569] group-hover:text-[#F1F5F9] transition-colors relative z-10">
+                {(idx + 1).toString().padStart(2, '0')}
+              </div>
+              
+              {/* 2. Ticker */}
+              <div className={`w-16 md:w-32 shrink-0 text-lg md:text-2xl font-black font-[family-name:var(--font-geist-mono)] ${activeColorText} tracking-widest relative z-10 drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]`}>
+                <TextScramble text={play.ticker} duration={400} />
+              </div>
+
+              {/* 3. Company (Hidden on tiny screens, flex-1 otherwise) */}
+              <div className="flex-1 min-w-0 pr-4 relative z-10">
+                <div className="text-[10px] md:text-xs text-[#8B95A8] font-bold truncate">
+                  {play.stock_name}
+                </div>
+              </div>
+
+              {/* 4. Metric Bar */}
+              <div className="flex flex-col items-end gap-1.5 shrink-0 w-20 md:w-48 relative z-10">
+                <span className={`text-sm md:text-lg font-black font-[family-name:var(--font-geist-mono)] ${activeColorText} leading-none`}>
+                  {sortBy === 'conviction' ? `${metricValue.toFixed(1)}` : 
+                   sortBy === 'mentions' ? `${metricValue}x` : 
+                   metricValue.toFixed(1).replace('.0', '')}
+                </span>
+                <div className="w-full h-1 md:h-1.5 bg-[#0A0F1A] rounded-full overflow-hidden border border-white/5 shadow-inner">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${fillPct}%` }}
+                    transition={{ duration: 0.8, delay: idx * 0.03, ease: "easeOut" }}
+                    className={`h-full ${activeColorBg} shadow-[0_0_8px_${isBuy ? '#00D4AA' : '#FF4D6A'}]`} 
+                  />
+                </div>
+              </div>
+
+              {/* 5. Action Chevron */}
+              <div className="w-6 shrink-0 flex justify-end relative z-10">
+                <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-[#475569] group-hover:text-[#F1F5F9] transition-colors transform group-hover:translate-x-1" />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // --- Main Page Component ---
 
 type SortOption = 'aura_score' | 'mentions' | 'conviction' | 'consensus_sentiment'
@@ -604,7 +701,7 @@ export default function TodayPlaysPage() {
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
-  const [viewMode, setViewMode] = useState<'grid' | 'stream'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'stream' | 'terminal'>('grid')
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -619,7 +716,7 @@ export default function TodayPlaysPage() {
 
   // Restore user session tab preferences & handle mobile responsiveness
   useEffect(() => {
-    let savedViewMode = sessionStorage.getItem('today_viewMode') as 'grid' | 'stream' | null
+    let savedViewMode = sessionStorage.getItem('today_viewMode') as 'grid' | 'stream' | 'terminal' | null
 
     // Check if this is a hard refresh to clear session data (if that's the intended behavior)
     let isReload = false
@@ -1039,6 +1136,16 @@ export default function TodayPlaysPage() {
                   <Layers className="w-3.5 h-3.5" />
                   <span>Pulse Stream</span>
                 </button>
+                <button
+                  onClick={() => setViewMode('terminal')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-300 flex items-center gap-1.5 ${viewMode === 'terminal'
+                    ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing}`
+                    : 'text-[#64748B] hover:text-[#F1F5F9]'
+                    }`}
+                >
+                  <Server className="w-3.5 h-3.5" />
+                  <span>Terminal</span>
+                </button>
               </div>
 
               {/* Sort selector */}
@@ -1238,7 +1345,7 @@ export default function TodayPlaysPage() {
                     <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">Adjust your sort filter strategy to see other signal channels.</div>
                   </div>
                 )
-              ) : (
+              ) : viewMode === 'stream' ? (
                 /* Stream View (Focused Swipe Cards) */
                 activePlays.length > 0 ? (
                   <PulseStream
@@ -1252,6 +1359,17 @@ export default function TodayPlaysPage() {
                     <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
                     <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active Stream</div>
                     <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">No signals found under this classification node.</div>
+                  </div>
+                )
+              ) : (
+                /* Terminal View */
+                activePlays.length > 0 ? (
+                  <TerminalList plays={activePlays} sortBy={sortBy} activeTab={activeTab} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
+                    <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
+                    <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active {activeTab} Indicators</div>
+                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">Adjust your sort filter strategy to see other signal channels.</div>
                   </div>
                 )
               )}
@@ -1330,13 +1448,17 @@ export default function TodayPlaysPage() {
 
             {/* Sort Strategy Selector */}
             <div className="flex items-center gap-1">
-              {/* Grid/Stream Toggle */}
+              {/* Grid/Stream/Terminal Toggle */}
               <button
-                onClick={() => setViewMode(viewMode === 'grid' ? 'stream' : 'grid')}
+                onClick={() => {
+                  if (viewMode === 'grid') setViewMode('stream')
+                  else if (viewMode === 'stream') setViewMode('terminal')
+                  else setViewMode('grid')
+                }}
                 className="p-2.5 rounded-xl bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] active:scale-95 transition-all"
                 title="Toggle View Mode"
               >
-                {viewMode === 'grid' ? <Layers className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
+                {viewMode === 'grid' ? <Layers className="w-4 h-4" /> : viewMode === 'stream' ? <Server className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
               </button>
 
               {/* Sort Selector */}
