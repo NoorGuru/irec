@@ -280,14 +280,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
         </div>
       </div>
 
-      <div>
-        {/* Source info */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5 text-[10px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
-          <span className="truncate w-full">
-            Latest: <span className="text-[#E2E8F0] font-bold">{play.latest_video.channel_name}</span>
-          </span>
-        </div>
-      </div>
+
     </HolographicCard>
   )
 }
@@ -476,8 +469,6 @@ function PulseStream({
                     <span>Conviction {catalystConviction}/10</span>
                   </div>
                 </div>
-              </div>
-
               </div>
             </HolographicCard>
           </motion.div>

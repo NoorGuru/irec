@@ -497,6 +497,23 @@ function JobCard({
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
+          {!result && (
+            <button
+              onClick={() => {
+                if (isLoading) handleCancel()
+                if (!showManualPaste) {
+                  setShowManualPaste(true)
+                  setIsLoading(false)
+                } else {
+                  setShowManualPaste(false)
+                  startExtraction(config.mode)
+                }
+              }}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#1E293B] transition-colors"
+            >
+              {showManualPaste ? 'Use Auto' : 'Use Manual'}
+            </button>
+          )}
           {isLoading && (
             <button
               onClick={handleCancel}
@@ -580,7 +597,7 @@ function JobCard({
               <img src={`https://i.ytimg.com/vi/${extractVideoId(config.url) || ''}/mqdefault.jpg`} alt="" className="w-24 h-16 object-cover rounded bg-[#1E293B]" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#F1F5F9] truncate">{duplicateVideo?.title || 'Unknown Title'}</p>
-                <Link href={`/video?id=${extractVideoId(config.url) || ''}`} className="text-xs text-[#00D4AA] hover:underline mt-1 inline-block">View Video →</Link>
+                <Link href={`/video?id=${extractVideoId(config.url) || ''}`} target="_blank" className="text-xs text-[#00D4AA] hover:underline mt-1 inline-block">View Video →</Link>
               </div>
             </div>
           </div>
@@ -596,15 +613,15 @@ function JobCard({
         <div className="mb-6 rounded-xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-5 space-y-4 relative z-10">
           <div className="flex flex-wrap gap-2">
             {result.tickers_extracted.map((ticker) => (
-              <Link key={ticker} href={`/ticker?s=${ticker}`} className="rounded-md bg-[#00D4AA]/10 px-2.5 py-1 text-xs font-bold text-[#00D4AA] hover:bg-[#00D4AA]/20">
+              <Link key={ticker} href={`/ticker?s=${ticker}`} target="_blank" className="rounded-md bg-[#00D4AA]/10 px-2.5 py-1 text-xs font-bold text-[#00D4AA] hover:bg-[#00D4AA]/20">
                 {ticker}
               </Link>
             ))}
             {result.tickers_extracted.length === 0 && <span className="text-xs text-[#8B95A8]">No tickers found.</span>}
           </div>
           <div className="flex gap-3 mt-3">
-            <Link href={`/video?id=${result.video_id}`} className="text-xs text-[#00D4AA] hover:underline">View Video →</Link>
-            {result.channel_id && <Link href={`/channel?id=${result.channel_id}`} className="text-xs text-[#00D4AA] hover:underline">View Channel →</Link>}
+            <Link href={`/video?id=${result.video_id}`} target="_blank" className="text-xs text-[#00D4AA] hover:underline">View Video →</Link>
+            {result.channel_id && <Link href={`/channel?id=${result.channel_id}`} target="_blank" className="text-xs text-[#00D4AA] hover:underline">View Channel →</Link>}
           </div>
         </div>
       )}
