@@ -381,15 +381,13 @@ export function Navbar() {
       )}
 
       {/* Mobile Bottom Navigation Area */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-[#0A0F1A]/95 backdrop-blur-xl border-t border-[#1E293B]/60 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.5)] transition-all duration-300" role="navigation" aria-label="Mobile navigation">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col bg-[#0A0F1A]/95 backdrop-blur-xl border-t border-[#1E293B]/60 safe-area-bottom shadow-[0_-8px_30px_rgba(0,0,0,0.5)]" role="navigation" aria-label="Mobile navigation">
 
         {/* Secondary Navigation Row (More Menu) */}
-        {moreOpen && (
-          <>
-
-
+        <div className={`grid transition-all duration-200 ease-in-out ${moreOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+          <div className="overflow-hidden">
             {/* Main more links row */}
-            <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40 animate-in slide-in-from-bottom-2 fade-in duration-200 delay-75">
+            <div className="flex items-center justify-around h-14 px-2 border-b border-[#1E293B]/40">
               {mobileMoreLinks.map((item, index) => {
                 const isActive = item.href && pathname?.startsWith(item.href)
                 const Icon = item.icon
@@ -427,8 +425,8 @@ export function Navbar() {
                 return null
               })}
             </div>
-          </>
-        )}
+          </div>
+        </div>
 
         {/* Primary Navigation Row */}
         <div className="flex items-center justify-around h-14 px-2 relative z-50">
