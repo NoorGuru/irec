@@ -26,7 +26,7 @@ function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
 import HolographicCard from '@/components/HolographicCard'
 import TextScramble from '@/components/TextScramble'
 import PulseField from '@/components/PulseField'
-import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, formatMarketTime, formatDateTime } from '@/lib/utils'
 import { TVMiniChart } from '@/components/TVWidgets'
 
 // --- Types ---
@@ -918,11 +918,13 @@ export default function TodayPlaysPage() {
 
             <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className={`w-3.5 h-3.5 ${activeColorText} animate-pulse`} />
-                  <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
-                    Market Pulse
-                  </h1>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Activity className={`w-3.5 h-3.5 ${activeColorText} animate-pulse`} />
+                    <h1 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+                      Market Pulse
+                    </h1>
+                  </div>
                 </div>
 
                 {loading ? (
@@ -958,30 +960,38 @@ export default function TodayPlaysPage() {
 
               {/* Quick Metrics Bar -> Tug-of-War Polarity Gauge */}
               {!loading && !error && data && (
-                <div className="flex flex-col justify-center rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/80 p-5 shrink-0 self-start xl:self-auto font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] w-full xl:w-[380px]">
-                  <div className="flex items-end justify-between mb-3">
-                    <div className="flex flex-col">
-                      <span className="text-2xl md:text-3xl font-black text-[#00D4AA] leading-none">{buyPlays.length}</span>
-                      <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Nodes</span>
+                <div className="flex flex-col gap-2 shrink-0 self-start xl:self-auto w-full xl:w-[380px]">
+                  <div className="flex flex-col justify-center rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/80 p-5 font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+                    <div className="flex items-end justify-between mb-3">
+                      <div className="flex flex-col">
+                        <span className="text-2xl md:text-3xl font-black text-[#00D4AA] leading-none">{buyPlays.length}</span>
+                        <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Nodes</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] leading-none">{sellPlays.length}</span>
+                        <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Nodes</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] leading-none">{sellPlays.length}</span>
-                      <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Nodes</span>
+                    
+                    {/* The Gauge */}
+                    <div className="relative w-full h-2.5 bg-[#141B2D] rounded-full overflow-hidden flex border border-[#1E293B]/60">
+                      <div 
+                        className="h-full bg-[#00D4AA] shadow-[0_0_8px_#00D4AA] transition-all duration-1000 ease-out"
+                        style={{ width: `${(buyPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
+                      />
+                      <div 
+                        className="h-full bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A] transition-all duration-1000 ease-out"
+                        style={{ width: `${(sellPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
+                      />
+                      {/* Center Mark */}
+                      <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/20" />
                     </div>
                   </div>
-                  
-                  {/* The Gauge */}
-                  <div className="relative w-full h-2.5 bg-[#141B2D] rounded-full overflow-hidden flex border border-[#1E293B]/60">
-                    <div 
-                      className="h-full bg-[#00D4AA] shadow-[0_0_8px_#00D4AA] transition-all duration-1000 ease-out"
-                      style={{ width: `${(buyPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
-                    />
-                    <div 
-                      className="h-full bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A] transition-all duration-1000 ease-out"
-                      style={{ width: `${(sellPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
-                    />
-                    {/* Center Mark */}
-                    <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/20" />
+
+                  {/* Move Synced Timestamp here */}
+                  <div className="flex items-center justify-end gap-1.5 text-[8px] text-[#475569] font-[family-name:var(--font-geist-mono)] pr-2">
+                    <span className={`w-1 h-1 rounded-full ${activeColorBg} opacity-50`}></span>
+                    Synced {formatDateTime(data.generated_at)}
                   </div>
                 </div>
               )}

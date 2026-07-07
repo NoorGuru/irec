@@ -12,13 +12,33 @@ import {
   GitFork,
   LayoutDashboard,
   Briefcase,
-  LogIn
+  LogIn,
+  RefreshCw
 } from 'lucide-react'
 
 export default function GoPage() {
   const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [clearing, setClearing] = useState(false)
   const router = useRouter()
+
+  const handleClearCache = async () => {
+    setClearing(true)
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+      const res = await fetch(`${backendUrl}/api/v1/admin/cache/clear`, { method: 'POST' })
+      if (res.ok) {
+        alert("Cache cleared successfully! Today's plays will refresh.")
+      } else {
+        alert("Failed to clear cache.")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error clearing cache.")
+    } finally {
+      setClearing(false)
+    }
+  }
 
   useEffect(() => {
     async function checkAuth() {
@@ -105,6 +125,20 @@ export default function GoPage() {
               </Tag>
             )
           })}
+
+          <button
+            onClick={handleClearCache}
+            disabled={clearing}
+            className="group flex items-start gap-4 p-5 rounded-2xl bg-[#141B2D]/40 backdrop-blur-sm border border-[#1E293B]/60 hover:border-[#00D4AA]/30 hover:bg-[#141B2D]/80 hover:-translate-y-1 transition-all duration-300 shadow-lg shadow-black/10 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="p-3 rounded-xl bg-[#0A0F1A] border border-[#1E293B]/80 group-hover:border-[#00D4AA]/30 group-hover:shadow-[0_0_15px_rgba(0,212,170,0.15)] text-[#64748B] group-hover:text-[#00D4AA] transition-all duration-300">
+              <RefreshCw className={`w-5 h-5 ${clearing ? 'animate-spin' : ''}`} />
+            </div>
+            <div>
+              <h2 className="font-medium text-[#F1F5F9] group-hover:text-white transition-colors">Clear API Cache</h2>
+              <p className="text-xs text-[#64748B] mt-1 leading-relaxed">Force refresh Today's Plays & Stats</p>
+            </div>
+          </button>
         </div>
       </div>
     </div>
