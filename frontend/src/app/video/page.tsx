@@ -131,24 +131,24 @@ function TickerCard({ rec, index }: { rec: RecommendationRow; index: number }) {
   const staggerClass = `stagger-${Math.min(index + 3, 10)}`
 
   return (
-    <div className={`group relative rounded-2xl border border-[#1E293B] bg-[#141B2D]/60 p-6 md:p-8 transition-all duration-300 hover:border-[#2D3A4F] hover:bg-[#141B2D] animate-fade-up ${staggerClass}`}>
+    <Link
+      href={`/ticker?s=${rec.ticker}`}
+      className={`group relative block rounded-2xl border border-[#1E293B] bg-[#141B2D]/60 p-6 md:p-8 transition-all duration-300 hover:border-[#2D3A4F] hover:bg-[#141B2D] hover:-translate-y-1 animate-fade-up ${staggerClass}`}
+    >
       {/* Sentiment accent bar on the left */}
       <div className={`absolute left-0 top-6 bottom-6 w-1 rounded-full ${getSentimentBarColor(rec.sentiment)}`} />
 
       {/* Header: Ticker + Sentiment */}
       <div className="flex items-start justify-between gap-4 mb-5 pl-4">
         <div>
-          <Link
-            href={`/ticker?s=${rec.ticker}`}
-            className="group/ticker inline-flex items-baseline gap-3"
-          >
-            <span className="font-[family-name:var(--font-geist-mono)] text-3xl md:text-4xl font-bold tracking-wide text-[#F1F5F9] group-hover/ticker:text-[#00D4AA] transition-colors duration-200">
+          <div className="inline-flex items-baseline gap-3">
+            <span className="font-[family-name:var(--font-geist-mono)] text-3xl md:text-4xl font-bold tracking-wide text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors duration-200">
               {rec.ticker}
             </span>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[#475569] group-hover/ticker:text-[#00D4AA] transition-all group-hover/ticker:translate-x-0.5 opacity-0 group-hover/ticker:opacity-100" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-[#475569] group-hover:text-[#00D4AA] transition-all group-hover:translate-x-0.5 opacity-0 group-hover:opacity-100" aria-hidden="true">
               <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-          </Link>
+          </div>
           {rec.stock_name && (
             <p className="text-sm text-[#64748B] mt-1 pl-0.5">{rec.stock_name}</p>
           )}
@@ -181,7 +181,7 @@ function TickerCard({ rec, index }: { rec: RecommendationRow; index: number }) {
           </p>
         </div>
       )}
-    </div>
+    </Link>
   )
 }
 

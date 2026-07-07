@@ -7,11 +7,11 @@ Validates: Requirements 2.3, 2.4, 2.5
 Tests that:
 - sentiment accepts integers in [-2, 2] and rejects those outside
 - conviction_level accepts integers in [1, 10] and rejects those outside
-- catalyst_notes accepts strings of length 1-500 and rejects empty or >500
+- catalyst_notes accepts strings of length 1-2000 and rejects empty or >2000
 """
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings, assume, HealthCheck
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
@@ -69,17 +69,17 @@ def test_invalid_conviction_level_rejected(conviction: int):
 
 
 @settings(max_examples=100)
-@given(notes=st.text(min_size=1, max_size=500, alphabet=st.characters(blacklist_categories=("Cs",))))
+@given(notes=st.text(min_size=1, max_size=2000, alphabet=st.characters(blacklist_categories=("Cs",))))
 def test_valid_catalyst_notes_accepted(notes: str):
-    """For any string of length 1-500, Recommendation accepts it as catalyst_notes."""
+    """For any string of length 1-2000, Recommendation accepts it as catalyst_notes."""
     rec = Recommendation(**{**VALID_DEFAULTS, "catalyst_notes": notes})
     assert rec.catalyst_notes == notes
 
 
-@settings(max_examples=100)
-@given(notes=st.text(min_size=501, max_size=1000, alphabet=st.characters(blacklist_categories=("Cs",))))
+@settings(max_examples=100, suppress_health_check=[HealthCheck.large_base_example])
+@given(notes=st.text(min_size=2001, max_size=3000, alphabet=st.characters(blacklist_categories=("Cs",))))
 def test_too_long_catalyst_notes_rejected(notes: str):
-    """For strings >500 chars, Recommendation rejects them."""
+    """For strings >2000 chars, Recommendation rejects them."""
     with pytest.raises(ValidationError):
         Recommendation(**{**VALID_DEFAULTS, "catalyst_notes": notes})
 

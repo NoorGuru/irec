@@ -47,7 +47,7 @@ class RecommendationUpdate(BaseModel):
     sentiment: int | None = Field(None, ge=-2, le=2)
     target_price: float | None = None
     conviction_level: int | None = Field(None, ge=1, le=10)
-    catalyst_notes: str | None = Field(None, max_length=500)
+    catalyst_notes: str | None = Field(None, max_length=2000)
 
 
 class BulkReextractRequest(BaseModel):
