@@ -262,7 +262,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
           <span className={`absolute left-0 -top-3 text-3xl font-serif select-none pointer-events-none ${isBuy ? 'text-[#00D4AA]/10' : 'text-[#FF4D6A]/10'}`}>
             “
           </span>
-          <p className="text-xs md:text-[13px] text-[#E2E8F0] italic font-serif leading-relaxed line-clamp-3">
+          <p className="text-xs md:text-[13px] text-[#F1F5F9] font-medium leading-relaxed line-clamp-3">
             {play.top_catalyst}
           </p>
           <div className="flex items-center gap-1.5 mt-2 text-[9px] font-[family-name:var(--font-geist-mono)] tracking-wider text-[#94A3B8] font-bold">
@@ -283,33 +283,9 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
       <div>
         {/* Source info */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5 text-[10px] text-[#94A3B8] font-[family-name:var(--font-geist-mono)]">
-          <span className="truncate max-w-[130px]">
+          <span className="truncate w-full">
             Latest: <span className="text-[#E2E8F0] font-bold">{play.latest_video.channel_name}</span>
           </span>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href={`/video?id=${play.latest_video.youtube_video_id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-[#94A3B8] hover:text-[#00D4AA] transition-colors"
-              title="View video details"
-            >
-              <span>Intel</span>
-              <Activity className="w-2.5 h-2.5" />
-            </Link>
-            <span className="text-[#374151]">•</span>
-            <a
-              href={`https://youtube.com/watch?v=${play.latest_video.youtube_video_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 text-[#94A3B8] hover:text-red-400 transition-colors"
-              title="Watch on YouTube"
-            >
-              <span>YouTube</span>
-              <YoutubeIcon className="w-2.5 h-2.5" />
-            </a>
-          </div>
         </div>
       </div>
     </HolographicCard>
@@ -484,7 +460,7 @@ function PulseStream({
                   <span className={`absolute left-0 -top-3.5 text-4xl font-serif select-none pointer-events-none ${isBuy ? 'text-[#00D4AA]/10' : 'text-[#FF4D6A]/10'}`}>
                     “
                   </span>
-                  <p className="text-sm md:text-base text-[#E2E8F0] italic font-serif leading-relaxed line-clamp-4">
+                  <p className="text-sm md:text-base text-[#F1F5F9] font-medium leading-relaxed line-clamp-4">
                     {play.top_catalyst}
                   </p>
                   <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-[family-name:var(--font-geist-mono)] tracking-wider text-[#94A3B8] font-bold">
@@ -502,29 +478,6 @@ function PulseStream({
                 </div>
               </div>
 
-              <div>
-                {/* Links */}
-                <div className="flex items-center justify-between text-xs font-[family-name:var(--font-geist-mono)] text-[#94A3B8] border-t border-white/5 pt-4">
-                  <Link
-                    href={`/video?id=${play.latest_video.youtube_video_id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 hover:text-[#00D4AA] transition-colors"
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>View Analysis</span>
-                  </Link>
-
-                  <a
-                    href={`https://youtube.com/watch?v=${play.latest_video.youtube_video_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1.5 hover:text-red-400 transition-colors"
-                  >
-                    <YoutubeIcon className="w-3.5 h-3.5" />
-                    <span>YouTube</span>
-                  </a>
-                </div>
               </div>
             </HolographicCard>
           </motion.div>

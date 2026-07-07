@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Clock, Zap, RotateCcw, Sparkles, AlertTriangle, Trash2, Play, X } from 'lucide-react'
 
 const YOUTUBE_URL_REGEX =
-  /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/shorts\//
+  /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/(shorts|live)\//
 
 const TRANSCRIPT_WORKER_URL = process.env.NEXT_PUBLIC_TRANSCRIPT_WORKER_URL || 'https://yt-transcript-proxy.abukhleif94.workers.dev'
 
@@ -35,6 +35,14 @@ function extractVideoId(urlStr: string): string | null {
     // Check shorts
     if (trimmed.includes('youtube.com/shorts/')) {
       const parts = trimmed.split('youtube.com/shorts/')
+      if (parts[1]) {
+        const id = parts[1].split('?')[0].split('/')[0]
+        if (id.length === 11) return id
+      }
+    }
+    // Check live
+    if (trimmed.includes('youtube.com/live/')) {
+      const parts = trimmed.split('youtube.com/live/')
       if (parts[1]) {
         const id = parts[1].split('?')[0].split('/')[0]
         if (id.length === 11) return id
@@ -726,7 +734,7 @@ function IngestContent() {
     }
     if (!YOUTUBE_URL_REGEX.test(value.trim())) {
       setValidationError(
-        'Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/'
+        'Supported formats: youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, youtube.com/live/'
       )
       return false
     }
