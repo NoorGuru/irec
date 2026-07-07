@@ -10,7 +10,9 @@ import {
   Home,
   PlusCircle,
   GitFork,
-  LayoutDashboard
+  LayoutDashboard,
+  Briefcase,
+  LogIn
 } from 'lucide-react'
 
 export default function GoPage() {
@@ -51,6 +53,8 @@ export default function GoPage() {
 
   const links = [
     { name: 'Home / Dashboard', href: '/', icon: Home, desc: 'Main user-facing app' },
+    { name: 'Portfolio', href: '/portfolio', icon: Briefcase, desc: 'View and sync your holdings' },
+    { name: 'Fix Token (Re-Login)', href: '/admin/login?next=/portfolio', icon: LogIn, desc: 'Refresh Google Sheets access' },
     { name: 'Admin Hub', href: '/admin', icon: LayoutDashboard, desc: 'Central admin overview' },
     { name: 'Manage Data', href: '/admin/manage', icon: Database, desc: 'Channels, Videos, Stocks' },
     { name: 'Ingest Tool', href: '/admin/ingest', icon: PlusCircle, desc: 'Add new content' },
