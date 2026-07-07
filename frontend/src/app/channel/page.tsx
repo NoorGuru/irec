@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import Loading from '@/components/ui/loading'
 
 /* ─── Types ─── */
 
@@ -379,18 +380,7 @@ function ChannelContent() {
   }, [channelId])
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute glow-emerge" style={{ width: '180px', height: '180px', animationDelay: '200ms' }}>
-            <div className="aura-glow" />
-          </div>
-          <div className="relative">
-            <div className="w-6 h-6 rounded-full border-2 border-[#1E293B] border-t-[#00D4AA] animate-spin" />
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading title="Channel" subtitle="Loading channel profile..." />
   }
 
   if (!channelId || !channel) {

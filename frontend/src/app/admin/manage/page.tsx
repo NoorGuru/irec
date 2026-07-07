@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import Loading from '@/components/ui/loading'
 import { ArrowLeft, Radio, Tv2, MessageSquareText, Brain, BarChart3, Database } from 'lucide-react'
 import { ChannelsTab } from './tabs/channels-tab'
 import { VideosTab } from './tabs/videos-tab'
@@ -88,14 +89,7 @@ function AdminManageContent() {
 
   // Loading state
   if (!authChecked) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-[#00D4AA] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[#8B95A8] font-mono">Authenticating...</p>
-        </div>
-      </div>
-    )
+    return <Loading title="Admin" subtitle="Authenticating..." />
   }
 
   return (

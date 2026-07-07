@@ -74,7 +74,7 @@ export default function Loading({ title, subtitle, isHome = false }: LoadingProp
                   className="logo-letter letter-materialize"
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
-                  {letter}
+                  {letter === ' ' ? '\u00A0' : letter}
                 </span>
               ))}
             </div>

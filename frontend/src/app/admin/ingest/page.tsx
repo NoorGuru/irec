@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle2, XCircle, Loader2, Circle, RefreshCw, LogOut, Clock, Zap, RotateCcw, Sparkles, AlertTriangle, Trash2, Play, X } from 'lucide-react'
+import Loading from '@/components/ui/loading'
 
 const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/(shorts|live)\//
@@ -791,14 +792,7 @@ function IngestContent() {
   }
 
   if (!authChecked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0A0F1A]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-5 w-5 animate-spin text-[#00D4AA]/60" />
-          <p className="text-xs text-[#64748B] tracking-wide">Verifying session...</p>
-        </div>
-      </div>
-    )
+    return <Loading title="Admin" subtitle="Verifying session..." />
   }
 
   return (

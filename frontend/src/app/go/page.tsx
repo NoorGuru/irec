@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import Loading from '@/components/ui/loading'
 import {
   LogOut,
   Database,
@@ -60,11 +61,7 @@ export default function GoPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0A0F1A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#00D4AA]"></div>
-      </div>
-    )
+    return <Loading title="Go" subtitle="Loading dashboard..." />
   }
 
   if (!session) {
