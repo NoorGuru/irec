@@ -406,6 +406,33 @@ async def get_radars(request: Request, response: Response):
             detail=f"Error calculating radars: {str(e)}"
         )
 
+@router.get("/ticker/{symbol}")
+async def get_radars_for_ticker(symbol: str):
+    """Retrieve lightweight radar information for a specific ticker."""
+    try:
+        from app.database import _get_client
+        client = _get_client()
+        symbol = symbol.upper()
+        
+        # 1. Get radar IDs from radar_tickers
+        rt_res = client.table("radar_tickers").select("radar_id").eq("ticker", symbol).execute()
+        if not rt_res.data:
+            return []
+            
+        radar_ids = [r["radar_id"] for r in rt_res.data]
+        
+        # 2. Get radar details
+        radars_res = client.table("radars").select("slug, name, icon, theme_color").in_("id", radar_ids).execute()
+        
+        return radars_res.data or []
+        
+    except Exception as e:
+        logger.error(f"Error fetching radars for ticker {symbol}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching radars for ticker: {str(e)}"
+        )
+
 @router.get("/{slug}", response_model=RadarResponse)
 async def get_radar(slug: str, request: Request, response: Response):
     """Retrieve a specific radar by slug."""

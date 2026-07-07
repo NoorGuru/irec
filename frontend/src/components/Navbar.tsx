@@ -239,16 +239,6 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
-  const [session, setSession] = useState<any>(null)
-
-  useEffect(() => {
-    async function checkSession() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-    }
-    checkSession()
-  }, [])
 
   useEffect(() => {
     function onScroll() {
@@ -282,8 +272,7 @@ export function Navbar() {
     { href: '/explore', label: 'Explore', icon: ExploreIcon },
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
-    { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
+    { href: '/videos', label: 'Videos', icon: VideosIcon }
   ]
 
   const mobilePrimaryLinks = [
@@ -294,8 +283,7 @@ export function Navbar() {
   const mobileMoreLinks: Array<{ href?: string; onClick?: () => void; label: string; icon: any }> = [
     { href: '/radars', label: 'Radars', icon: RadarsIcon },
     { href: '/channels', label: 'Channels', icon: ChannelsIcon },
-    { href: '/videos', label: 'Videos', icon: VideosIcon },
-    ...(session ? [{ href: '/portfolio', label: 'Portfolio', icon: PortfolioIcon }] : [])
+    { href: '/videos', label: 'Videos', icon: VideosIcon }
   ]
 
   return (

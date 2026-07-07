@@ -170,17 +170,7 @@ function TickerContent() {
       try {
         const supabase = createClient()
         
-        // Fetch User Position
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data } = await supabase
-            .from("user_portfolio")
-            .select("*")
-            .eq("ticker", symbol.toUpperCase())
-            .single()
-          if (data) setPosition(data)
-        }
-
+        // 1. Fetch main data concurrently
         const [recsRes, radarsRes] = await Promise.all([
           supabase
             .from("recommendations")
@@ -201,7 +191,7 @@ function TickerContent() {
               )
             `)
             .eq("ticker", symbol.toUpperCase()),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars`)
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars/ticker/${symbol.toUpperCase()}`)
             .then(res => res.ok ? res.json() : [])
             .catch(() => [])
         ])
@@ -217,7 +207,24 @@ function TickerContent() {
       } finally {
         setLoading(false)
       }
+
+      // 2. Fetch User Position without blocking the page load
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const { data } = await supabase
+            .from("user_portfolio")
+            .select("*")
+            .eq("ticker", symbol.toUpperCase())
+            .single()
+          if (data) setPosition(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch user position:", error)
+      }
     }
+    
     fetchData()
   }, [symbol, isInvalid])
 
@@ -261,7 +268,7 @@ function TickerContent() {
   const confidence = Math.min(recommendations.length / 3, 1)
   const consensusSentiment = Math.round(rawWeightedSentiment * confidence * 100) / 100
 
-  const activeRadars = radars.filter(r => r.tickers.includes(symbol.toUpperCase()))
+  const activeRadars = radars
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
@@ -450,21 +457,22 @@ function TickerContent() {
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00D4AA]/10 blur-3xl rounded-full pointer-events-none" />
             
-            <div className="flex items-center justify-between w-full relative z-10">
-              <div 
-                className="flex items-center gap-2 text-[#00D4AA] cursor-pointer select-none"
-                onClick={() => setIsPositionExpanded(!isPositionExpanded)}
-              >
+            <div 
+              className="flex items-center justify-between w-full relative z-10 cursor-pointer group"
+              onClick={() => setIsPositionExpanded(!isPositionExpanded)}
+            >
+              <div className="flex items-center gap-2 text-[#00D4AA] select-none">
                 <Briefcase className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-widest font-[family-name:var(--font-geist-mono)]">PORTFOLIO EXPOSURE</span>
                 {isPositionExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-[#8B95A8]" />
+                  <ChevronUp className="w-4 h-4 text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-[#8B95A8]" />
+                  <ChevronDown className="w-4 h-4 text-[#8B95A8] group-hover:text-[#F1F5F9] transition-colors" />
                 )}
               </div>
               <Link 
                 href="/portfolio"
+                onClick={(e) => e.stopPropagation()}
                 className="text-xs text-[#8B95A8] hover:text-[#00D4AA] transition-colors flex items-center gap-1 font-semibold"
               >
                 <span>View Portfolio</span>

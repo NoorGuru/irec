@@ -162,6 +162,7 @@ export interface JobConfig {
   url: string
   mode: 'normal' | 'reextract' | 'force_reingest'
   manualTranscriptText?: string
+  startManual?: boolean
 }
 
 
@@ -187,7 +188,7 @@ function JobCard({
   const [duplicateVideo, setDuplicateVideo] = useState<any | null>(null)
   const [totalStartedAt, setTotalStartedAt] = useState<number | null>(null)
   const [totalCompletedAt, setTotalCompletedAt] = useState<number | null>(null)
-  const [showManualPaste, setShowManualPaste] = useState(false)
+  const [showManualPaste, setShowManualPaste] = useState(config.startManual || false)
   const [manualTranscript, setManualTranscript] = useState('')
   const [manualVideoId, setManualVideoId] = useState<string | null>(null)
   const [workerUrl, setWorkerUrl] = useState<string | null>(null)
@@ -432,6 +433,10 @@ function JobCard({
 
   // start on mount
   useEffect(() => {
+    if (config.startManual) {
+      setIsLoading(false);
+      return;
+    }
     startExtraction(config.mode, config.manualTranscriptText)
     
     return () => {
@@ -524,7 +529,28 @@ function JobCard({
               })()}
             </div>
           </div>
-          <textarea value={manualTranscript} onChange={(e) => handleTranscriptChange(e.target.value)} placeholder='Paste raw transcript text...' rows={4} className="w-full rounded-xl border border-[#1E293B] bg-[#0A0F1A] px-4 py-3 font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9]" />
+          <div className="space-y-2">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[11px] font-semibold text-[#8B95A8]">Transcript Content</span>
+              <label className="cursor-pointer flex items-center gap-1.5 text-[11px] font-semibold text-[#00D4AA] hover:text-[#00FFD0] transition-colors">
+                <span>Upload JSON</span>
+                <input type="file" accept=".json,.txt" className="hidden" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      if (typeof ev.target?.result === 'string') {
+                        handleTranscriptChange(ev.target.result);
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                  e.target.value = '';
+                }} />
+              </label>
+            </div>
+            <textarea value={manualTranscript} onChange={(e) => handleTranscriptChange(e.target.value)} placeholder='Paste raw transcript text...' rows={4} className="w-full rounded-xl border border-[#1E293B] bg-[#0A0F1A] px-4 py-3 font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9]" />
+          </div>
           <button type="button" disabled={isLoading || manualTranscript.trim().length < 20} onClick={() => startExtraction('force_reingest', manualTranscript)} className="w-full rounded-xl bg-[#00D4AA] px-5 py-3 text-xs font-semibold text-[#0A0F1A] hover:bg-[#00D4AA]/90 disabled:opacity-40">
             {isLoading ? 'Extracting...' : 'Extract with Paste'}
           </button>
@@ -831,16 +857,35 @@ function IngestContent() {
                   />
                   <div className="pointer-events-none absolute inset-0 rounded-xl border border-transparent opacity-0 peer-focus:opacity-100 transition-opacity" />
                 </div>
-                <button
-                  type="submit"
-                  disabled={!url.trim()}
-                  className="group relative rounded-xl bg-[#00D4AA] px-8 py-3.5 text-sm font-semibold text-[#0A0F1A] transition-all duration-200 hover:bg-[#00D4AA]/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    Extract
-                  </span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={!url.trim()}
+                    className="group relative rounded-xl bg-[#00D4AA] px-8 py-3.5 text-sm font-semibold text-[#0A0F1A] transition-all duration-200 hover:bg-[#00D4AA]/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Auto
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!url.trim()}
+                    onClick={() => {
+                      if (!validateUrl(url)) return
+                      setJobs(prev => [{
+                        id: Math.random().toString(36).substring(2, 9),
+                        url: url.trim(),
+                        mode: 'normal',
+                        startManual: true
+                      }, ...prev])
+                      setUrl('')
+                    }}
+                    className="group relative rounded-xl border border-[#1E293B] bg-[#141B2D] px-6 py-3.5 text-sm font-semibold text-[#8B95A8] transition-all duration-200 hover:bg-[#1E293B] hover:text-[#F1F5F9] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0F1A]"
+                  >
+                    Manual
+                  </button>
+                </div>
               </div>
 
               {validationError && (
