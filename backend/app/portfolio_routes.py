@@ -119,7 +119,12 @@ async def sync_portfolio(
             break
             
     shares_idx = next((i for i, h in enumerate(headers) if 'share' in h or 'qty' in h or 'quantity' in h), -1)
-    cost_idx = next((i for i, h in enumerate(headers) if 'avg cost' in h or 'avg' in h), -1)
+    
+    # Try specific cost columns first
+    cost_idx = next((i for i, h in enumerate(headers) if h in ['avg cost', 'average cost', 'cost basis', 'cost', 'cost/share', 'cost per share', 'average price', 'purchase price']), -1)
+    if cost_idx == -1:
+        # Fallback: substring match but exclude moving averages
+        cost_idx = next((i for i, h in enumerate(headers) if ('avg' in h or 'cost' in h) and 'day' not in h and 'vol' not in h and 'return' not in h), -1)
     
     # New Analytics Indexes
     price_idx = next((i for i, h in enumerate(headers) if 'live price' in h or 'current price' in h), -1)
