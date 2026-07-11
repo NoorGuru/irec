@@ -695,3 +695,36 @@
   }
 }
 
+/* Auth gate dissolve */
+@keyframes auth-dissolve {
+  from { opacity: 1; backdrop-filter: blur(16px); }
+  to { opacity: 0; backdrop-filter: blur(0px); }
+}
+.animate-auth-dissolve {
+  animation: auth-dissolve 0.4s ease-out forwards;
+}
+
+/* Section collapse */
+@keyframes section-expand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 2000px; opacity: 1; }
+}
+
+/* Manual transcript inline expand */
+@keyframes inline-expand {
+  from { max-height: 0; opacity: 0; margin-top: 0; }
+  to { max-height: 300px; opacity: 1; margin-top: 0.75rem; }
+}
+.animate-inline-expand {
+  animation: inline-expand 0.3s ease-out forwards;
+}
+
+/* Queue card hover */
+.queue-card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.queue-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(0, 212, 170, 0.08);
+}
+

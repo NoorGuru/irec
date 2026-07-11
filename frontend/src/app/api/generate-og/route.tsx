@@ -5,6 +5,10 @@ import { join } from 'path';
 export const dynamic = 'force-static';
 
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return new Response('Skipped OG generation in build');
+  }
+
   // Load the stunning, generated AI background image
   let bgBase64 = '';
   try {

@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 
 from app.admin_routes import router as admin_router
 from app.today_routes import router as today_router
+from app.queue_routes import router as queue_router
 from app.auth import verify_owner
 from app.database import check_duplicate, get_cached_transcript, persist_extraction, save_transcript_cache, delete_existing_video, get_video_for_reextract, replace_recommendations, save_llm_response, _get_client
 from app.llm_parser import parse_recommendations, LLMParseError
@@ -38,6 +39,7 @@ app.add_middleware(
 # Register admin routes
 app.include_router(admin_router)
 app.include_router(today_router)
+app.include_router(queue_router)
 
 
 def _log_pipeline_error(
@@ -269,8 +271,11 @@ async def extract_stream(
         def sse(data: dict) -> str:
             return f"data: {json.dumps(data)}\n\n"
 
+        import asyncio
+
         # Step 1: Parse URL
         yield sse({"step": "url_parse", "status": "running", "detail": "Parsing YouTube URL..."})
+        await asyncio.sleep(0.01)
         try:
             parsed = parse_url(youtube_url)
         except HTTPException as e:
@@ -282,6 +287,7 @@ async def extract_stream(
             yield sse({"step": "url_parse", "status": "error", "detail": "URL format not recognized"})
             return
         yield sse({"step": "url_parse", "status": "done", "detail": f"Video ID: {parsed.video_id}"})
+        await asyncio.sleep(0.01)
 
         # ── Re-extract only mode: shortened pipeline ──
         if reextract_only:
@@ -404,6 +410,7 @@ async def extract_stream(
 
         # Step 2: Duplicate check
         yield sse({"step": "duplicate_check", "status": "running", "detail": "Checking for duplicates..."})
+        await asyncio.sleep(0.01)
         try:
             is_duplicate = await check_duplicate(parsed.video_id)
         except HTTPException as e:

@@ -1,0 +1,30 @@
+name: Check Channels for New Videos
+on:
+  schedule:
+    # Bucket A: Mon + Thu at 08:00 UTC
+    - cron: '0 8 * * 1,4'
+    # Bucket B: Tue + Fri at 08:00 UTC  
+    - cron: '0 8 * * 2,5'
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine bucket
+        id: bucket
+        run: |
+          DOW=$(date +%u)  # 1=Mon, 2=Tue, ...
+          if [ "$DOW" = "1" ] || [ "$DOW" = "4" ]; then
+            echo "bucket=A" >> $GITHUB_OUTPUT
+          else
+            echo "bucket=B" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger channel check
+        run: |
+          curl -X POST \
+            "${{ secrets.BACKEND_URL }}/api/v1/scheduler/check-channels" \
+            -H "X-Scheduler-Key: ${{ secrets.SCHEDULER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"bucket": "${{ steps.bucket.outputs.bucket }}"}'

@@ -1,0 +1,15 @@
+name: Fetch Captions for Queued Videos
+on:
+  schedule:
+    - cron: '0 */4 * * *'  # Every 4 hours
+  workflow_dispatch:      # Manual trigger for testing
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger caption fetch
+        run: |
+          curl -X POST \
+            "${{ secrets.BACKEND_URL }}/api/v1/scheduler/fetch-captions" \
+            -H "X-Scheduler-Key: ${{ secrets.SCHEDULER_API_KEY }}"

@@ -25,7 +25,7 @@ class LLMParseError(Exception):
         self.raw_response = raw_response
         super().__init__(detail)
 
-MODEL = "claude-sonnet-4-6"
+MODEL = "claude-sonnet-5"
 
 # Type for an optional async retry callback: (attempt, max_retries, reason, delay) -> None
 AsyncRetryCallback = Callable[[int, int, str, float], None] | None
@@ -134,8 +134,10 @@ async def _call_anthropic(client: anthropic.AsyncAnthropic, transcript: str, met
         messages=[{"role": "user", "content": user_message}],
     )
 
-    # Extract text from response content blocks
-    response_text = message.content[0].text
+    # Extract text from response content blocks (handle ThinkingBlock for newer models)
+    response_text = next((block.text for block in message.content if block.type == 'text'), "")
+    if not response_text:
+        raise ValueError("No text block found in AI response")
 
     # Detect truncation: if the model hit the token limit, the JSON is incomplete
     if message.stop_reason == "max_tokens":
