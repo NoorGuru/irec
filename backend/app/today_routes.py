@@ -43,6 +43,7 @@ class PlayResponse(BaseModel):
     direction: str  # "BUY" or "SELL"
     aura_score: int  # 0 to 100
     omni_score: int  # 0 to 100 (All-time score)
+    signal_tier: str  # "strong" or "emerging"
     action_label: str  # "Strong Buy", "Buy", "Sell", "Strong Sell"
     consensus_sentiment: float
     avg_conviction: float
@@ -402,19 +403,26 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score") -> Toda
             if analyst_count >= 4:
                 analyst_multiplier = 1.0
             elif analyst_count == 3:
-                analyst_multiplier = 0.8
+                analyst_multiplier = 0.85
             elif analyst_count == 2:
-                analyst_multiplier = 0.6
+                analyst_multiplier = 0.72
             else:
-                analyst_multiplier = 0.5
+                analyst_multiplier = 0.60
             
         action_score_raw *= analyst_multiplier
 
-        aura_score = int(max(0, min(100, action_score_raw)))
+        aura_score_raw = int(max(0, min(100, action_score_raw)))
+        # Blend 15% omni_score into aura_score for historical depth
+        aura_score = int(0.85 * aura_score_raw + 0.15 * omni_score)
 
         # --- Dynamic Strategy Filtering ---
+        signal_tier = "strong"
         if strategy == "aura_score":
-            if aura_score < 60:
+            if aura_score >= 50:
+                signal_tier = "strong"
+            elif aura_score >= 35:
+                signal_tier = "emerging"
+            else:
                 continue
         elif strategy == "conviction":
             if avg_conviction < 7.5:
@@ -500,6 +508,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score") -> Toda
                 direction=direction,
                 aura_score=aura_score,
                 omni_score=omni_score,
+                signal_tier=signal_tier,
                 action_label=action_label,
                 consensus_sentiment=round(consensus_sentiment, 2),
                 avg_conviction=round(avg_conviction, 1),
@@ -523,6 +532,10 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score") -> Toda
         plays.sort(key=lambda x: abs(x.consensus_sentiment), reverse=True)
     else:  # default or "aura_score"
         plays.sort(key=lambda x: x.aura_score, reverse=True)
+
+    # Cap to top 24 plays (a multiple of 3 for the grid layout) to prevent
+    # the feed from being overwhelmed when many tickers pass the threshold
+    plays = plays[:24]
 
 
 

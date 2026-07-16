@@ -74,9 +74,9 @@ def _compute_score_for_recs(recs, now, fallback_days) -> int:
         analyst_multiplier = min(1.0, 0.8 + 0.1 * analyst_count)
     else:
         if analyst_count >= 4: analyst_multiplier = 1.0
-        elif analyst_count == 3: analyst_multiplier = 0.8
-        elif analyst_count == 2: analyst_multiplier = 0.6
-        else: analyst_multiplier = 0.5
+        elif analyst_count == 3: analyst_multiplier = 0.85
+        elif analyst_count == 2: analyst_multiplier = 0.72
+        else: analyst_multiplier = 0.60
         
     return int(max(0, min(100, action_score_raw * analyst_multiplier)))
 

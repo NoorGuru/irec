@@ -51,6 +51,8 @@ interface Play {
   stock_name: string
   direction: 'BUY' | 'SELL'
   aura_score: number
+  omni_score: number
+  signal_tier: string
   action_label: string
   consensus_sentiment: number
   avg_conviction: number
@@ -743,7 +745,7 @@ export default function TodayPlaysPage() {
         const cached = localStorage.getItem(cacheKey)
         if (cached) {
           const parsed = JSON.parse(cached)
-          if (parsed && parsed.plays) {
+          if (parsed && parsed.plays && parsed.plays.length > 0) {
             if (active) {
               setData(parsed)
               setLoading(false)
@@ -752,6 +754,9 @@ export default function TodayPlaysPage() {
                 localEtag = parsed.generated_at
               }
             }
+          } else {
+            // Cached data has zero plays — treat it as stale and remove it
+            localStorage.removeItem(cacheKey)
           }
         }
       } catch (e) {
@@ -834,6 +839,9 @@ export default function TodayPlaysPage() {
   const buyPlays = data ? sortPlays(data.plays.filter((p) => p.direction === 'BUY')) : []
   const sellPlays = data ? sortPlays(data.plays.filter((p) => p.direction === 'SELL')) : []
   const activePlays = activeTab === 'BUY' ? buyPlays : sellPlays
+  
+  const strongPlays = activePlays.filter(p => p.signal_tier === 'strong')
+  const emergingPlays = activePlays.filter(p => p.signal_tier === 'emerging')
 
   const isBuyTab = activeTab === 'BUY'
   const isAuraScore = sortBy === 'aura_score'
@@ -1052,7 +1060,7 @@ export default function TodayPlaysPage() {
         </section>
 
         {/* HUD Sort Controls */}
-        {!loading && !error && data && (data.plays.length > 0) && (
+        {!loading && !error && data && (
           <div className="hidden md:flex flex-col gap-3 mb-6">
 
             {/* Top Toolbar */}
@@ -1141,7 +1149,7 @@ export default function TodayPlaysPage() {
         )}
 
         {/* Mobile Strategy Explanation */}
-        {!loading && !error && data && (data.plays.length > 0) && (
+        {!loading && !error && data && (
           <div className="md:hidden mb-4">
             <div className={`relative overflow-hidden rounded-xl border ${isAuraScore ? 'border-[#00D4AA]/20' : 'border-[#1E293B]/70'} bg-[#141B2D]/50 px-3.5 py-3 transition-all duration-500`}>
               <div className="relative flex items-start gap-2.5">
@@ -1199,16 +1207,10 @@ export default function TodayPlaysPage() {
             </p>
             <div className="flex justify-center gap-4 mt-6">
               <Link
-                href="/"
+                href="/explore"
                 className="px-4 py-2 text-xs font-bold rounded-lg border border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#141B2D] transition-all"
               >
                 Go to Explore
-              </Link>
-              <Link
-                href="/admin/ingest"
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-[#00D4AA] text-[#0A0F1A] hover:opacity-90 transition-all"
-              >
-                Scan Channels
               </Link>
             </div>
           </div>
@@ -1258,30 +1260,71 @@ export default function TodayPlaysPage() {
               {viewMode === 'grid' ? (
                 /* Grid View */
                 activePlays.length > 0 ? (
-                  <motion.div
-                    layout
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                  >
-                    <AnimatePresence mode="popLayout">
-                      {activePlays.map((play, idx) => (
+                  <div className="space-y-12">
+                    {strongPlays.length > 0 && (
+                      <div className="space-y-4">
                         <motion.div
-                          key={play.ticker}
                           layout
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{
-                            type: 'spring',
-                            stiffness: 300,
-                            damping: 30
-                          }}
-                          className="h-full"
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                         >
-                          <PlayCard play={play} index={idx} activeSortBy={sortBy} />
+                          <AnimatePresence mode="popLayout">
+                            {strongPlays.map((play, idx) => (
+                              <motion.div
+                                key={play.ticker}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 300,
+                                  damping: 30
+                                }}
+                                className="h-full"
+                              >
+                                <PlayCard play={play} index={idx} activeSortBy={sortBy} />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
                         </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </motion.div>
+                      </div>
+                    )}
+                    
+                    {emergingPlays.length > 0 && (
+                      <div className="space-y-4 border-t border-[#1E293B] pt-8">
+                        <div className="flex items-center gap-2 px-2">
+                          <Sparkles className="w-4 h-4 text-[#64748B]" />
+                          <h3 className="text-sm font-bold text-[#F1F5F9] tracking-wider uppercase">Developing Signals</h3>
+                          <span className="text-xs text-[#64748B] ml-2">({emergingPlays.length})</span>
+                        </div>
+                        <motion.div
+                          layout
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80 hover:opacity-100 transition-opacity duration-300"
+                        >
+                          <AnimatePresence mode="popLayout">
+                            {emergingPlays.map((play, idx) => (
+                              <motion.div
+                                key={play.ticker}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 300,
+                                  damping: 30
+                                }}
+                                className="h-full"
+                              >
+                                {/* We can use the same PlayCard but it will inherit the reduced opacity from the parent container. */}
+                                <PlayCard play={play} index={idx} activeSortBy={sortBy} />
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
                     <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
