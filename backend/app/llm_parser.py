@@ -40,8 +40,8 @@ CRITICAL TICKER RULES:
 - If a company is NOT publicly traded (e.g., Stripe, OpenAI), do NOT include it.
 - Double-check ticker accuracy: SPCE = Virgin Galactic (NOT SpaceX), META = Meta Platforms, \
 GOOG/GOOGL = Alphabet, MSFT = Microsoft, TSLA = Tesla, AMZN = Amazon.
-- If you are unsure about a ticker symbol, omit that recommendation entirely.
-- Do NOT invent or guess ticker symbols.
+- IMPORTANT: Include ANY stock or ETF ticker mentioned with a recommendation, even if you are not 100% sure of the exact symbol. We will validate tickers after extraction. It is better to include a ticker that might be wrong than to miss a legitimate one.
+- Many new or niche ETFs are commonly discussed and MUST NOT be skipped. Examples include: SKHY, HYNX, DRAM, NASA, ION, SPCX. Always extract these if mentioned.
 
 Sentiment scale: -2 (strong sell), -1 (sell/bearish), 0 (neutral/hold), \
 1 (buy/bullish), 2 (strong buy)
@@ -237,9 +237,22 @@ async def parse_recommendations(
                 raw_response=last_raw_response,
             )
 
-    # Post-process: ensure stock_name is populated
-    for rec in parsed.recommendations:
-        if not rec.stock_name:
-            rec.stock_name = lookup_stock_name(rec.ticker)
+    # Post-process: validate tickers and ensure stock_name is populated
+    from .ticker_validator import validate_tickers_live
+    
+    tickers_to_check = [rec.ticker for rec in parsed.recommendations]
+    validation = await validate_tickers_live(tickers_to_check)
 
-    return parsed.recommendations, parsed.video_summary
+    valid_recs = []
+    for rec in parsed.recommendations:
+        info = validation.get(rec.ticker)
+        if info is not None:
+            # Backfill stock_name from live data if missing and available
+            if not rec.stock_name and info.name:
+                rec.stock_name = info.name
+            # Fallback to static dictionary if still missing
+            if not rec.stock_name:
+                rec.stock_name = lookup_stock_name(rec.ticker)
+            valid_recs.append(rec)
+
+    return valid_recs, parsed.video_summary
