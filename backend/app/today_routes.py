@@ -177,7 +177,8 @@ async def get_today_plays(
     request: Request,
     response: Response,
     days: int = Query(30, ge=1, le=90, description="Window of recommendations in days"),
-    strategy: str = Query("aura_score", description="Filtering and sorting strategy")
+    strategy: str = Query("aura_score", description="Filtering and sorting strategy"),
+    limit: int = Query(100, ge=1, le=200, description="Maximum number of plays per direction")
 ):
     """Retrieve top stock plays right now sorted by the requested strategy."""
     try:
@@ -187,7 +188,7 @@ async def get_today_plays(
             strategy = "aura_score"
 
         # Check cache first
-        cache_key = f"aura_today_plays_{days}_{strategy}"
+        cache_key = f"aura_today_plays_{days}_{strategy}_{limit}"
         cached_data = await get_cache(cache_key)
         latest_extraction = await get_latest_extraction_time()
 
@@ -208,7 +209,7 @@ async def get_today_plays(
                 return payload
 
         # Cache miss or stale -> calculate
-        result = await calculate_today_plays(days, strategy)
+        result = await calculate_today_plays(days, strategy, limit)
 
         # Save to database cache
         await set_cache(cache_key, result.dict())
@@ -225,20 +226,27 @@ async def get_today_plays(
         )
 
 
-async def calculate_today_plays(days: int, strategy: str = "aura_score") -> TodayPlaysResponse:
+async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: int = 100) -> TodayPlaysResponse:
     """Core logic to calculate today's plays from database."""
     client = _get_client()
     now = datetime.now(timezone.utc)
     start_date = (now - timedelta(days=days)).isoformat()
 
-    # Query all recommendations (all-time) to calculate both Omni (all-time) and Aura (30d) scores
-    db_response = (
-        client.table("recommendations")
-        .select("*, videos!inner(*, channels(*))")
-        .execute()
-    )
-
-    all_raw_recs = db_response.data or []
+    # Query all recommendations (all-time) with pagination to calculate both Omni (all-time) and Aura (30d) scores
+    all_raw_recs = []
+    page_size = 1000
+    for i in range(20):
+        res = (
+            client.table("recommendations")
+            .select("ticker, stock_name, sentiment, conviction_level, target_price, catalyst_notes, videos!inner(youtube_video_id, published_at, channels(channel_name, trust_weight))")
+            .range(i * page_size, (i + 1) * page_size - 1)
+            .execute()
+        )
+        if not res.data:
+            break
+        all_raw_recs.extend(res.data)
+        if len(res.data) < page_size:
+            break
         
     # Group recommendations by ticker
     ticker_groups: Dict[str, List[Dict[str, Any]]] = {}
@@ -533,32 +541,31 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score") -> Toda
     else:  # default or "aura_score"
         plays.sort(key=lambda x: x.aura_score, reverse=True)
 
-    # Cap to top 24 plays (a multiple of 3 for the grid layout) to prevent
-    # the feed from being overwhelmed when many tickers pass the threshold
-    plays = plays[:24]
-
-
-
-    # Compute Market Mood
-    buy_plays = sum(1 for p in plays if p.direction == "BUY")
-    sell_plays = sum(1 for p in plays if p.direction == "SELL")
+    # Compute Market Mood across all qualified plays
+    total_buy_plays = sum(1 for p in plays if p.direction == "BUY")
+    total_sell_plays = sum(1 for p in plays if p.direction == "SELL")
     
-    if buy_plays > sell_plays * 1.5:
+    if total_buy_plays > total_sell_plays * 1.5:
         overall_mood = "Bullish"
-    elif sell_plays > buy_plays * 1.5:
+    elif total_sell_plays > total_buy_plays * 1.5:
         overall_mood = "Bearish"
     else:
         overall_mood = "Neutral"
 
     market_mood = MarketMoodResponse(
-        buy_plays=buy_plays,
-        sell_plays=sell_plays,
+        buy_plays=total_buy_plays,
+        sell_plays=total_sell_plays,
         overall=overall_mood
     )
 
+    # Return top plays for BUY and SELL (up to limit each)
+    buy_plays = [p for p in plays if p.direction == "BUY"][:limit]
+    sell_plays = [p for p in plays if p.direction == "SELL"][:limit]
+    capped_plays = buy_plays + sell_plays
+
     result = TodayPlaysResponse(
         generated_at=now.isoformat(),
-        plays=plays,
+        plays=capped_plays,
         market_mood=market_mood
     )
 

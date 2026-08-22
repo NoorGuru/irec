@@ -127,14 +127,21 @@ async def get_radar_plays_data() -> dict:
     now = datetime.now(timezone.utc)
     start_date = (now - timedelta(days=days)).isoformat()
 
-    # Fetch recommendations with minimal fields for all time
-    db_response = (
-        client.table("recommendations")
-        .select("ticker, target_price, sentiment, conviction_level, catalyst_notes, videos!inner(published_at, channels!inner(channel_name, trust_weight))")
-        .execute()
-    )
-
-    all_raw_recs = db_response.data or []
+    # Fetch recommendations with minimal fields for all time with pagination
+    all_raw_recs = []
+    page_size = 1000
+    for i in range(20):
+        res = (
+            client.table("recommendations")
+            .select("ticker, target_price, sentiment, conviction_level, catalyst_notes, videos!inner(published_at, channels!inner(channel_name, trust_weight))")
+            .range(i * page_size, (i + 1) * page_size - 1)
+            .execute()
+        )
+        if not res.data:
+            break
+        all_raw_recs.extend(res.data)
+        if len(res.data) < page_size:
+            break
 
     # Group by ticker
     ticker_groups: Dict[str, List[Dict[str, Any]]] = {}
@@ -235,6 +242,9 @@ async def get_radar_plays_data() -> dict:
     await set_cache(cache_key, payload)
     return payload
 
+# Alias for backward compatibility
+get_all_plays_data = get_radar_plays_data
+
 
 def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_trend: List[RadarTrendPoint] = None) -> RadarResponse:
     radar_tickers = [t.upper() for t in radar_def.tickers]
@@ -301,23 +311,16 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
             plays=[]
         )
         
-    valid_plays = [p for p in radar_plays if p.get("recent_mentions", 0) > 0]
-    total_sentiment = 0.0
-    total_aura_score = 0
-    total_omni_score = 0
-    total_volume = 0
-    radar_latest_mention = max([p.get("latest_mention_date") for p in radar_plays if p.get("latest_mention_date")], default=None)
+    plays_with_recent = [p for p in radar_plays if p.get("recent_mentions", 0) > 0]
+    plays_with_history = [p for p in radar_plays if p.get("omni_score", 0) > 0 or p.get("recent_mentions", 0) > 0]
     
-    for play in valid_plays:
-        total_sentiment += play.get("consensus_sentiment", 0.0)
-        total_aura_score += play.get("aura_score", 0)
-        total_omni_score += play.get("omni_score", 0)
-        total_volume += play.get("recent_mentions", 0)
-        
-    count = len(valid_plays)
-    avg_sentiment = total_sentiment / count if count > 0 else 0.0
-    avg_aura = int(total_aura_score / count) if count > 0 else 0
-    avg_omni = int(total_omni_score / count) if count > 0 else 0
+    avg_aura = int(sum(p["aura_score"] for p in plays_with_recent) / len(plays_with_recent)) if plays_with_recent else 0
+    avg_omni = int(sum(p["omni_score"] for p in plays_with_history) / len(plays_with_history)) if plays_with_history else 0
+    
+    sentiment_plays = plays_with_recent if plays_with_recent else plays_with_history
+    avg_sentiment = sum(p.get("consensus_sentiment", 0.0) for p in sentiment_plays) / len(sentiment_plays) if sentiment_plays else 0.0
+    total_volume = sum(p.get("recent_mentions", 0) for p in radar_plays)
+    radar_latest_mention = max([p.get("latest_mention_date") for p in radar_plays if p.get("latest_mention_date")], default=None)
     
     # Use database history if available and has enough data points, otherwise fallback to synthetic
     trend = db_trend

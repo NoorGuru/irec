@@ -17,15 +17,22 @@ class TierRankingService:
         now = datetime.now(timezone.utc)
         thirty_days_ago = (now - timedelta(days=30)).isoformat()
         
-        # Fetch recommendations for last 30 days
-        db_response = (
-            client.table("recommendations")
-            .select("*, videos!inner(*, channels(*))")
-            .gte("videos.published_at", thirty_days_ago)
-            .execute()
-        )
-        
-        raw_recs = db_response.data or []
+        # Fetch recommendations for last 30 days with pagination
+        raw_recs = []
+        page_size = 1000
+        for i in range(20):
+            res = (
+                client.table("recommendations")
+                .select("*, videos!inner(*, channels(*))")
+                .gte("videos.published_at", thirty_days_ago)
+                .range(i * page_size, (i + 1) * page_size - 1)
+                .execute()
+            )
+            if not res.data:
+                break
+            raw_recs.extend(res.data)
+            if len(res.data) < page_size:
+                break
         
         ticker_groups: Dict[str, List[Dict[str, Any]]] = {}
         for rec in raw_recs:
