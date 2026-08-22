@@ -50,7 +50,7 @@ class HomePulseResponse(BaseModel):
 async def get_stocks_directory(request: Request, response: Response, fresh: bool = False):
     """Fetch public directory of all tracked stocks with their latest prices and unified aggregated metrics."""
     try:
-        cache_key = "stocks_directory_v6"
+        cache_key = "stocks_directory_v7"
         cached_data = await get_cache(cache_key)
         latest_extraction = await get_latest_extraction_time()
         
@@ -69,6 +69,7 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
         # Cache miss, calculate
         client = _get_client()
         now = datetime.now(timezone.utc)
+        thirty_days_ago = (now - timedelta(days=30)).isoformat()
         
         # Get stock meta
         meta_res = client.table("stock_meta").select("*").execute()
@@ -76,12 +77,12 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
         
         tickers = [m["ticker"] for m in meta_data]
         
-        # Get names, sentiment, targets, and conviction from recommendations that have valid videos and channels
+        # Get names, sentiment, targets, conviction, published_at, and channels from recommendations
         # Note: We must paginate because there can be >1000 recommendations and Supabase defaults to 1000.
         recs_data = []
         page_size = 1000
         for i in range(20): # handle up to 20,000 recommendations
-            res = client.table("recommendations").select("ticker, stock_name, sentiment, target_price, conviction_level, videos!inner(channels!inner(trust_weight))").range(i * page_size, (i + 1) * page_size - 1).execute()
+            res = client.table("recommendations").select("ticker, stock_name, sentiment, target_price, conviction_level, videos!inner(published_at, channels!inner(channel_name, trust_weight))").range(i * page_size, (i + 1) * page_size - 1).execute()
             if not res.data:
                 break
             recs_data.extend(res.data)
@@ -97,20 +98,33 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
         target_counts = {}
         conviction_map = {}
         conviction_counts = {}
+        last_mentioned_map = {}
+        mentions_30d_map = {}
+        analysts_map = {}
         
         for r in recs_data:
             t = r["ticker"]
             if t not in names_map and r.get("stock_name"):
                 names_map[t] = r["stock_name"]
             
+            video = r.get("videos") or {}
+            pub_str = video.get("published_at")
+            if pub_str:
+                if t not in last_mentioned_map or pub_str > last_mentioned_map[t]:
+                    last_mentioned_map[t] = pub_str
+                if pub_str >= thirty_days_ago:
+                    mentions_30d_map[t] = mentions_30d_map.get(t, 0) + 1
+            
+            channels = video.get("channels") or {}
+            cname = channels.get("channel_name")
+            if cname:
+                if t not in analysts_map:
+                    analysts_map[t] = set()
+                analysts_map[t].add(cname)
+            
             s = r.get("sentiment")
             if s is not None:
-                # videos and channels are strictly inner joined, so this structure exists
-                videos = r.get("videos")
-                tw = 1.0
-                if videos and "channels" in videos and "trust_weight" in videos["channels"]:
-                    tw = videos["channels"]["trust_weight"]
-                
+                tw = channels.get("trust_weight", 1.0) or 1.0
                 sentiment_map[t] = sentiment_map.get(t, 0) + s
                 sentiment_counts[t] = sentiment_counts.get(t, 0) + 1
                 weighted_sentiment_map[t] = weighted_sentiment_map.get(t, 0) + (s * tw)
@@ -125,7 +139,6 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
             if cl is not None:
                 conviction_map[t] = conviction_map.get(t, 0) + cl
                 conviction_counts[t] = conviction_counts.get(t, 0) + 1
-                
 
         # Assemble
         result_stocks = []
@@ -153,15 +166,19 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
             if conviction_counts.get(t, 0) > 0:
                 avg_conviction = round(conviction_map[t] / conviction_counts[t], 2)
                 
+            last_mentioned = last_mentioned_map.get(t) or m.get("last_mentioned_at")
+            m_count_30d = mentions_30d_map.get(t, 0) if mentions_30d_map else m.get("mention_count_30d", 0)
+            a_count = len(analysts_map.get(t, set())) if analysts_map else m.get("analyst_count", 0)
+            
             item = StockDirectoryItem(
                 ticker=t,
                 stock_name=names_map.get(t),
                 tier=1 if m.get("is_pinned", False) else m.get("tier", 2),
                 is_pinned=m.get("is_pinned", False),
                 priority_score=m.get("priority_score", 0.0),
-                mention_count_30d=m.get("mention_count_30d", 0),
-                analyst_count=m.get("analyst_count", 0),
-                last_mentioned_at=m.get("last_mentioned_at"),
+                mention_count_30d=m_count_30d,
+                analyst_count=a_count,
+                last_mentioned_at=last_mentioned,
                 overall_sentiment=overall_sentiment,
                 raw_sentiment=raw_sentiment_val,
                 avg_target_price=avg_target_price,

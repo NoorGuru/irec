@@ -9,8 +9,23 @@ import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import Loading from '@/components/ui/loading'
 
-type SortField = 'ticker' | 'score' | 'mentions' | 'sentiment' | 'conviction' | 'target'
+type SortField = 'ticker' | 'score' | 'mentions' | 'sentiment' | 'conviction' | 'target' | 'recency'
 type SortOrder = 'asc' | 'desc'
+
+type TimeFilter = 'all' | '24h' | '7d' | '30d'
+
+interface TimeFilterOption {
+  key: TimeFilter
+  label: string
+  days: number | null
+}
+
+const TIME_FILTERS: TimeFilterOption[] = [
+  { key: 'all', label: 'All Time', days: null },
+  { key: '24h', label: '24H', days: 1 },
+  { key: '7d', label: '7D', days: 7 },
+  { key: '30d', label: '30D', days: 30 },
+]
 
 interface RatingFilter {
   key: string
@@ -44,6 +59,7 @@ export default function ExplorePage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   // Data Filters
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const [ratingFilter, setRatingFilter] = useState('')
   const [hasTargetOnly, setHasTargetOnly] = useState(false)
   const [highDataOnly, setHighDataOnly] = useState(false)
@@ -54,7 +70,7 @@ export default function ExplorePage() {
 
     async function fetchStocks() {
       try {
-        const cached = localStorage.getItem('aura_stocks_directory_v6')
+        const cached = localStorage.getItem('aura_stocks_directory_v7')
         let localEtag = null
         if (cached) {
           try {
@@ -82,7 +98,7 @@ export default function ExplorePage() {
         if (active) {
           setStocks(json.stocks)
           setError(null)
-          localStorage.setItem('aura_stocks_directory_v6', JSON.stringify(json))
+          localStorage.setItem('aura_stocks_directory_v7', JSON.stringify(json))
         }
       } catch (err: any) {
         if (active) {
@@ -99,14 +115,14 @@ export default function ExplorePage() {
 
   useEffect(() => {
     setVisibleCount(25)
-  }, [search, sortField, sortOrder, ratingFilter, hasTargetOnly, highDataOnly])
+  }, [search, sortField, sortOrder, timeFilter, ratingFilter, hasTargetOnly, highDataOnly])
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
       setSortField(field)
-      setSortOrder('desc')
+      setSortOrder(field === 'ticker' ? 'asc' : 'desc')
     }
   }
 
@@ -115,10 +131,35 @@ export default function ExplorePage() {
     return sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 text-[#00D4AA] inline-block" /> : <ChevronDown className="w-4 h-4 text-[#00D4AA] inline-block" />
   }
 
+  const timeCounts = useMemo(() => {
+    const counts: Record<TimeFilter, number> = { all: stocks.length, '24h': 0, '7d': 0, '30d': 0 }
+    const now = Date.now()
+    for (const s of stocks) {
+      if (!s.last_mentioned_at) continue
+      const diffMs = now - new Date(s.last_mentioned_at).getTime()
+      if (diffMs <= 1 * 86400000) counts['24h']++
+      if (diffMs <= 7 * 86400000) counts['7d']++
+      if (diffMs <= 30 * 86400000) counts['30d']++
+    }
+    return counts
+  }, [stocks])
+
   const filterCounts = useMemo(() => {
     const counts: Record<string, number> = { '': 0, 'strong-buy': 0, buy: 0, neutral: 0, sell: 0, 'strong-sell': 0 }
+    const now = Date.now()
+    const tf = TIME_FILTERS.find(t => t.key === timeFilter)
 
-    let baseList = stocks.filter(s => s.overall_sentiment !== null && s.mention_count_30d > 0)
+    let baseList = stocks.filter(s => {
+      if (s.overall_sentiment === null || s.mention_count_30d <= 0) return false
+      if (tf?.days && s.last_mentioned_at) {
+        const diffMs = now - new Date(s.last_mentioned_at).getTime()
+        if (diffMs > tf.days * 86400000) return false
+      } else if (tf?.days && !s.last_mentioned_at) {
+        return false
+      }
+      return true
+    })
+
     counts[''] = baseList.length
 
     for (const t of baseList) {
@@ -130,12 +171,23 @@ export default function ExplorePage() {
       else counts['strong-sell']++
     }
     return counts
-  }, [stocks])
+  }, [stocks, timeFilter])
 
   const filteredAndSorted = useMemo(() => {
     if (!stocks.length) return []
+    const now = Date.now()
 
     let result = stocks.filter(s => {
+      // Time Filter
+      if (timeFilter !== 'all') {
+        const tf = TIME_FILTERS.find(t => t.key === timeFilter)
+        if (tf?.days) {
+          if (!s.last_mentioned_at) return false
+          const diffMs = now - new Date(s.last_mentioned_at).getTime()
+          if (diffMs > tf.days * 86400000) return false
+        }
+      }
+
       // Rating Filter
       if (ratingFilter === 'strong-buy' && (s.overall_sentiment === null || s.overall_sentiment < 1.5)) return false
       if (ratingFilter === 'buy' && (s.overall_sentiment === null || s.overall_sentiment < 0.5 || s.overall_sentiment >= 1.5)) return false
@@ -147,15 +199,13 @@ export default function ExplorePage() {
       if (hasTargetOnly && s.avg_target_price === null) return false
       if (highDataOnly && s.mention_count_30d < 3) return false
 
-      // 2. Global Search
+      // Global Search
       if (search) {
         const q = search.toLowerCase()
         const matchTicker = s.ticker.toLowerCase().includes(q)
         const matchName = s.stock_name?.toLowerCase().includes(q) || false
         if (!matchTicker && !matchName) return false
       }
-
-      // 3. Fallback filtering for sorts
 
       return true
     })
@@ -183,6 +233,9 @@ export default function ExplorePage() {
       } else if (sortField === 'target') {
         valA = a.avg_target_price ?? -9999
         valB = b.avg_target_price ?? -9999
+      } else if (sortField === 'recency') {
+        valA = a.last_mentioned_at ? new Date(a.last_mentioned_at).getTime() : -9999
+        valB = b.last_mentioned_at ? new Date(b.last_mentioned_at).getTime() : -9999
       }
 
       if (valA === valB) return 0
@@ -198,7 +251,7 @@ export default function ExplorePage() {
     })
 
     return result
-  }, [stocks, search, ratingFilter, hasTargetOnly, highDataOnly, sortField, sortOrder])
+  }, [stocks, search, timeFilter, ratingFilter, hasTargetOnly, highDataOnly, sortField, sortOrder])
 
   if (loading && !stocks.length) {
     return <Loading title="Market Explorer" subtitle="Loading assets and signals..." />
@@ -248,6 +301,7 @@ export default function ExplorePage() {
                   className="w-full appearance-none bg-[#141B2D]/50 border border-[#1E293B] rounded-xl pl-4 pr-10 py-2.5 text-sm text-[#F1F5F9] outline-none focus:border-[#00D4AA]/50 transition-colors font-[family-name:var(--font-geist-mono)]"
                 >
                   <option value="score">Sort: Aura Score</option>
+                  <option value="recency">Sort: Last Active</option>
                   <option value="mentions">Sort: Coverage</option>
                   <option value="sentiment">Sort: Sentiment</option>
                   <option value="conviction">Sort: Conviction</option>
@@ -269,6 +323,36 @@ export default function ExplorePage() {
           {/* Unified Filters */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto pb-2 pt-1 sm:pb-0 sm:pt-0">
             
+            {/* Timeframe Filter Pills */}
+            <div className="flex items-center bg-[#141B2D]/60 p-1 rounded-xl border border-[#1E293B] gap-1">
+              {TIME_FILTERS.map(tf => {
+                const isActive = timeFilter === tf.key
+                const count = timeCounts[tf.key] ?? 0
+                return (
+                  <button
+                    key={tf.key}
+                    onClick={() => setTimeFilter(tf.key)}
+                    className={`
+                      relative px-2.5 py-1 sm:py-1 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap font-[family-name:var(--font-geist-mono)]
+                      ${isActive 
+                        ? 'bg-[#00D4AA]/15 text-[#00D4AA] border border-[#00D4AA]/40 shadow-sm shadow-[#00D4AA]/10' 
+                        : 'text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#1E293B]/40 border border-transparent'}
+                    `}
+                  >
+                    {tf.label}
+                    {tf.key !== 'all' && (
+                      <span className={`ml-1 text-[10px] ${isActive ? 'text-[#00D4AA]/80' : 'text-[#64748B]'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="w-px h-6 bg-[#1E293B] shrink-0 mx-0.5 hidden sm:block" />
+
+            {/* Rating Filters */}
             <div className="flex flex-wrap items-center gap-1.5">
               {RATING_FILTERS.map(rf => {
                 const isActive = ratingFilter === rf.key
@@ -293,7 +377,7 @@ export default function ExplorePage() {
               })}
             </div>
             
-            <div className="w-px h-6 bg-[#1E293B] shrink-0 mx-1 hidden sm:block" />
+            <div className="w-px h-6 bg-[#1E293B] shrink-0 mx-0.5 hidden sm:block" />
             
             <button
               onClick={() => setHasTargetOnly(!hasTargetOnly)}
@@ -333,6 +417,9 @@ export default function ExplorePage() {
                   </th>
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('mentions')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Coverage <SortIcon field="mentions" /></div>
+                  </th>
+                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('recency')}>
+                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Last Active <SortIcon field="recency" /></div>
                   </th>
                 </tr>
               </thead>
@@ -407,6 +494,18 @@ export default function ExplorePage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-5 py-4">
+                        {stock.last_mentioned_at ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA]/80 animate-pulse" />
+                            <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#8B95A8]">
+                              {formatRelativeTime(stock.last_mentioned_at)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[#64748B] text-xs">—</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -479,6 +578,11 @@ export default function ExplorePage() {
                       <div className="flex items-center gap-1">
                         <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">{stock.mention_count_30d}</span>
                         <span className="text-[10px] text-[#64748B]">mentions</span>
+                        {stock.last_mentioned_at && (
+                          <span className="text-[10px] text-[#8B95A8] font-[family-name:var(--font-geist-mono)] ml-1">
+                            • {formatRelativeTime(stock.last_mentioned_at)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -516,6 +620,7 @@ export default function ExplorePage() {
               <button 
                 onClick={() => {
                   setSearch('')
+                  setTimeFilter('all')
                   setRatingFilter('')
                   setHasTargetOnly(false)
                   setHighDataOnly(false)
