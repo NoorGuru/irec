@@ -35,6 +35,7 @@ interface RecommendationRow {
 
 type SortKey = 'newest' | 'oldest' | 'most-picks' | 'highest-conviction'
 type SentimentFilter = '' | 'bullish' | 'bearish' | 'mixed'
+type PicksFilter = 'all' | 'with-picks' | 'no-picks'
 
 /* ─── Helpers ─── */
 
@@ -242,27 +243,41 @@ function VideoFilters({
   setSort,
   sentimentFilter,
   setSentimentFilter,
+  picksFilter,
+  setPicksFilter,
   channelFilter,
   setChannelFilter,
   channels,
   search,
   setSearch,
+  withPicksCount,
+  noPicksCount,
 }: {
   sort: SortKey
   setSort: (s: SortKey) => void
   sentimentFilter: SentimentFilter
   setSentimentFilter: (f: SentimentFilter) => void
+  picksFilter: PicksFilter
+  setPicksFilter: (p: PicksFilter) => void
   channelFilter: string
   setChannelFilter: (c: string) => void
   channels: string[]
   search: string
   setSearch: (s: string) => void
+  withPicksCount: number
+  noPicksCount: number
 }) {
   const sortOptions: { key: SortKey; label: string }[] = [
     { key: 'newest', label: 'Newest' },
     { key: 'oldest', label: 'Oldest' },
     { key: 'most-picks', label: 'Most Picks' },
     { key: 'highest-conviction', label: 'Conviction' },
+  ]
+
+  const picksOptions: { key: PicksFilter; label: string; count?: number }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'with-picks', label: 'With Picks', count: withPicksCount },
+    { key: 'no-picks', label: 'No Picks (Macro)', count: noPicksCount },
   ]
 
   const sentimentOptions: { key: SentimentFilter; label: string }[] = [
@@ -290,12 +305,42 @@ function VideoFilters({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by ticker or channel…"
+          placeholder="Search by ticker, channel, or video title…"
           className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#0A0F1A] border border-[#1E293B] text-sm text-[#F1F5F9] placeholder:text-[#475569] focus:outline-none focus:border-[#00D4AA]/40 transition-colors"
         />
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
+        {/* Picks Filter (All / With Picks / No Picks) */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569]">Picks</span>
+          <div className="flex gap-1">
+            {picksOptions.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => {
+                  setPicksFilter(opt.key)
+                  if (opt.key === 'no-picks') {
+                    setSentimentFilter('')
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 ${
+                  picksFilter === opt.key
+                    ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/30'
+                    : 'text-[#64748B] hover:text-[#8B95A8] border border-transparent'
+                }`}
+              >
+                <span>{opt.label}</span>
+                {opt.count !== undefined && (
+                  <span className="font-[family-name:var(--font-geist-mono)] text-[10px] opacity-70">
+                    ({opt.count})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Sort */}
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569]">Sort</span>
@@ -323,7 +368,12 @@ function VideoFilters({
             {sentimentOptions.map((opt) => (
               <button
                 key={opt.key}
-                onClick={() => setSentimentFilter(opt.key)}
+                onClick={() => {
+                  setSentimentFilter(opt.key)
+                  if (opt.key !== '' && picksFilter === 'no-picks') {
+                    setPicksFilter('all')
+                  }
+                }}
                 className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 ${
                   sentimentFilter === opt.key
                     ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/30'
@@ -361,6 +411,7 @@ function VideoFilters({
 function VideoCard({ video, index }: { video: EnrichedVideo; index: number }) {
   const staggerClass = `stagger-${Math.min(index + 1, 10)}`
   const hasManyPicks = video.pick_count >= 5
+  const isNoPicks = video.pick_count === 0
 
   return (
     <Link
@@ -369,6 +420,8 @@ function VideoCard({ video, index }: { video: EnrichedVideo; index: number }) {
         group block rounded-2xl border overflow-hidden transition-all duration-300
         ${hasManyPicks
           ? 'border-[#00D4AA]/20 bg-[#141B2D]/70 hover:border-[#00D4AA]/40'
+          : isNoPicks
+          ? 'border-[#1E293B]/70 bg-[#141B2D]/25 hover:border-[#2D3A4F] hover:bg-[#141B2D]/50'
           : 'border-[#1E293B] bg-[#141B2D]/40 hover:border-[#2D3A4F] hover:bg-[#141B2D]'
         }
         animate-fade-up ${staggerClass}
@@ -398,8 +451,12 @@ function VideoCard({ video, index }: { video: EnrichedVideo; index: number }) {
 
           {/* Pick count badge */}
           <div className="absolute top-3 left-3 md:bottom-3 md:top-auto">
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#0A0F1A]/90 border border-[#1E293B] backdrop-blur-sm text-[10px] font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-              {video.pick_count} pick{video.pick_count !== 1 ? 's' : ''}
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md backdrop-blur-sm text-[10px] font-[family-name:var(--font-geist-mono)] border ${
+              isNoPicks 
+                ? 'bg-[#0A0F1A]/90 border-[#1E293B] text-[#64748B]' 
+                : 'bg-[#0A0F1A]/90 border-[#1E293B] text-[#8B95A8]'
+            }`}>
+              {isNoPicks ? '0 picks' : `${video.pick_count} pick${video.pick_count !== 1 ? 's' : ''}`}
             </span>
           </div>
 
@@ -446,39 +503,54 @@ function VideoCard({ video, index }: { video: EnrichedVideo; index: number }) {
               </p>
             )}
 
-            {/* Ticker pills */}
-            <div className="flex items-center flex-wrap gap-1.5">
-              {video.recommendations.slice(0, 8).map((rec) => (
-                <span
-                  key={rec.id}
-                  className="inline-flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-xs px-2 py-0.5 rounded-md bg-[#0A0F1A] border border-[#1E293B] text-[#8B95A8]"
-                >
+            {/* Ticker pills or No Recs indicator */}
+            {video.recommendations.length > 0 ? (
+              <div className="flex items-center flex-wrap gap-1.5">
+                {video.recommendations.slice(0, 8).map((rec) => (
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${getSentimentBg(rec.sentiment)}`}
-                  />
-                  {rec.ticker}
+                    key={rec.id}
+                    className="inline-flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-xs px-2 py-0.5 rounded-md bg-[#0A0F1A] border border-[#1E293B] text-[#8B95A8]"
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${getSentimentBg(rec.sentiment)}`}
+                    />
+                    {rec.ticker}
+                  </span>
+                ))}
+                {video.recommendations.length > 8 && (
+                  <span className="text-[10px] text-[#475569]">
+                    +{video.recommendations.length - 8} more
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)] text-[11px] text-[#64748B] px-2 py-0.5 rounded-md bg-[#0A0F1A] border border-[#1E293B]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#475569]" />
+                  Macro & Market Overview · No Ticker Recs
                 </span>
-              ))}
-              {video.recommendations.length > 8 && (
-                <span className="text-[10px] text-[#475569]">
-                  +{video.recommendations.length - 8} more
-                </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom: stats row */}
           <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#1E293B]/40">
             {/* Sentiment summary */}
             <div className="flex items-center gap-3">
-              {video.pick_count > 0 && (
-                <span className={getSentimentBadgeClass(video.avg_sentiment)}>
-                  {getSentimentLabel(video.avg_sentiment)}
+              {video.pick_count > 0 ? (
+                <>
+                  <span className={getSentimentBadgeClass(video.avg_sentiment)}>
+                    {getSentimentLabel(video.avg_sentiment)}
+                  </span>
+                  <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569]">
+                    Conv {video.avg_conviction.toFixed(1)}/10
+                  </span>
+                </>
+              ) : (
+                <span className="text-[11px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
+                  0 picks extracted
                 </span>
               )}
-              <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569]">
-                Conv {video.avg_conviction.toFixed(1)}/10
-              </span>
             </div>
 
             {/* Arrow */}
@@ -500,14 +572,13 @@ function VideoCard({ video, index }: { video: EnrichedVideo; index: number }) {
   )
 }
 
-
-
 /* ─── Main Page ─── */
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<EnrichedVideo[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<SortKey>('newest')
+  const [picksFilter, setPicksFilter] = useState<PicksFilter>('all')
   const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('')
   const [channelFilter, setChannelFilter] = useState('')
   const [search, setSearch] = useState('')
@@ -581,14 +652,25 @@ export default function VideosPage() {
     return names.sort()
   }, [videos])
 
+  // Count videos with picks vs no picks
+  const withPicksCount = useMemo(() => videos.filter((v) => v.pick_count > 0).length, [videos])
+  const noPicksCount = useMemo(() => videos.filter((v) => v.pick_count === 0).length, [videos])
+
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(12)
-  }, [search, sentimentFilter, channelFilter, sort])
+  }, [search, picksFilter, sentimentFilter, channelFilter, sort])
 
   // Sort and filter
   const processed = useMemo(() => {
     let list = [...videos]
+
+    // Picks filter (all / with-picks / no-picks)
+    if (picksFilter === 'with-picks') {
+      list = list.filter((v) => v.pick_count > 0)
+    } else if (picksFilter === 'no-picks') {
+      list = list.filter((v) => v.pick_count === 0)
+    }
 
     // Search
     if (search) {
@@ -602,15 +684,17 @@ export default function VideosPage() {
       )
     }
 
-    // Sentiment filter
-    if (sentimentFilter === 'bullish') {
-      list = list.filter((v) => v.avg_sentiment >= 0.5)
-    } else if (sentimentFilter === 'bearish') {
-      list = list.filter((v) => v.avg_sentiment <= -0.5)
-    } else if (sentimentFilter === 'mixed') {
-      list = list.filter(
-        (v) => v.avg_sentiment > -0.5 && v.avg_sentiment < 0.5
-      )
+    // Sentiment filter (only applies when not in no-picks mode)
+    if (picksFilter !== 'no-picks') {
+      if (sentimentFilter === 'bullish') {
+        list = list.filter((v) => v.pick_count > 0 && v.avg_sentiment >= 0.5)
+      } else if (sentimentFilter === 'bearish') {
+        list = list.filter((v) => v.pick_count > 0 && v.avg_sentiment <= -0.5)
+      } else if (sentimentFilter === 'mixed') {
+        list = list.filter(
+          (v) => v.pick_count > 0 && v.avg_sentiment > -0.5 && v.avg_sentiment < 0.5
+        )
+      }
     }
 
     // Channel filter
@@ -641,7 +725,7 @@ export default function VideosPage() {
     }
 
     return list
-  }, [videos, search, sentimentFilter, channelFilter, sort])
+  }, [videos, search, picksFilter, sentimentFilter, channelFilter, sort])
 
   if (loading) {
     return <Loading title="Videos" subtitle="Loading the archive..." />
@@ -678,11 +762,15 @@ export default function VideosPage() {
             setSort={setSort}
             sentimentFilter={sentimentFilter}
             setSentimentFilter={setSentimentFilter}
+            picksFilter={picksFilter}
+            setPicksFilter={setPicksFilter}
             channelFilter={channelFilter}
             setChannelFilter={setChannelFilter}
             channels={channelNames}
             search={search}
             setSearch={setSearch}
+            withPicksCount={withPicksCount}
+            noPicksCount={noPicksCount}
           />
         </section>
 
@@ -690,7 +778,7 @@ export default function VideosPage() {
         <div className="flex items-center justify-between mb-6 animate-fade-up stagger-4">
           <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B]">
             {processed.length} video{processed.length !== 1 ? 's' : ''}
-            {search || sentimentFilter || channelFilter ? ' matching' : ''}
+            {search || picksFilter !== 'all' || sentimentFilter || channelFilter ? ' matching' : ''}
           </span>
         </div>
 
@@ -699,7 +787,7 @@ export default function VideosPage() {
           <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center animate-fade-up">
             <p className="text-lg text-[#8B95A8]">No videos found.</p>
             <p className="mt-2 text-sm text-[#64748B]">
-              {search || sentimentFilter || channelFilter
+              {search || picksFilter !== 'all' || sentimentFilter || channelFilter
                 ? 'Try adjusting your filters.'
                 : 'Videos appear once they are ingested by an admin.'}
             </p>
