@@ -359,6 +359,22 @@ def compute_radar_stats(radar_def: RadarDefinition, all_plays: List[dict], db_tr
 async def get_radars(request: Request, response: Response):
     """Retrieve all radars with their aggregated stats."""
     try:
+        cache_key = "radars_list_v1"
+        cached_data = await get_cache(cache_key)
+        latest_extraction = await get_latest_extraction_time()
+
+        if cached_data and latest_extraction:
+            cache_updated = parse_iso_datetime(cached_data.get("last_updated"))
+            latest_ext_dt = parse_iso_datetime(latest_extraction)
+
+            if cache_updated >= latest_ext_dt:
+                payload = cached_data["payload"]
+                etag = f'W/"{payload.get("generated_at")}"'
+                if request.headers.get("if-none-match") == etag:
+                    return Response(status_code=304)
+                response.headers["ETag"] = etag
+                return payload.get("radars", [])
+
         plays_data = await get_radar_plays_data()
         all_plays = plays_data.get("plays", [])
         radars_defs = await get_radars_from_db()
@@ -400,6 +416,16 @@ async def get_radars(request: Request, response: Response):
 
         # Sort radars by latest mention date, then aura score
         radars.sort(key=lambda r: (r.latest_mention_date or "", r.aura_score), reverse=True)
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            "radars": [r.model_dump() for r in radars],
+            "generated_at": now.isoformat()
+        }
+        await set_cache(cache_key, payload)
+
+        etag = f'W/"{payload["generated_at"]}"'
+        response.headers["ETag"] = etag
         return radars
 
     except Exception as e:

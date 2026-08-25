@@ -3,14 +3,174 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { Activity } from 'lucide-react'
-import HolographicCard from '@/components/HolographicCard'
 import PulseField from '@/components/PulseField'
-import TextScramble from '@/components/TextScramble'
 import RadarCard from '@/components/ui/radar-card'
-import Loading from '@/components/ui/loading'
 import { AggregatedTicker, RadarResponse } from '@/lib/types'
-import { TickerRow, PulseBar, getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
+import { TickerRow, getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
 
+function MarketPulseSkeleton() {
+  return (
+    <section className="relative rounded-3xl border border-[#1E293B]/60 bg-[#141B2D]/40 overflow-hidden mb-8 p-6 md:p-10 shadow-xl shadow-black/30 animate-pulse">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 rounded-full bg-[#1E293B]" />
+            <div className="h-3 w-24 bg-[#1E293B] rounded" />
+          </div>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="h-12 md:h-16 w-56 md:w-80 bg-[#1E293B] rounded-2xl" />
+            <div className="h-9 w-32 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl" />
+          </div>
+          <div className="space-y-2 max-w-xl">
+            <div className="h-3.5 w-full max-w-md bg-[#1E293B]/60 rounded" />
+            <div className="h-3.5 w-3/4 bg-[#1E293B]/40 rounded" />
+          </div>
+          <div className="h-4 w-40 bg-[#1E293B]/40 rounded mt-4" />
+        </div>
+
+        <div className="flex flex-col gap-4 md:gap-5 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-3xl p-6 md:p-8 shrink-0 self-start md:self-auto w-full md:w-[450px] lg:w-[500px]">
+          <div className="flex justify-between">
+            <div className="h-3 w-16 bg-[#1E293B] rounded" />
+            <div className="h-3 w-16 bg-[#1E293B] rounded" />
+          </div>
+          <div className="w-full h-6 md:h-8 rounded-full bg-[#1E293B] overflow-hidden" />
+          <div className="flex justify-between items-center mt-2">
+            <div className="h-4 w-20 bg-[#1E293B] rounded" />
+            <div className="h-4 w-16 bg-[#1E293B] rounded" />
+            <div className="h-4 w-20 bg-[#1E293B] rounded" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SpotlightCardsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-3 mb-8 animate-pulse">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="flex flex-col p-5 rounded-2xl bg-[#141B2D]/40 backdrop-blur-md border border-[#ffffff]/5 min-h-[150px]"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-3.5 h-3.5 rounded-full bg-[#1E293B]" />
+            <div className="h-2.5 w-28 bg-[#1E293B] rounded" />
+          </div>
+          <div className="h-8 w-24 bg-[#1E293B] rounded-lg mb-2" />
+          <div className="flex items-center gap-3 mt-auto pt-2">
+            <div className="h-5 w-20 bg-[#1E293B] rounded-full" />
+            <div className="h-3 w-16 bg-[#1E293B]/60 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TrendingRadarsSkeleton() {
+  return (
+    <div className="mb-8 animate-pulse">
+      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-[#F59E0B]/50" />
+          <div className="h-4 w-36 bg-[#1E293B] rounded" />
+        </div>
+        <div className="h-3 w-28 bg-[#1E293B]/60 rounded" />
+      </div>
+
+      <div className="flex overflow-x-auto gap-4 pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 hide-scrollbar">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="min-w-[280px] w-full p-5 sm:p-6 md:p-8 rounded-[24px] bg-[#141B2D]/40 backdrop-blur-xl border border-white/5 min-h-[220px] flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-8 h-8 rounded-xl bg-[#1E293B]" />
+                <div className="h-5 w-24 bg-[#1E293B] rounded-full" />
+              </div>
+              <div className="h-6 w-36 bg-[#1E293B] rounded-lg mb-2" />
+              <div className="h-3 w-48 bg-[#1E293B]/60 rounded mb-4" />
+            </div>
+            <div className="space-y-3">
+              <div className="h-8 w-full bg-[#1E293B]/50 rounded-lg" />
+              <div className="flex justify-between pt-2 border-t border-white/5">
+                <div className="h-4 w-16 bg-[#1E293B]" />
+                <div className="h-4 w-16 bg-[#1E293B]" />
+                <div className="h-4 w-16 bg-[#1E293B]" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CuratedPreviewsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-pulse">
+      {/* Most Discussed Column */}
+      <div>
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <Activity className="w-4 h-4 text-[#00D4AA]/50" />
+          <div className="h-4 w-36 bg-[#1E293B] rounded" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-[76px] rounded-r-xl rounded-l-sm bg-[#141B2D]/40 border border-[#1E293B]/40 border-l-4 border-l-[#1E293B] p-4 flex items-center justify-between gap-4"
+            >
+              <div className="flex flex-col gap-1.5">
+                <div className="h-5 w-16 bg-[#1E293B] rounded" />
+                <div className="h-2.5 w-24 bg-[#1E293B]/60 rounded" />
+              </div>
+              <div className="hidden md:flex flex-col gap-1 w-32">
+                <div className="h-4 w-16 bg-[#1E293B] rounded-full" />
+                <div className="h-2 w-full bg-[#1E293B] rounded-full" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="h-3 w-12 bg-[#1E293B] rounded" />
+                <div className="h-3 w-16 bg-[#1E293B]/60 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Highest Conviction Column */}
+      <div>
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <div className="w-4 h-4 rounded-full border-2 border-[#00D4AA]/50" />
+          <div className="h-4 w-40 bg-[#1E293B] rounded" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-[76px] rounded-r-xl rounded-l-sm bg-[#141B2D]/40 border border-[#1E293B]/40 border-l-4 border-l-[#1E293B] p-4 flex items-center justify-between gap-4"
+            >
+              <div className="flex flex-col gap-1.5">
+                <div className="h-5 w-16 bg-[#1E293B] rounded" />
+                <div className="h-2.5 w-24 bg-[#1E293B]/60 rounded" />
+              </div>
+              <div className="hidden md:flex flex-col gap-1 w-32">
+                <div className="h-4 w-16 bg-[#1E293B] rounded-full" />
+                <div className="h-2 w-full bg-[#1E293B] rounded-full" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="h-3 w-12 bg-[#1E293B] rounded" />
+                <div className="h-3 w-16 bg-[#1E293B]/60 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   if (aggregated.length === 0) return null
@@ -293,40 +453,53 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
 export default function Home() {
   const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
-  const [loading, setLoading] = useState(true)
+  const [pulseLoading, setPulseLoading] = useState(true)
+  const [radarsLoading, setRadarsLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
-        const [pulseRes, radarsRes] = await Promise.all([
-          fetch(`${backendUrl}/api/v1/home/pulse`)
-            .then(res => res.ok ? res.json() : { aggregated: [] })
-            .catch(() => ({ aggregated: [] })),
-          fetch(`${backendUrl}/api/v1/radars`)
-            .then(res => res.ok ? res.json() : [])
-            .catch(() => [])
-        ])
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
-        setAggregated(pulseRes.aggregated || [])
-        setRadars(radarsRes)
-      } catch (error) {
-        console.error("Failed to fetch data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
+    // Fetch pulse data independently
+    fetch(`${backendUrl}/api/v1/home/pulse`)
+      .then(res => res.ok ? res.json() : { aggregated: [] })
+      .then(data => {
+        setAggregated(data.aggregated || [])
+      })
+      .catch(error => {
+        console.error("Failed to fetch pulse data:", error)
+        setAggregated([])
+      })
+      .finally(() => {
+        setPulseLoading(false)
+      })
+
+    // Fetch radars data independently
+    fetch(`${backendUrl}/api/v1/radars`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        setRadars(Array.isArray(data) ? data : [])
+      })
+      .catch(error => {
+        console.error("Failed to fetch radars data:", error)
+        setRadars([])
+      })
+      .finally(() => {
+        setRadarsLoading(false)
+      })
   }, [])
 
-  if (loading) {
-    return <Loading isHome />
-  }
-
   // Pre-calculate curated lists for the homepage
-  const mostDiscussed = [...aggregated].sort((a, b) => b.mention_count - a.mention_count).slice(0, 5)
-  const highestConviction = [...aggregated].sort((a, b) => b.avg_conviction - a.avg_conviction).slice(0, 5)
-  const topTicker = aggregated.find(t => t.mention_count >= 3 && t.consensus_sentiment > 0)?.ticker
+  const mostDiscussed = useMemo(() => {
+    return [...aggregated].sort((a, b) => b.mention_count - a.mention_count).slice(0, 5)
+  }, [aggregated])
+
+  const highestConviction = useMemo(() => {
+    return [...aggregated].sort((a, b) => b.avg_conviction - a.avg_conviction).slice(0, 5)
+  }, [aggregated])
+
+  const topTicker = useMemo(() => {
+    return aggregated.find(t => t.mention_count >= 3 && t.consensus_sentiment > 0)?.ticker
+  }, [aggregated])
 
   return (
     <div className="relative min-h-screen px-4 py-8 md:px-8 md:py-12 bg-[#0A0F1A] overflow-hidden">
@@ -407,34 +580,49 @@ export default function Home() {
             </div>
           </div>
 
-          {aggregated.length > 0 && (
-            <div className="mt-10 md:mt-12 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
-              <div className="absolute inset-0 bg-[#1E293B]" />
-              <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
-            </div>
-          )}
+          <div className="mt-10 md:mt-12 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
+            <div className="absolute inset-0 bg-[#1E293B]" />
+            <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
+          </div>
         </header>
 
-        {aggregated.length > 0 && (
+        {/* Market Pulse Section */}
+        {pulseLoading ? (
+          <div className="mb-6">
+            <MarketPulseSkeleton />
+          </div>
+        ) : aggregated.length > 0 ? (
           <div className="mb-6">
             <MarketPulse aggregated={aggregated} />
           </div>
-        )}
+        ) : null}
 
-        {aggregated.length > 0 && (
+        {/* Spotlight Cards Section */}
+        {pulseLoading ? (
+          <div className="mb-6">
+            <SpotlightCardsSkeleton />
+          </div>
+        ) : aggregated.length > 0 ? (
           <div className="mb-6">
             <SpotlightCards aggregated={aggregated} />
           </div>
-        )}
+        ) : null}
 
-        {radars.length > 0 && (
+        {/* Trending Radars Section */}
+        {radarsLoading ? (
+          <div className="mb-10">
+            <TrendingRadarsSkeleton />
+          </div>
+        ) : radars.length > 0 ? (
           <div className="mb-10">
             <TrendingRadars radars={radars} />
           </div>
-        )}
+        ) : null}
 
-        {/* Curated Previews */}
-        {aggregated.length > 0 && (
+        {/* Curated Previews (Most Discussed & Highest Conviction) */}
+        {pulseLoading ? (
+          <CuratedPreviewsSkeleton />
+        ) : aggregated.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-fade-up stagger-4">
             {/* Most Discussed */}
             <div>
@@ -473,10 +661,10 @@ export default function Home() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Explore CTA */}
-        {aggregated.length > 0 && (
+        {!pulseLoading && aggregated.length > 0 && (
           <div className="text-center animate-fade-up stagger-5 py-8">
             <Link
               href="/explore"
