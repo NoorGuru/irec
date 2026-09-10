@@ -537,20 +537,20 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
     else:  # default or "aura_score"
         plays.sort(key=lambda x: x.aura_score, reverse=True)
 
-    # Compute Market Mood across all qualified plays
-    total_buy_plays = sum(1 for p in plays if p.direction == "BUY")
-    total_sell_plays = sum(1 for p in plays if p.direction == "SELL")
+    # Compute Market Mood across high conviction plays (regular signals, not early radar)
+    strong_buy_plays = sum(1 for p in plays if p.direction == "BUY" and p.signal_tier == "strong")
+    strong_sell_plays = sum(1 for p in plays if p.direction == "SELL" and p.signal_tier == "strong")
     
-    if total_buy_plays > total_sell_plays * 1.5:
+    if strong_buy_plays > strong_sell_plays * 1.5:
         overall_mood = "Bullish"
-    elif total_sell_plays > total_buy_plays * 1.5:
+    elif strong_sell_plays > strong_buy_plays * 1.5:
         overall_mood = "Bearish"
     else:
         overall_mood = "Neutral"
 
     market_mood = MarketMoodResponse(
-        buy_plays=total_buy_plays,
-        sell_plays=total_sell_plays,
+        buy_plays=strong_buy_plays,
+        sell_plays=strong_sell_plays,
         overall=overall_mood
     )
 

@@ -944,8 +944,9 @@ export default function TodayPlaysPage() {
 
   const moodConfig = useMemo(() => {
     if (!data) return null
-    const buyCount = data.market_mood.buy_plays
-    const sellCount = data.market_mood.sell_plays
+    // Base market mood on High Conviction signals only (score 50+), not early radar
+    const buyCount = data.plays.filter(p => p.direction === 'BUY' && (p.signal_tier ? p.signal_tier === 'strong' : p.aura_score >= 50)).length
+    const sellCount = data.plays.filter(p => p.direction === 'SELL' && (p.signal_tier ? p.signal_tier === 'strong' : p.aura_score >= 50)).length
     const total = buyCount + sellCount
 
     if (total === 0) {
@@ -953,7 +954,7 @@ export default function TodayPlaysPage() {
         color: 'text-[#8B95A8]',
         glow: 'from-[#8B95A8]/10 to-[#141B2D]/5',
         title: 'Neutral State',
-        byline: 'Analyst signals are flat today.',
+        byline: 'No high conviction signals detected today.',
         scoreText: '0 signals',
       }
     }
@@ -1177,7 +1178,7 @@ export default function TodayPlaysPage() {
             {data && (
               <>
                 <div className={`absolute top-0 right-1/4 w-[300px] h-[300px] rounded-full blur-[110px] pointer-events-none bg-gradient-to-br ${moodConfig?.glow} opacity-60 transition-all duration-1000`} />
-                <PulseField overallMood={data.market_mood.overall} direction={activeTab} />
+                <PulseField overallMood={moodConfig?.title || 'Neutral'} direction={activeTab} />
               </>
             )}
 
@@ -1229,10 +1230,10 @@ export default function TodayPlaysPage() {
                   <div className="flex flex-col justify-center rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/80 p-5 font-[family-name:var(--font-geist-mono)] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
                     <div className="flex items-end justify-between mb-3">
                       <div className="flex flex-col">
-                        <span className="text-2xl md:text-3xl font-black text-[#00D4AA] leading-none">{buyPlays.length}</span>
+                        <span className="text-2xl md:text-3xl font-black text-[#00D4AA] leading-none">{strongBuyCount}</span>
                         <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Nodes</span>
                         <div className="flex items-center gap-1.5 text-[9px] text-[#8B95A8] mt-1">
-                          <span className="text-[#00D4AA] font-bold">{strongBuyCount}</span> High
+                          <span className="text-[#00D4AA] font-bold">High</span>
                           <span>•</span>
                           <button
                             type="button"
@@ -1240,24 +1241,24 @@ export default function TodayPlaysPage() {
                             className="text-[#16A34A] hover:text-[#22C55E] font-bold hover:underline flex items-center gap-0.5 cursor-pointer transition-colors"
                             title="Filter to Early Radar Buy Signals"
                           >
-                            <span>{emergingBuyCount}</span> Early
+                            <span>+{emergingBuyCount} Early</span>
                           </button>
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] leading-none">{sellPlays.length}</span>
+                        <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] leading-none">{strongSellCount}</span>
                         <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Nodes</span>
                         <div className="flex items-center gap-1.5 text-[9px] text-[#8B95A8] mt-1">
-                          <span className="text-[#FF4D6A] font-bold">{strongSellCount}</span> High
-                          <span>•</span>
                           <button
                             type="button"
                             onClick={() => { setActiveTab('SELL'); setTierFilter('emerging'); setStreamIndex(0); }}
                             className="text-[#F87171] hover:text-[#EF4444] font-bold hover:underline flex items-center gap-0.5 cursor-pointer transition-colors"
                             title="Filter to Early Radar Sell Signals"
                           >
-                            <span>{emergingSellCount}</span> Early
+                            <span>+{emergingSellCount} Early</span>
                           </button>
+                          <span>•</span>
+                          <span className="text-[#FF4D6A] font-bold">High</span>
                         </div>
                       </div>
                     </div>
@@ -1266,11 +1267,11 @@ export default function TodayPlaysPage() {
                     <div className="relative w-full h-2.5 bg-[#141B2D] rounded-full overflow-hidden flex border border-[#1E293B]/60">
                       <div 
                         className="h-full bg-[#00D4AA] shadow-[0_0_8px_#00D4AA] transition-all duration-1000 ease-out"
-                        style={{ width: `${(buyPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
+                        style={{ width: `${(strongBuyCount / Math.max(1, strongBuyCount + strongSellCount)) * 100}%` }}
                       />
                       <div 
                         className="h-full bg-[#FF4D6A] shadow-[0_0_8px_#FF4D6A] transition-all duration-1000 ease-out"
-                        style={{ width: `${(sellPlays.length / Math.max(1, buyPlays.length + sellPlays.length)) * 100}%` }}
+                        style={{ width: `${(strongSellCount / Math.max(1, strongBuyCount + strongSellCount)) * 100}%` }}
                       />
                       {/* Center Mark */}
                       <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/20" />
