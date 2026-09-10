@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Activity, Grid, Layers, ChevronLeft, ChevronRight, Info, AlertTriangle, Sparkles,
-  ArrowRight, ArrowLeft, Maximize, Server
+  ArrowRight, ArrowLeft, Maximize, Server, Radio, ShieldCheck, ChevronDown, ChevronUp
 } from 'lucide-react'
 
 // Custom Youtube Icon SVG
@@ -204,6 +204,21 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
               >
                 {play.action_label}
               </span>
+              {play.signal_tier === 'emerging' && (
+                <span
+                  className={`
+                    text-[9px] font-black px-1.5 py-0.5 rounded-md tracking-wider uppercase font-[family-name:var(--font-geist-mono)] flex items-center gap-1 border border-dashed
+                    ${isBuy
+                      ? 'bg-[#16A34A]/15 border-[#16A34A]/40 text-[#16A34A] shadow-[0_0_8px_rgba(22,163,74,0.2)]'
+                      : 'bg-[#F87171]/10 border-[#F87171]/40 text-[#F87171] shadow-[0_0_8px_rgba(248,113,113,0.15)]'
+                    }
+                  `}
+                  title={isBuy ? "Aura Score 35–49: Early bullish coverage before broader consensus" : "Aura Score 35–49: Early sell warning & distribution before broad panic"}
+                >
+                  <Radio className={`w-2.5 h-2.5 animate-pulse ${isBuy ? 'text-[#16A34A]' : 'text-[#F87171]'}`} />
+                  Early Radar
+                </span>
+              )}
               {play.avg_target_price !== null && (
                 <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#94A3B8]">
                   Target: <span className="text-[#F1F5F9] font-bold">${play.avg_target_price}</span>
@@ -405,14 +420,30 @@ function PulseStream({
               <div>
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex-1 min-w-0 mr-2">
-                    <span className="text-[10px] tracking-widest font-black uppercase text-[#64748B] font-[family-name:var(--font-geist-mono)] block mb-1">
-                      Signal Node
-                    </span>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[10px] tracking-widest font-black uppercase text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+                        Signal Node
+                      </span>
+                      {play.signal_tier === 'emerging' ? (
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-[family-name:var(--font-geist-mono)] font-black uppercase tracking-wider flex items-center gap-1 border border-dashed ${
+                          isBuy
+                            ? 'bg-[#16A34A]/15 text-[#16A34A] border-[#16A34A]/40 shadow-[0_0_8px_rgba(22,163,74,0.2)]'
+                            : 'bg-[#F87171]/10 text-[#F87171] border-[#F87171]/40 shadow-[0_0_8px_rgba(248,113,113,0.15)]'
+                        }`}>
+                          <Radio className={`w-2.5 h-2.5 animate-pulse ${isBuy ? 'text-[#16A34A]' : 'text-[#F87171]'}`} /> Early Radar Node
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-[family-name:var(--font-geist-mono)] font-black uppercase tracking-wider ${
+                          isBuy ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/30' : 'bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/30'
+                        }`}>
+                          High Conviction Node
+                        </span>
+                      )}
+                    </div>
                     <h2 className="text-3xl md:text-5xl font-black text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] tracking-wider">
                       <TextScramble text={play.ticker} duration={600} />
                     </h2>
                     <p className="text-sm text-[#8B95A8] mt-1 mb-2 font-semibold">{play.stock_name}</p>
-
                   </div>
                   <div className="scale-125 mr-2">
                     <AuraReactor score={play.aura_score} direction={play.direction} />
@@ -555,8 +586,9 @@ function TerminalList({ plays, sortBy, activeTab }: { plays: Play[], sortBy: Sor
     <div className="w-full flex flex-col animate-fade-up pb-8 md:pb-0 bg-[#141B2D]/20 backdrop-blur-md rounded-3xl border border-[#1E293B]/60 overflow-hidden shadow-2xl">
       {/* Table Header (Desktop only) */}
       <div className="hidden md:flex items-center px-6 py-4 bg-[#0A0F1A]/80 border-b border-[#1E293B] text-[10px] font-black font-[family-name:var(--font-geist-mono)] text-[#64748B] uppercase tracking-widest">
-        <div className="w-16 shrink-0">Rank</div>
-        <div className="w-32 shrink-0">Ticker</div>
+        <div className="w-14 shrink-0">Rank</div>
+        <div className="w-28 shrink-0">Ticker</div>
+        <div className="w-24 shrink-0">Tier</div>
         <div className="flex-1">Company</div>
         <div className="w-48 text-right pr-2">
           {sortLabel[sortBy]} <span className={activeColorText}>•</span>
@@ -585,19 +617,50 @@ function TerminalList({ plays, sortBy, activeTab }: { plays: Play[], sortBy: Sor
               <div className={`absolute inset-0 bg-gradient-to-r ${isBuy ? 'from-[#00D4AA]/0 via-[#00D4AA]/5 to-transparent' : 'from-[#FF4D6A]/0 via-[#FF4D6A]/5 to-transparent'} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
 
               {/* 1. Rank */}
-              <div className="w-10 md:w-16 shrink-0 text-sm md:text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#475569] group-hover:text-[#F1F5F9] transition-colors relative z-10">
+              <div className="w-10 md:w-14 shrink-0 text-sm md:text-xl font-bold font-[family-name:var(--font-geist-mono)] text-[#475569] group-hover:text-[#F1F5F9] transition-colors relative z-10">
                 {(idx + 1).toString().padStart(2, '0')}
               </div>
               
               {/* 2. Ticker */}
-              <div className={`w-16 md:w-32 shrink-0 text-lg md:text-2xl font-black font-[family-name:var(--font-geist-mono)] ${activeColorText} tracking-widest relative z-10 drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]`}>
+              <div className={`w-16 md:w-28 shrink-0 text-lg md:text-2xl font-black font-[family-name:var(--font-geist-mono)] ${activeColorText} tracking-widest relative z-10 drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]`}>
                 <TextScramble text={play.ticker} duration={400} />
+              </div>
+
+              {/* 2.5 Tier (Desktop) */}
+              <div className="w-24 shrink-0 hidden md:flex items-center relative z-10">
+                {play.signal_tier === 'emerging' ? (
+                  <span
+                    className={`text-[9px] font-black px-1.5 py-0.5 rounded font-[family-name:var(--font-geist-mono)] tracking-wider uppercase flex items-center gap-1 border border-dashed ${
+                    isBuy
+                      ? 'bg-[#16A34A]/15 border-[#16A34A]/40 text-[#16A34A] shadow-[0_0_6px_rgba(22,163,74,0.2)]'
+                      : 'bg-[#F87171]/10 border-[#F87171]/40 text-[#F87171] shadow-[0_0_6px_rgba(248,113,113,0.15)]'
+                  }`}
+                    title={isBuy ? "Early Buy Radar: Score 35–49" : "Early Sell Radar: Score 35–49"}
+                  >
+                    <Radio className={`w-2 h-2 animate-pulse ${isBuy ? 'text-[#16A34A]' : 'text-[#F87171]'}`} /> Radar
+                  </span>
+                ) : (
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded font-[family-name:var(--font-geist-mono)] tracking-wider uppercase ${
+                    isBuy ? 'bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-[#00D4AA]' : 'bg-[#FF4D6A]/10 border border-[#FF4D6A]/30 text-[#FF4D6A]'
+                  }`}>
+                    Strong
+                  </span>
+                )}
               </div>
 
               {/* 3. Company (Hidden on tiny screens, flex-1 otherwise) */}
               <div className="flex-1 min-w-0 pr-4 relative z-10">
-                <div className="text-[10px] md:text-xs text-[#8B95A8] font-bold truncate">
-                  {play.stock_name}
+                <div className="text-[10px] md:text-xs text-[#8B95A8] font-bold truncate flex items-center gap-1.5">
+                  <span className="truncate">{play.stock_name}</span>
+                  {play.signal_tier === 'emerging' && (
+                    <span className={`md:hidden text-[8px] font-mono font-black px-1.5 py-0.2 rounded shrink-0 border border-dashed ${
+                      isBuy
+                        ? 'bg-[#16A34A]/15 border-[#16A34A]/40 text-[#16A34A]'
+                        : 'bg-[#F87171]/10 border-[#F87171]/40 text-[#F87171]'
+                    }`}>
+                      RADAR
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -641,6 +704,8 @@ const sortLabel: Record<SortOption, string> = {
   consensus_sentiment: 'Sentiment',
 }
 
+type SignalTierFilter = 'all' | 'strong' | 'emerging'
+
 export default function TodayPlaysPage() {
   const [data, setData] = useState<TodayPlaysData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -648,6 +713,8 @@ export default function TodayPlaysPage() {
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
   const [viewMode, setViewMode] = useState<'grid' | 'stream' | 'terminal'>('grid')
+  const [tierFilter, setTierFilter] = useState<SignalTierFilter>('all')
+  const [showExplainer, setShowExplainer] = useState(false)
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -840,8 +907,19 @@ export default function TodayPlaysPage() {
   const sellPlays = data ? sortPlays(data.plays.filter((p) => p.direction === 'SELL')) : []
   const activePlays = activeTab === 'BUY' ? buyPlays : sellPlays
   
-  const strongPlays = activePlays.filter(p => p.signal_tier === 'strong')
-  const emergingPlays = activePlays.filter(p => p.signal_tier === 'emerging')
+  const strongPlays = activePlays.filter(p => (p.signal_tier ? p.signal_tier === 'strong' : p.aura_score >= 50))
+  const emergingPlays = activePlays.filter(p => (p.signal_tier ? p.signal_tier === 'emerging' : p.aura_score < 50))
+
+  const strongBuyCount = buyPlays.filter(p => (p.signal_tier ? p.signal_tier === 'strong' : p.aura_score >= 50)).length
+  const emergingBuyCount = buyPlays.filter(p => (p.signal_tier ? p.signal_tier === 'emerging' : p.aura_score < 50)).length
+  const strongSellCount = sellPlays.filter(p => (p.signal_tier ? p.signal_tier === 'strong' : p.aura_score >= 50)).length
+  const emergingSellCount = sellPlays.filter(p => (p.signal_tier ? p.signal_tier === 'emerging' : p.aura_score < 50)).length
+
+  const displayedPlays = useMemo(() => {
+    if (tierFilter === 'strong') return strongPlays
+    if (tierFilter === 'emerging') return emergingPlays
+    return activePlays
+  }, [tierFilter, strongPlays, emergingPlays, activePlays])
 
   const isBuyTab = activeTab === 'BUY'
   const isAuraScore = sortBy === 'aura_score'
@@ -853,6 +931,16 @@ export default function TodayPlaysPage() {
   const activeRing = isBuyTab ? 'ring-[#00D4AA]/30' : 'ring-[#FF4D6A]/30'
   const activeShadow = isBuyTab ? 'shadow-[0_0_15px_rgba(0,212,170,0.1)]' : 'shadow-[0_0_15px_rgba(255,77,106,0.1)]'
   const activeGradient = isBuyTab ? 'from-[#00D4AA]/0 via-[#00D4AA]/5 to-[#00D4AA]/0' : 'from-[#FF4D6A]/0 via-[#FF4D6A]/5 to-[#FF4D6A]/0'
+
+  // Early Radar direction-aware color variables (Dark Green for Buy, Coral Red for Sell)
+  const earlyColorText = isBuyTab ? 'text-[#16A34A]' : 'text-[#F87171]'
+  const earlyColorBg = isBuyTab ? 'bg-[#16A34A]' : 'bg-[#F87171]'
+  const earlyColorBorder = isBuyTab ? 'border-[#16A34A]/40' : 'border-[#F87171]/40'
+  const earlyRing = isBuyTab ? 'ring-[#16A34A]/40' : 'ring-[#F87171]/40'
+  const earlyShadow = isBuyTab ? 'shadow-[0_0_12px_rgba(22,163,74,0.25)]' : 'shadow-[0_0_12px_rgba(248,113,113,0.2)]'
+  const earlyBgBadge = isBuyTab ? 'bg-[#16A34A]/15' : 'bg-[#F87171]/10'
+  const earlyBgContainer = isBuyTab ? 'from-[#16A34A]/12 via-[#141B2D]/60 to-transparent' : 'from-[#F87171]/10 via-[#141B2D]/60 to-transparent'
+  const earlyBorderContainer = isBuyTab ? 'border-[#16A34A]/30' : 'border-[#F87171]/25'
 
   const moodConfig = useMemo(() => {
     if (!data) return null
@@ -915,6 +1003,134 @@ export default function TodayPlaysPage() {
       }
     }
   }, [data])
+
+  const renderCyberRadarHeader = () => (
+    <div className={`rounded-2xl border ${earlyBorderContainer} bg-gradient-to-r ${earlyBgContainer} p-4 md:p-5 shadow-lg shadow-black/20`}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl ${earlyBgBadge} border ${earlyColorBorder} flex items-center justify-center ${earlyColorText} shrink-0 ${earlyShadow}`}>
+            <Radio className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm md:text-base font-black tracking-wider uppercase text-[#F1F5F9] font-[family-name:var(--font-geist-mono)]">
+                {isBuyTab ? 'Early Buy Radar / Developing Signals' : 'Early Sell Radar / Developing Signals'}
+              </h3>
+              <span className={`text-[10px] font-[family-name:var(--font-geist-mono)] font-bold px-2 py-0.5 rounded ${earlyBgBadge} border ${earlyColorBorder} ${earlyColorText}`}>
+                {emergingPlays.length} DETECTED
+              </span>
+            </div>
+            <p className="text-xs text-[#8B95A8] mt-0.5">
+              {isBuyTab
+                ? 'Aura Score 35–49 · Emerging bullish coverage before broader market consensus forms'
+                : 'Aura Score 35–49 · Emerging distribution & downside warnings before mass downgrades'
+              }
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowExplainer(!showExplainer)}
+          className={`self-start md:self-auto text-xs ${earlyColorText} hover:text-white flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)] px-3 py-1.5 rounded-lg ${earlyBgBadge} border ${earlyColorBorder} transition-all cursor-pointer`}
+        >
+          <Info className="w-3.5 h-3.5" />
+          <span>{showExplainer ? 'Hide Details' : 'How It Works'}</span>
+          {showExplainer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+
+      {/* Expandable Explainer */}
+      {showExplainer && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className={`mt-4 pt-4 border-t ${earlyColorBorder} grid grid-cols-1 md:grid-cols-3 gap-4 text-xs`}
+        >
+          {isBuyTab ? (
+            <>
+              <div className="space-y-1.5 bg-[#0A0F1A]/60 p-3.5 rounded-xl border border-white/5">
+                <div className="font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg}`} />
+                  Score Range (35–49)
+                </div>
+                <p className="text-[#8B95A8] text-[11px] leading-relaxed">
+                  Scores below 35 are discarded as noise. Plays between 35 and 49 indicate verified analyst conviction that has cleared the baseline noise floor.
+                </p>
+                <div className="pt-1 text-[10px] text-[#16A34A] font-semibold font-[family-name:var(--font-geist-mono)]">
+                  Status: Early Accumulation Signal
+                </div>
+              </div>
+              <div className="space-y-1.5 bg-[#0A0F1A]/60 p-3.5 rounded-xl border border-white/5">
+                <div className="font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg}`} />
+                  Early Discovery Edge
+                </div>
+                <p className="text-[#8B95A8] text-[11px] leading-relaxed">
+                  Surfaces fresh buy recommendations early, giving you a head start to research catalysts and watch setups before multi-analyst consensus bids up the price.
+                </p>
+                <div className="pt-1 text-[10px] text-[#16A34A] font-semibold font-[family-name:var(--font-geist-mono)]">
+                  Edge: Front-run Multi-Analyst Consensus
+                </div>
+              </div>
+              <div className="space-y-1.5 bg-[#0A0F1A]/60 p-3.5 rounded-xl border border-white/5">
+                <div className="font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg}`} />
+                  Buy Recommendation & Strategy
+                </div>
+                <p className="text-[#8B95A8] text-[11px] leading-relaxed">
+                  Backed by 1–2 independent channels. Ideal for watchlist candidate selection, tracking catalyst confirmation, and sizing with defined risk.
+                </p>
+                <div className="pt-1 text-[10px] text-[#16A34A] font-semibold font-[family-name:var(--font-geist-mono)]">
+                  Rec: Watchlist & Research · Asymmetric Upside
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5 bg-[#0A0F1A]/60 p-3.5 rounded-xl border border-white/5">
+                <div className="font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg}`} />
+                  Score Range (35–49)
+                </div>
+                <p className="text-[#8B95A8] text-[11px] leading-relaxed">
+                  Scores below 35 are discarded as noise. Plays between 35 and 49 represent initial channel sell calls, thesis invalidations, or early distribution warnings.
+                </p>
+                <div className="pt-1 text-[10px] text-[#F87171] font-semibold font-[family-name:var(--font-geist-mono)]">
+                  Status: Early Distribution Alert
+                </div>
+              </div>
+              <div className="space-y-1.5 bg-[#0A0F1A]/60 p-3.5 rounded-xl border border-white/5">
+                <div className="font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg}`} />
+                  Early Defense & Protection Edge
+                </div>
+                <p className="text-[#8B95A8] text-[11px] leading-relaxed">
+                  Alerts you to analyst downgrades and selling pressure early. Gives you an advance window to avoid holding through drawdowns before panic sets in.
+                </p>
+                <div className="pt-1 text-[10px] text-[#F87171] font-semibold font-[family-name:var(--font-geist-mono)]">
+                  Edge: Advance Downside Protection Window
+                </div>
+              </div>
+              <div className="space-y-1.5 bg-[#0A0F1A]/60 p-3.5 rounded-xl border border-white/5">
+                <div className="font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 text-[11px]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg}`} />
+                  Sell Recommendation & Strategy
+                </div>
+                <p className="text-[#8B95A8] text-[11px] leading-relaxed">
+                  Backed by 1–2 independent channels signaling distribution. Ideal for tightening trailing stop-losses, trimming profits, or hedging active long positions.
+                </p>
+                <div className="pt-1 text-[10px] text-[#F87171] font-semibold font-[family-name:var(--font-geist-mono)]">
+                  Rec: Tighten Stops · Trim Profits · Hedge Exposure
+                </div>
+              </div>
+            </>
+          )}
+        </motion.div>
+      )}
+    </div>
+  )
 
   return (
     <main className="flex-1 w-full mx-auto relative min-h-screen pb-20 md:pb-8">
@@ -1015,10 +1231,34 @@ export default function TodayPlaysPage() {
                       <div className="flex flex-col">
                         <span className="text-2xl md:text-3xl font-black text-[#00D4AA] leading-none">{buyPlays.length}</span>
                         <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Buy Nodes</span>
+                        <div className="flex items-center gap-1.5 text-[9px] text-[#8B95A8] mt-1">
+                          <span className="text-[#00D4AA] font-bold">{strongBuyCount}</span> High
+                          <span>•</span>
+                          <button
+                            type="button"
+                            onClick={() => { setActiveTab('BUY'); setTierFilter('emerging'); setStreamIndex(0); }}
+                            className="text-[#16A34A] hover:text-[#22C55E] font-bold hover:underline flex items-center gap-0.5 cursor-pointer transition-colors"
+                            title="Filter to Early Radar Buy Signals"
+                          >
+                            <span>{emergingBuyCount}</span> Early
+                          </button>
+                        </div>
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-2xl md:text-3xl font-black text-[#FF4D6A] leading-none">{sellPlays.length}</span>
                         <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-[#64748B] mt-1 font-bold">Sell Nodes</span>
+                        <div className="flex items-center gap-1.5 text-[9px] text-[#8B95A8] mt-1">
+                          <span className="text-[#FF4D6A] font-bold">{strongSellCount}</span> High
+                          <span>•</span>
+                          <button
+                            type="button"
+                            onClick={() => { setActiveTab('SELL'); setTierFilter('emerging'); setStreamIndex(0); }}
+                            className="text-[#F87171] hover:text-[#EF4444] font-bold hover:underline flex items-center gap-0.5 cursor-pointer transition-colors"
+                            title="Filter to Early Radar Sell Signals"
+                          >
+                            <span>{emergingSellCount}</span> Early
+                          </button>
+                        </div>
                       </div>
                     </div>
                     
@@ -1255,14 +1495,147 @@ export default function TodayPlaysPage() {
               </button>
             </div>
 
+            {/* Signal Tier Filter Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 py-1 select-none font-[family-name:var(--font-geist-mono)]">
+              <div className="flex items-center gap-1.5 bg-[#0A0F1A]/90 border border-[#1E293B] rounded-xl p-1 text-xs">
+                <span className="text-[#64748B] px-2 font-bold text-[10px] uppercase tracking-wider hidden sm:inline">
+                  FILTER TIER:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setTierFilter('all'); setStreamIndex(0); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    tierFilter === 'all'
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing} ${activeShadow}`
+                      : 'text-[#64748B] hover:text-[#F1F5F9]'
+                  }`}
+                >
+                  <span>All Signals</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                    tierFilter === 'all' ? 'bg-white/10 text-white' : 'bg-[#1E293B]/60 text-[#8B95A8]'
+                  }`}>
+                    {activePlays.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setTierFilter('strong'); setStreamIndex(0); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    tierFilter === 'strong'
+                      ? `bg-[#141B2D] ${activeColorText} ring-1 ${activeRing} ${activeShadow}`
+                      : 'text-[#64748B] hover:text-[#F1F5F9]'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>High Conviction</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                    tierFilter === 'strong' ? 'bg-white/10 text-white' : 'bg-[#1E293B]/60 text-[#8B95A8]'
+                  }`}>
+                    {strongPlays.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setTierFilter('emerging'); setStreamIndex(0); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    tierFilter === 'emerging'
+                      ? `bg-[#141B2D] ${earlyColorText} ring-1 ${earlyRing} ${earlyShadow}`
+                      : `text-[#64748B] hover:${earlyColorText}`
+                  }`}
+                >
+                  <span className="relative flex h-2 w-2">
+                    {emergingPlays.length > 0 && (
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${earlyColorBg} opacity-75`}></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${earlyColorBg}`}></span>
+                  </span>
+                  <span>Early Radar</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                    tierFilter === 'emerging'
+                      ? `${earlyBgBadge} ${earlyColorText} border ${earlyColorBorder}`
+                      : 'bg-[#1E293B]/60 text-[#8B95A8]'
+                  }`}>
+                    {emergingPlays.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Score indicator of the selected filter */}
+              <div className="text-[11px] hidden lg:flex items-center gap-2 font-[family-name:var(--font-geist-mono)]">
+                <AnimatePresence mode="wait">
+                  {tierFilter === 'strong' ? (
+                    <motion.span
+                      key="strong"
+                      initial={{ opacity: 0, y: -2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 2 }}
+                      transition={{ duration: 0.15 }}
+                      className={`flex items-center gap-1.5 ${isBuyTab ? 'text-[#00D4AA]' : 'text-[#FF4D6A]'}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isBuyTab ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} />
+                      High: Score 50–100
+                    </motion.span>
+                  ) : tierFilter === 'emerging' ? (
+                    <motion.span
+                      key="emerging"
+                      initial={{ opacity: 0, y: -2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 2 }}
+                      transition={{ duration: 0.15 }}
+                      className={`flex items-center gap-1.5 ${earlyColorText}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${earlyColorBg} animate-pulse`} />
+                      Early: Score 35–49
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="all"
+                      initial={{ opacity: 0, y: -2 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 2 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex items-center gap-1.5 text-[#8B95A8]"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#64748B]" />
+                      All: Score 35–100
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Global Early Radar Cyber-Box (Visible across ALL view modes when Early Radar is active) */}
+            {tierFilter === 'emerging' && emergingPlays.length > 0 && (
+              <div className="mb-6">
+                {renderCyberRadarHeader()}
+              </div>
+            )}
+
             {/* Layout Renderers */}
             <div className="relative">
               {viewMode === 'grid' ? (
                 /* Grid View */
-                activePlays.length > 0 ? (
-                  <div className="space-y-12">
-                    {strongPlays.length > 0 && (
+                displayedPlays.length > 0 ? (
+                  <div className="space-y-10">
+                    {/* High Conviction Section */}
+                    {(tierFilter === 'all' || tierFilter === 'strong') && strongPlays.length > 0 && (
                       <div className="space-y-4">
+                        {tierFilter === 'all' && emergingPlays.length > 0 && (
+                          <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck className={`w-4 h-4 ${activeColorText}`} />
+                              <h3 className="text-xs font-black uppercase tracking-wider text-[#F1F5F9] font-[family-name:var(--font-geist-mono)]">
+                                High Conviction Consensus
+                              </h3>
+                              <span className="text-[10px] font-mono text-[#64748B]">({strongPlays.length})</span>
+                            </div>
+                            <span className="text-[10px] text-[#64748B] font-mono hidden sm:inline">
+                              Aura Score 50–100 · Multi-Analyst Consensus
+                            </span>
+                          </div>
+                        )}
                         <motion.div
                           layout
                           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -1289,17 +1662,17 @@ export default function TodayPlaysPage() {
                         </motion.div>
                       </div>
                     )}
-                    
-                    {emergingPlays.length > 0 && (
-                      <div className="space-y-4 border-t border-[#1E293B] pt-8">
-                        <div className="flex items-center gap-2 px-2">
-                          <Sparkles className="w-4 h-4 text-[#64748B]" />
-                          <h3 className="text-sm font-bold text-[#F1F5F9] tracking-wider uppercase">Developing Signals</h3>
-                          <span className="text-xs text-[#64748B] ml-2">({emergingPlays.length})</span>
-                        </div>
+
+                    {/* Early Radar / Developing Signals Section */}
+                    {(tierFilter === 'all' || tierFilter === 'emerging') && emergingPlays.length > 0 && (
+                      <div className={`space-y-4 ${tierFilter === 'all' && strongPlays.length > 0 ? 'border-t border-[#1E293B] pt-8' : ''}`}>
+                        {/* When viewing All, render the Cyber-Radar Header Box here as the section divider */}
+                        {tierFilter === 'all' && renderCyberRadarHeader()}
+
+                        {/* Emerging Cards Grid - First class opacity (no opacity-80 dimming!) */}
                         <motion.div
                           layout
-                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80 hover:opacity-100 transition-opacity duration-300"
+                          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                         >
                           <AnimatePresence mode="popLayout">
                             {emergingPlays.map((play, idx) => (
@@ -1316,7 +1689,6 @@ export default function TodayPlaysPage() {
                                 }}
                                 className="h-full"
                               >
-                                {/* We can use the same PlayCard but it will inherit the reduced opacity from the parent container. */}
                                 <PlayCard play={play} index={idx} activeSortBy={sortBy} />
                               </motion.div>
                             ))}
@@ -1326,17 +1698,46 @@ export default function TodayPlaysPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
-                    <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
-                    <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active {activeTab} Indicators</div>
-                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">Adjust your sort filter strategy to see other signal channels.</div>
-                  </div>
+                  /* Tier Empty State */
+                  tierFilter === 'emerging' ? (
+                    <div className={`flex flex-col items-center justify-center rounded-3xl border border-dashed ${earlyColorBorder} ${earlyBgBadge} p-16 text-center animate-fade-in`}>
+                      <Radio className={`w-8 h-8 ${earlyColorText} mb-3 animate-pulse`} />
+                      <div className="text-sm font-bold text-[#F1F5F9] mb-1 font-[family-name:var(--font-geist-mono)]">
+                        No Active Early Radar {activeTab} Signals
+                      </div>
+                      <div className="text-xs text-[#8B95A8] max-w-sm leading-relaxed mb-4">
+                        All detected {activeTab} signals have reached High Conviction (Score 50+) or are awaiting fresh analyst uploads.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTierFilter('all')}
+                        className={`px-3 py-1.5 text-xs font-[family-name:var(--font-geist-mono)] font-bold ${earlyColorText} ${earlyBgBadge} hover:opacity-80 rounded-lg border ${earlyColorBorder} transition-all cursor-pointer`}
+                      >
+                        View All {activeTab} Signals ({activePlays.length})
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
+                      <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
+                      <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active {activeTab} Indicators</div>
+                      <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">Adjust your sort filter strategy to see other signal channels.</div>
+                      {tierFilter !== 'all' && (
+                        <button
+                          type="button"
+                          onClick={() => setTierFilter('all')}
+                          className="mt-4 px-3 py-1.5 text-xs font-[family-name:var(--font-geist-mono)] font-bold text-[#00D4AA] bg-[#00D4AA]/10 hover:bg-[#00D4AA]/20 rounded-lg border border-[#00D4AA]/30 transition-all cursor-pointer"
+                        >
+                          Reset Filter to All ({activePlays.length})
+                        </button>
+                      )}
+                    </div>
+                  )
                 )
               ) : viewMode === 'stream' ? (
                 /* Stream View (Focused Swipe Cards) */
-                activePlays.length > 0 ? (
+                displayedPlays.length > 0 ? (
                   <PulseStream
-                    plays={activePlays}
+                    plays={displayedPlays}
                     sortBy={sortBy}
                     index={streamIndex}
                     setIndex={setStreamIndex}
@@ -1345,18 +1746,36 @@ export default function TodayPlaysPage() {
                   <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
                     <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
                     <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active Stream</div>
-                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">No signals found under this classification node.</div>
+                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">No signals found under this classification tier.</div>
+                    {tierFilter !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setTierFilter('all')}
+                        className={`mt-4 px-3 py-1.5 text-xs font-[family-name:var(--font-geist-mono)] font-bold ${earlyColorText} ${earlyBgBadge} hover:opacity-80 rounded-lg border ${earlyColorBorder} transition-all cursor-pointer`}
+                      >
+                        Reset Filter to All ({activePlays.length})
+                      </button>
+                    )}
                   </div>
                 )
               ) : (
                 /* Terminal View */
-                activePlays.length > 0 ? (
-                  <TerminalList plays={activePlays} sortBy={sortBy} activeTab={activeTab} />
+                displayedPlays.length > 0 ? (
+                  <TerminalList plays={displayedPlays} sortBy={sortBy} activeTab={activeTab} />
                 ) : (
                   <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#1E293B] bg-[#141B2D]/20 p-16 text-center animate-fade-in">
                     <Info className="w-8 h-8 text-[#64748B] mb-3 opacity-60" />
                     <div className="text-sm font-bold text-[#F1F5F9] mb-1">No Active {activeTab} Indicators</div>
-                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">Adjust your sort filter strategy to see other signal channels.</div>
+                    <div className="text-xs text-[#8B95A8] max-w-xs leading-relaxed">No signals found under this classification tier.</div>
+                    {tierFilter !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setTierFilter('all')}
+                        className={`mt-4 px-3 py-1.5 text-xs font-[family-name:var(--font-geist-mono)] font-bold ${earlyColorText} ${earlyBgBadge} hover:opacity-80 rounded-lg border ${earlyColorBorder} transition-all cursor-pointer`}
+                      >
+                        Reset Filter to All ({activePlays.length})
+                      </button>
+                    )}
                   </div>
                 )
               )}

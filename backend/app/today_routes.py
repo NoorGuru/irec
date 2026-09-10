@@ -424,13 +424,9 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
         aura_score = int(0.85 * aura_score_raw + 0.15 * omni_score)
 
         # --- Dynamic Strategy Filtering ---
-        signal_tier = "strong"
+        signal_tier = "strong" if aura_score >= 50 else "emerging"
         if strategy == "aura_score":
-            if aura_score >= 50:
-                signal_tier = "strong"
-            elif aura_score >= 35:
-                signal_tier = "emerging"
-            else:
+            if aura_score < 35:
                 continue
         elif strategy == "conviction":
             if avg_conviction < 7.5:
