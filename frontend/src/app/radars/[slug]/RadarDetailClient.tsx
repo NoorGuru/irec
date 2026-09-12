@@ -132,6 +132,28 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
     return radar.trend.map(t => t.aura_score).reverse()
   }, [radar])
 
+  const aggregateStats = useMemo(() => {
+    if (!radar || !radar.plays || radar.plays.length === 0) return null
+    const plays = radar.plays
+    const totalMentions = plays.reduce((acc, p) => acc + p.recent_mentions, 0)
+    const bullishCount = plays.filter(p => p.direction === 'BUY').length
+    const bearishCount = plays.filter(p => p.direction === 'SELL').length
+    const targets = plays.filter(p => p.avg_target_price !== null && p.avg_target_price > 0).map(p => p.avg_target_price!)
+    const avgTarget = targets.length > 0 ? targets.reduce((a, b) => a + b, 0) / targets.length : null
+    const avgConviction = plays.reduce((acc, p) => acc + p.avg_conviction, 0) / plays.length
+    const bullPct = plays.length > 0 ? Math.round((bullishCount / plays.length) * 100) : 0
+
+    return {
+      totalMentions,
+      bullishCount,
+      bearishCount,
+      targetsCount: targets.length,
+      avgTarget,
+      avgConviction,
+      bullPct,
+    }
+  }, [radar])
+
   if (loading) {
     const formattedTitle = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     return <Loading title={formattedTitle} subtitle="Loading radar details..." />
@@ -246,6 +268,92 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
             </div>
           </div>
         </div>
+
+        {/* Thematic Basket Overview & Heatmap */}
+        {aggregateStats && (
+          <div className="mb-12 p-6 md:p-8 rounded-3xl bg-[#141B2D]/50 border border-white/5 backdrop-blur-xl space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[#8B95A8] font-[family-name:var(--font-geist-mono)]">
+                  Thematic Heatmap & Consensus Polarity
+                </h3>
+                <p className="text-xs text-[#64748B] mt-0.5">
+                  Real-time consensus alignment across constituent assets
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs font-[family-name:var(--font-geist-mono)]">
+                <span className="text-[#00D4AA] font-bold">
+                  {aggregateStats.bullishCount} Bullish ({aggregateStats.bullPct}%)
+                </span>
+                <span className="text-[#64748B]">•</span>
+                <span className="text-[#FF4D6A] font-bold">
+                  {aggregateStats.bearishCount} Bearish ({100 - aggregateStats.bullPct}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Polarity Bar */}
+            <div className="w-full h-3 rounded-full bg-[#0A0F1A] border border-[#1E293B] overflow-hidden flex shadow-inner">
+              <div
+                className="h-full bg-gradient-to-r from-[#00D4AA] to-[#00FFD0] transition-all duration-700"
+                style={{ width: `${aggregateStats.bullPct}%` }}
+              />
+              <div
+                className="h-full bg-gradient-to-r from-[#FF4D6A] to-[#FF1744] transition-all duration-700"
+                style={{ width: `${100 - aggregateStats.bullPct}%` }}
+              />
+            </div>
+
+            {/* Constituent Pill Heatmap */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {radar.plays.map((p) => {
+                const isBull = p.direction === 'BUY'
+                return (
+                  <Link
+                    key={p.ticker}
+                    href={`/ticker?s=${p.ticker}`}
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold font-[family-name:var(--font-geist-mono)] flex items-center gap-1.5 transition-all hover:scale-105 ${
+                      isBull
+                        ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA] hover:bg-[#00D4AA]/20'
+                        : 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30 text-[#FF4D6A] hover:bg-[#FF4D6A]/20'
+                    }`}
+                  >
+                    <span>{p.ticker}</span>
+                    <span className="text-[10px] opacity-70">
+                      {isBull ? '+' : ''}
+                      {p.aura_score.toFixed(0)}
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Metric Strip */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-white/5 font-[family-name:var(--font-geist-mono)] text-xs">
+              <div className="p-3 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B]">
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Total 30D Coverage</span>
+                <p className="text-lg font-bold text-[#F1F5F9] mt-1">{aggregateStats.totalMentions} mentions</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B]">
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Average Target Price</span>
+                <p className="text-lg font-bold text-[#00D4AA] mt-1">
+                  {aggregateStats.avgTarget ? `$${aggregateStats.avgTarget.toFixed(0)}` : '—'}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B]">
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Theme Conviction</span>
+                <p className="text-lg font-bold text-[#F1F5F9] mt-1">{aggregateStats.avgConviction.toFixed(1)} / 10</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B]">
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Constituent Targets</span>
+                <p className="text-lg font-bold text-[#F1F5F9] mt-1">
+                  {aggregateStats.targetsCount} of {radar.plays.length} active
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Constituents Grid */}
         <h2 className="text-2xl font-black text-[#F1F5F9] mb-6 flex items-center gap-3">
