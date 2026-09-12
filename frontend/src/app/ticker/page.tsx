@@ -73,46 +73,6 @@ function getSentimentColor(sentiment: number): string {
   return 'text-[#8B95A8]'
 }
 
-function getSentimentBadgeClass(sentiment: number): string {
-  if (sentiment >= 2) return "sentiment-badge sentiment-badge-strong-buy"
-  if (sentiment >= 1) return "sentiment-badge sentiment-badge-buy"
-  if (sentiment <= -2) return "sentiment-badge sentiment-badge-strong-sell"
-  if (sentiment <= -1) return "sentiment-badge sentiment-badge-sell"
-  return "sentiment-badge sentiment-badge-neutral"
-}
-
-function SentimentArrow({ value }: { value: number }) {
-  if (value >= 2) {
-    return (
-      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="inline-block shrink-0">
-        <path d="M7 2L7 12M7 2L3 6M7 2L11 6" stroke="#00FFD0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    )
-  }
-  if (value <= -2) {
-    return (
-      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="inline-block shrink-0">
-        <path d="M7 12L7 2M7 12L3 8M7 12L11 8" stroke="#FF1744" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    )
-  }
-  return null
-}
-
-function ConvictionDots({ level }: { level: number }) {
-  return (
-    <div className="flex items-center gap-0.5" title={`Conviction: ${level}/10`}>
-      {Array.from({ length: 10 }, (_, i) => (
-        <div
-          key={i}
-          className={`w-1.5 h-1.5 rounded-full ${
-            i < level ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
-          }`}
-        />
-      ))}
-    </div>
-  )
-}
 
 function VideoThumbnailLink({ youtubeVideoId }: { youtubeVideoId: string }) {
   return (
@@ -264,6 +224,14 @@ function TickerContent() {
   const prices = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
   const rawAvgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null
   const avgPrice = rawAvgPrice !== null ? Math.round(rawAvgPrice) : null
+  const targets = recommendations
+    .filter(r => r.target_price !== null)
+    .map(r => ({
+      price: r.target_price!,
+      channelName: r.videos?.channels?.channel_name || 'Tracked Analyst',
+      publishedAt: r.videos?.published_at,
+      sentiment: r.sentiment,
+    }))
 
   // Consensus score (same formula as homepage — trust-weighted + confidence-dampened)
   const weightedSum = recommendations.reduce((s, r) => s + r.sentiment * r.videos.channels.trust_weight, 0)
@@ -777,96 +745,18 @@ function TickerContent() {
 
 
 
-        {/* Visual Target Price Corridor */}
-        <div className="mb-8 animate-fade-up stagger-2">
+        {/* Unified Analyst Consensus & Target Corridor Console */}
+        <div className="mb-10 animate-fade-up stagger-2">
           <TargetCorridor
             prices={prices}
             avgPrice={avgPrice}
-            currentPrice={position?.current_price || null}
             ticker={symbol.toUpperCase()}
+            targets={targets}
+            totalRecommendations={recommendations.length}
+            rawSentiment={avgSentiment}
+            consensusSentiment={consensusSentiment}
+            avgConviction={avgConviction}
           />
-        </div>
-
-        {/* Summary stats */}
-        <div className="relative z-0 grid grid-cols-2 md:grid-cols-4 gap-3 mb-10 animate-fade-up stagger-2">
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
-            <p className="text-xs text-[#64748B] mb-1">Raw Sentiment</p>
-            <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold ${
-              avgSentiment >= 1.5 ? 'sentiment-strong-buy' :
-              avgSentiment >= 0.5 ? 'text-[#00D4AA]' :
-              avgSentiment <= -1.5 ? 'sentiment-strong-sell' :
-              avgSentiment <= -0.5 ? 'text-[#FF4D6A]' :
-              'text-[#F1F5F9]'
-            }`}>
-              {avgSentiment.toFixed(1)}
-            </p>
-            <span className={getSentimentBadgeClass(Math.round(avgSentiment))}>
-              <SentimentArrow value={avgSentiment} />
-              {avgSentiment >= 1.5 ? 'Strong Buy' : avgSentiment >= 0.5 ? 'Buy' : avgSentiment > -0.5 ? 'Neutral' : avgSentiment > -1.5 ? 'Sell' : 'Strong Sell'}
-            </span>
-          </div>
-
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-xs text-[#64748B]">Consensus</p>
-              <span
-                className="group/tip relative cursor-help"
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
-                  if (tooltip) tooltip.classList.toggle('opacity-0')
-                }}
-                onBlur={(e) => {
-                  const tooltip = e.currentTarget.querySelector('[role="tooltip"]') as HTMLElement
-                  if (tooltip) tooltip.classList.add('opacity-0')
-                }}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-[#475569] hover:text-[#64748B] transition-colors">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                <span role="tooltip" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 rounded-lg bg-[#1E293B] border border-[#2D3A4F] text-[10px] text-[#8B95A8] leading-relaxed opacity-0 group-hover/tip:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                  Dampened by data confidence. Reaches full strength at 3+ mentions.
-                </span>
-              </span>
-            </div>
-            <p className={`font-[family-name:var(--font-geist-mono)] text-2xl font-bold ${
-              consensusSentiment >= 1.5 ? 'sentiment-strong-buy' :
-              consensusSentiment >= 0.5 ? 'text-[#00D4AA]' :
-              consensusSentiment <= -1.5 ? 'sentiment-strong-sell' :
-              consensusSentiment <= -0.5 ? 'text-[#FF4D6A]' :
-              'text-[#F1F5F9]'
-            }`}>
-              {consensusSentiment.toFixed(2)}
-            </p>
-            <span className={getSentimentBadgeClass(consensusSentiment)}>
-              <SentimentArrow value={consensusSentiment} />
-              {consensusSentiment >= 1.5 ? 'Strong Buy' : consensusSentiment >= 0.5 ? 'Buy' : consensusSentiment > -0.5 ? 'Neutral' : consensusSentiment > -1.5 ? 'Sell' : 'Strong Sell'}
-            </span>
-          </div>
-
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
-            <p className="text-xs text-[#64748B] mb-1">Avg Target</p>
-            <p className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9]">
-              {avgPrice !== null ? `$${avgPrice.toFixed(0)}` : '—'}
-            </p>
-            {prices.length > 1 && (
-              <p className="text-xs text-[#64748B] mt-0.5">
-                ${Math.min(...prices).toFixed(0)} – ${Math.max(...prices).toFixed(0)}
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4">
-            <p className="text-xs text-[#64748B] mb-1">Avg Conviction</p>
-            <p className="font-[family-name:var(--font-geist-mono)] text-2xl font-bold text-[#F1F5F9]">
-              {avgConviction.toFixed(1)}<span className="text-sm text-[#64748B]">/10</span>
-            </p>
-            <div className="mt-1.5">
-              <ConvictionDots level={Math.round(avgConviction)} />
-            </div>
-          </div>
         </div>
 
         {/* Institutional Tabbed Analytics Dock */}

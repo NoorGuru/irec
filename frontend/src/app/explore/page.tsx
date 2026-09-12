@@ -788,23 +788,38 @@ export default function ExplorePage() {
             )}
           </div>
 
-          {/* Desktop Spacer: Reserves 420px width on xl screens so screener table doesn't get obscured */}
+          {/* Desktop Persistent Side Workbench (xl: and above) */}
           {quickPeekStock && (
-            <div className="hidden xl:block w-[420px] shrink-0 pointer-events-none" aria-hidden="true" />
+            <div className="hidden xl:block w-[420px] shrink-0 sticky top-24 z-30">
+              <ExploreQuickPeek
+                stock={quickPeekStock}
+                onClose={() => setQuickPeekStock(null)}
+                onPrev={handlePrevStock}
+                onNext={handleNextStock}
+                hasPrev={hasPrevStock}
+                hasNext={hasNextStock}
+                currentIndex={quickPeekIndex}
+                totalCount={filteredAndSorted.length}
+                isInline={true}
+              />
+            </div>
           )}
         </div>
 
-        {/* Viewport-Pinned Quick Intelligence Inspector Dock */}
-        <ExploreQuickPeek
-          stock={quickPeekStock}
-          onClose={() => setQuickPeekStock(null)}
-          onPrev={handlePrevStock}
-          onNext={handleNextStock}
-          hasPrev={hasPrevStock}
-          hasNext={hasNextStock}
-          currentIndex={quickPeekIndex}
-          totalCount={filteredAndSorted.length}
-        />
+        {/* Responsive Overlay Quick Peek for Mobile & Tablet (< xl) */}
+        <div className="xl:hidden">
+          <ExploreQuickPeek
+            stock={quickPeekStock}
+            onClose={() => setQuickPeekStock(null)}
+            onPrev={handlePrevStock}
+            onNext={handleNextStock}
+            hasPrev={hasPrevStock}
+            hasNext={hasNextStock}
+            currentIndex={quickPeekIndex}
+            totalCount={filteredAndSorted.length}
+            isInline={false}
+          />
+        </div>
       </div>
     </main>
   )
