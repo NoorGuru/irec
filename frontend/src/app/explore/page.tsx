@@ -255,17 +255,70 @@ export default function ExplorePage() {
     return result
   }, [stocks, search, timeFilter, ratingFilter, hasTargetOnly, highDataOnly, sortField, sortOrder])
 
+  // Quick Intelligence Stepper & Keyboard Navigation
+  const quickPeekIndex = useMemo(() => {
+    if (!quickPeekStock) return -1
+    return filteredAndSorted.findIndex((s) => s.ticker === quickPeekStock.ticker)
+  }, [quickPeekStock, filteredAndSorted])
+
+  const hasPrevStock = quickPeekIndex > 0
+  const hasNextStock = quickPeekIndex >= 0 && quickPeekIndex < filteredAndSorted.length - 1
+
+  const handlePrevStock = () => {
+    if (hasPrevStock) {
+      setQuickPeekStock(filteredAndSorted[quickPeekIndex - 1])
+    }
+  }
+
+  const handleNextStock = () => {
+    if (hasNextStock) {
+      if (quickPeekIndex + 1 >= visibleCount) {
+        setVisibleCount((prev) => Math.min(filteredAndSorted.length, prev + 25))
+      }
+      setQuickPeekStock(filteredAndSorted[quickPeekIndex + 1])
+    }
+  }
+
+  // Arrow Up / Down / j / k keyboard listener for seamless stock switching
+  useEffect(() => {
+    if (!quickPeekStock) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName
+      if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
+        return
+      }
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault()
+        if (hasNextStock) {
+          handleNextStock()
+        }
+      } else if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault()
+        if (hasPrevStock) {
+          handlePrevStock()
+        }
+      } else if (e.key === 'Escape') {
+        setQuickPeekStock(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [quickPeekStock, hasNextStock, hasPrevStock, quickPeekIndex, filteredAndSorted, visibleCount])
+
   if (loading && !stocks.length) {
     return <Loading title="Market Explorer" subtitle="Loading assets and signals..." />
   }
 
   return (
-    <main className="flex-1 flex flex-col relative w-full bg-[#0A0F1A] overflow-hidden">
+    <main className="flex-1 flex flex-col relative w-full bg-[#0A0F1A] overflow-x-clip">
       {/* Background Gradient */}
       <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.015] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#141B2D]/40 via-[#0A0F1A] to-[#0A0F1A] pointer-events-none z-0" />
 
-      <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8 py-8 md:py-12 w-full flex-1 flex flex-col animate-fade-up">
+      <div className={`relative z-10 mx-auto px-4 sm:px-8 py-8 md:py-12 w-full flex-1 flex flex-col animate-fade-up transition-all duration-300 ${quickPeekStock ? 'max-w-[1680px]' : 'max-w-[1400px]'}`}>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
@@ -396,296 +449,361 @@ export default function ExplorePage() {
           </div>
         </div>
 
-        {/* Desktop Unified Table */}
-        <div className="hidden lg:block rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/60 backdrop-blur-md overflow-hidden animate-fade-up">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-[#1E293B] bg-[#141B2D]/40">
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('ticker')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Asset <SortIcon field="ticker" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('target')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Target <SortIcon field="target" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('sentiment')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Sentiment <SortIcon field="sentiment" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('conviction')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Conviction <SortIcon field="conviction" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('score')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Aura Score <SortIcon field="score" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('mentions')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Coverage <SortIcon field="mentions" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('recency')}>
-                    <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Last Active <SortIcon field="recency" /></div>
-                  </th>
-                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider text-right">
-                    Quick Peek
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1E293B]/50">
-                {filteredAndSorted.slice(0, visibleCount).map((stock) => {
-                  const direction = stock.overall_sentiment ? (stock.overall_sentiment >= 0.5 ? 'BUY' : stock.overall_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL') : 'NEUTRAL'
-                  const borderGlowClass = direction === 'BUY' ? 'border-l-2 border-l-[#00D4AA]' : direction === 'SELL' ? 'border-l-2 border-l-[#FF4D6A]' : stock.overall_sentiment !== null ? 'border-l-2 border-l-[#8B95A8]' : 'border-l-2 border-l-transparent'
-                  
-                  return (
-                    <tr 
-                      key={stock.ticker} 
-                      onClick={() => setQuickPeekStock(stock)}
-                      className={`group hover:bg-[#1E293B]/30 transition-colors cursor-pointer ${borderGlowClass}`}
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col justify-center min-w-[120px]">
-                          <div className="flex items-baseline gap-2">
-                            <span 
+        {/* Screener Content & In-Place Workbench Layout */}
+        <div className="flex gap-6 items-start">
+          {/* Main Screener Column (Table on Desktop, Cards on Mobile) */}
+          <div className="flex-1 min-w-0 w-full">
+            {/* Desktop Unified Table */}
+            <div className="hidden lg:block rounded-2xl border border-[#1E293B] bg-[#0A0F1A]/60 backdrop-blur-md overflow-hidden animate-fade-up">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-[#1E293B] bg-[#141B2D]/40">
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('ticker')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Asset <SortIcon field="ticker" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('target')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Target <SortIcon field="target" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('sentiment')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Sentiment <SortIcon field="sentiment" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('conviction')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Conviction <SortIcon field="conviction" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('score')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Aura Score <SortIcon field="score" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('mentions')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Coverage <SortIcon field="mentions" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('recency')}>
+                        <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Last Active <SortIcon field="recency" /></div>
+                      </th>
+                      <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider text-right">
+                        Quick Peek
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1E293B]/50">
+                    {filteredAndSorted.slice(0, visibleCount).map((stock) => {
+                      const isSelected = quickPeekStock?.ticker === stock.ticker
+                      const direction = stock.overall_sentiment ? (stock.overall_sentiment >= 0.5 ? 'BUY' : stock.overall_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL') : 'NEUTRAL'
+                      const borderGlowClass = isSelected
+                        ? 'bg-[#00D4AA]/15 border-l-4 border-l-[#00D4AA] ring-1 ring-[#00D4AA]/30 shadow-inner'
+                        : direction === 'BUY'
+                        ? 'border-l-2 border-l-[#00D4AA]'
+                        : direction === 'SELL'
+                        ? 'border-l-2 border-l-[#FF4D6A]'
+                        : stock.overall_sentiment !== null
+                        ? 'border-l-2 border-l-[#8B95A8]'
+                        : 'border-l-2 border-l-transparent'
+                      
+                      return (
+                        <tr 
+                          key={stock.ticker} 
+                          onClick={() => setQuickPeekStock(stock)}
+                          className={`group hover:bg-[#1E293B]/30 transition-colors cursor-pointer ${borderGlowClass}`}
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex flex-col justify-center min-w-[120px]">
+                              <div className="flex items-baseline gap-2">
+                                <span 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/ticker?s=${stock.ticker}`)
+                                  }}
+                                  className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] hover:underline transition-colors leading-none tracking-wide"
+                                  title="Go directly to Ticker terminal"
+                                >
+                                  {stock.ticker}
+                                </span>
+                                {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
+                                  <span className="inline-flex items-center text-[8px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-[#64748B] max-w-[160px] truncate mt-1">{stock.stock_name || 'Unknown'}</span>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            {stock.avg_target_price !== null ? (
+                              <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
+                                ${stock.avg_target_price.toFixed(0)}
+                              </span>
+                            ) : (
+                              <span className="text-[#64748B] text-xs">—</span>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="flex flex-col gap-1.5 min-w-[120px]">
+                              <div className="flex items-center justify-between text-xs">
+                                {stock.overall_sentiment !== null ? (
+                                  <span className={getSentimentBadgeClass(stock.overall_sentiment)}>
+                                    {getSentimentLabel(stock.overall_sentiment)}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-[#64748B]">—</span>
+                                )}
+                                {stock.overall_sentiment !== null && (
+                                  <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8]">
+                                    {stock.overall_sentiment.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                              {stock.overall_sentiment !== null && (
+                                <PulseBar value={stock.overall_sentiment} isTop={false} />
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            {stock.avg_conviction !== null ? (
+                              <div className="flex flex-col gap-1">
+                                <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9]">
+                                  {stock.avg_conviction.toFixed(1)}/10
+                                </span>
+                                <ConvictionMini level={stock.avg_conviction} />
+                              </div>
+                            ) : (
+                              <span className="text-[#64748B] text-xs">—</span>
+                            )}
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <span className="font-[family-name:var(--font-geist-mono)] text-sm font-semibold text-[#F1F5F9]">
+                              {stock.priority_score.toFixed(2)}
+                            </span>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)] text-xs text-[#8B95A8]">
+                              <span className="text-[#F1F5F9] font-medium">{stock.mention_count_30d}</span>
+                              <span className="text-[#475569]">/</span>
+                              <span className="text-[#64748B]">{stock.analyst_count} analysts</span>
+                            </div>
+                          </td>
+
+                          <td className="px-5 py-4">
+                            {stock.last_mentioned_at ? (
+                              <div className="flex flex-col">
+                                <span className="text-xs text-[#8B95A8] font-[family-name:var(--font-geist-mono)]">
+                                  {formatRelativeTime(stock.last_mentioned_at)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[#64748B] text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                router.push(`/ticker?s=${stock.ticker}`)
+                                if (isSelected) {
+                                  setQuickPeekStock(null)
+                                } else {
+                                  setQuickPeekStock(stock)
+                                }
                               }}
-                              className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] hover:underline transition-colors leading-none tracking-wide"
-                              title="Go directly to Ticker terminal"
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all font-[family-name:var(--font-geist-mono)] cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#00D4AA] text-[#0A0F1A] font-bold shadow-sm'
+                                  : 'text-[#8B95A8] hover:text-[#00D4AA] bg-[#141B2D]/80 hover:bg-[#00D4AA]/10 border border-[#1E293B] hover:border-[#00D4AA]/40'
+                              }`}
                             >
-                              {stock.ticker}
-                            </span>
-                            {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
-                              <span className="inline-flex items-center text-[8px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-[#64748B] max-w-[160px] truncate mt-1">{stock.stock_name || 'Unknown'}</span>
-                        </div>
-                      </td>
+                              {isSelected ? (
+                                <>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#0A0F1A] animate-ping" />
+                                  <span>Active</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>Inspect</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                      <td className="px-5 py-4">
-                        {stock.avg_target_price !== null ? (
-                          <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
-                            ${stock.avg_target_price.toFixed(0)}
-                          </span>
-                        ) : (
-                          <span className="text-[#64748B] text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 min-w-[150px]">
-                        {stock.overall_sentiment !== null ? (
+            {/* Mobile Cards */}
+            <div className="lg:hidden flex flex-col gap-3 pb-8">
+              {filteredAndSorted.slice(0, visibleCount).map((stock) => {
+                const isSelected = quickPeekStock?.ticker === stock.ticker
+                const direction = stock.overall_sentiment ? (stock.overall_sentiment >= 0.5 ? 'BUY' : stock.overall_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL') : 'NEUTRAL'
+                const borderClass = isSelected
+                  ? 'bg-[#00D4AA]/15 ring-2 ring-[#00D4AA]/40 border-l-4 border-l-[#00D4AA]'
+                  : direction === 'BUY'
+                  ? 'border-l-4 border-l-[#00D4AA] border-r border-y border-[#1E293B]'
+                  : direction === 'SELL'
+                  ? 'border-l-4 border-l-[#FF4D6A] border-r border-y border-[#1E293B]'
+                  : stock.overall_sentiment !== null
+                  ? 'border border-[#1E293B] border-l-4 border-l-[#8B95A8]'
+                  : 'border border-[#1E293B]'
+
+                return (
+                  <div 
+                    key={stock.ticker} 
+                    onClick={() => setQuickPeekStock(stock)} 
+                    className={`block rounded-xl bg-[#141B2D]/60 p-4 active:scale-[0.98] transition-all shadow-md cursor-pointer ${borderClass}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-wide">{stock.ticker}</span>
+                          {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
+                            <span className="inline-flex items-center text-[9px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
+                          )}
+                          {isSelected && (
+                            <span className="inline-flex items-center text-[9px] text-[#00D4AA] bg-[#00D4AA]/10 px-1.5 py-0.5 rounded leading-none shrink-0 font-bold border border-[#00D4AA]/30 font-[family-name:var(--font-geist-mono)]">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-[#64748B] truncate max-w-[180px] mt-0.5">{stock.stock_name || 'Unknown'}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="flex-1">
+                        {stock.overall_sentiment !== null && (
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center justify-between text-[10px]">
                               <span className={getSentimentBadgeClass(stock.overall_sentiment)}>
                                 {getSentimentLabel(stock.overall_sentiment)}
                               </span>
-                              <span className="font-[family-name:var(--font-geist-mono)] text-[#64748B]">{stock.overall_sentiment.toFixed(2)}</span>
+                              <span className="font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">{stock.overall_sentiment.toFixed(2)}</span>
                             </div>
                             <PulseBar value={stock.overall_sentiment} isTop={false} />
                           </div>
-                        ) : (
-                          <span className="text-[#64748B] text-xs">No Data</span>
                         )}
-                      </td>
-                      <td className="px-5 py-4">
-                        {stock.avg_conviction !== null ? <ConvictionMini level={stock.avg_conviction} /> : <span className="text-[#64748B] text-xs">—</span>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="text-sm font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                          {stock.priority_score.toFixed(3)}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#1E293B]/60 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">AVG TARGET</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#F1F5F9]">
+                          {stock.avg_target_price !== null ? `$${stock.avg_target_price.toFixed(0)}` : '—'}
                         </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <span className="font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">{stock.mention_count_30d}</span>
-                            <span className="text-[#8B95A8] text-[10px]">mentions</span>
-                          </div>
-                          {stock.analyst_count > 0 && (
-                            <div className="flex items-center gap-1.5 text-xs">
-                              <span className="font-[family-name:var(--font-geist-mono)] text-[#64748B]">{stock.analyst_count}</span>
-                              <span className="text-[#64748B] text-[10px]">analysts</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        {stock.last_mentioned_at ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA]/80 animate-pulse" />
-                            <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#8B95A8]">
-                              {formatRelativeTime(stock.last_mentioned_at)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-[#64748B] text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-right">
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">CONVICTION</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#F1F5F9]">
+                          {stock.avg_conviction !== null ? `${stock.avg_conviction.toFixed(1)}/10` : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">AURA SCORE</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#00D4AA]">
+                          {stock.priority_score.toFixed(2)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">COVERAGE</span>
+                        <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#F1F5F9]">
+                          {stock.mention_count_30d} <span className="text-[10px] text-[#64748B] font-normal">({stock.analyst_count} analysts)</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-[#1E293B]/60 flex items-center justify-between text-xs text-[#64748B]">
+                      <span>{stock.last_mentioned_at ? formatRelativeTime(stock.last_mentioned_at) : 'No recency'}</span>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             setQuickPeekStock(stock)
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#8B95A8] hover:text-[#00D4AA] bg-[#141B2D]/80 hover:bg-[#00D4AA]/10 border border-[#1E293B] hover:border-[#00D4AA]/40 transition-all font-[family-name:var(--font-geist-mono)] cursor-pointer"
+                          className="text-[#00D4AA] hover:underline flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-[11px] cursor-pointer"
                         >
-                          <span>Inspect</span>
+                          <span>Quick Intel</span>
                           <ArrowRight className="w-3 h-3" />
                         </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Mobile Cards */}
-        <div className="lg:hidden flex flex-col gap-3 pb-8">
-          {filteredAndSorted.slice(0, visibleCount).map((stock) => {
-            const direction = stock.overall_sentiment ? (stock.overall_sentiment >= 0.5 ? 'BUY' : stock.overall_sentiment <= -0.5 ? 'SELL' : 'NEUTRAL') : 'NEUTRAL'
-            const borderClass = direction === 'BUY' ? 'border-l-4 border-l-[#00D4AA] border-r border-y border-[#1E293B]' : direction === 'SELL' ? 'border-l-4 border-l-[#FF4D6A] border-r border-y border-[#1E293B]' : stock.overall_sentiment !== null ? 'border border-[#1E293B] border-l-4 border-l-[#8B95A8]' : 'border border-[#1E293B]'
-
-            return (
-              <div 
-                key={stock.ticker} 
-                onClick={() => setQuickPeekStock(stock)} 
-                className={`block rounded-xl bg-[#141B2D]/60 p-4 active:scale-[0.98] transition-all shadow-md cursor-pointer ${borderClass}`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-wide">{stock.ticker}</span>
-                      {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
-                        <span className="inline-flex items-center text-[9px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-[#64748B] truncate max-w-[180px] mt-0.5">{stock.stock_name || 'Unknown'}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="flex-1">
-                    {stock.overall_sentiment !== null && (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className={getSentimentBadgeClass(stock.overall_sentiment)}>
-                            {getSentimentLabel(stock.overall_sentiment)}
-                          </span>
-                          <span className="font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">{stock.overall_sentiment.toFixed(2)}</span>
-                        </div>
-                        <PulseBar value={stock.overall_sentiment} isTop={false} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 pt-3 border-t border-[#1E293B]/60">
-                  <div className="flex items-end justify-between">
-                    <div className="flex flex-col gap-1 w-1/2">
-                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Target</span>
-                      {stock.avg_target_price !== null ? (
-                        <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
-                          ${stock.avg_target_price.toFixed(0)}
+                        <span className="text-[#334155]">•</span>
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/ticker?s=${stock.ticker}`)
+                          }}
+                          className="text-[#8B95A8] hover:text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] text-[11px] cursor-pointer"
+                        >
+                          Terminal →
                         </span>
-                      ) : <span className="text-[#64748B] text-xs">—</span>}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 w-1/2">
-                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Conviction</span>
-                      {stock.avg_conviction !== null ? <ConvictionMini level={stock.avg_conviction} /> : <span className="text-[#64748B] text-xs">—</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-end justify-between">
-                    <div className="flex flex-col gap-1 w-1/2">
-                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Aura Score</span>
-                      <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#F1F5F9]">
-                        {stock.priority_score.toFixed(3)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 w-1/2">
-                      <span className="text-[9px] font-bold text-[#8B95A8] uppercase tracking-wider font-[family-name:var(--font-geist-mono)]">Coverage</span>
-                      <div className="flex items-center gap-1">
-                        <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">{stock.mention_count_30d}</span>
-                        <span className="text-[10px] text-[#64748B]">mentions</span>
-                        {stock.last_mentioned_at && (
-                          <span className="text-[10px] text-[#8B95A8] font-[family-name:var(--font-geist-mono)] ml-1">
-                            • {formatRelativeTime(stock.last_mentioned_at)}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
+                )
+              })}
+            </div>
 
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#1E293B]/60">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setQuickPeekStock(stock)
-                      }}
-                      className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-[#8B95A8] hover:text-[#F1F5F9] bg-[#141B2D] border border-[#1E293B] text-center font-[family-name:var(--font-geist-mono)] cursor-pointer"
-                    >
-                      Quick Peek
-                    </button>
-                    <Link
-                      href={`/ticker?s=${stock.ticker}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-[#00D4AA] bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-center font-[family-name:var(--font-geist-mono)] flex items-center justify-center gap-1"
-                    >
-                      <span>Terminal</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
+            {/* Load More Button */}
+            {filteredAndSorted.length > visibleCount && (
+              <div className="pt-4 pb-12 flex justify-center w-full relative z-20">
+                <button
+                  onClick={() => setVisibleCount((c) => c + 25)}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/80 backdrop-blur-md text-sm font-medium text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 hover:bg-[#1E293B] transition-all duration-200 shadow-lg shadow-black/20 cursor-pointer"
+                >
+                  <span>Load more</span>
+                  <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569]">
+                    {filteredAndSorted.length - visibleCount} remaining
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {filteredAndSorted.length === 0 && !loading && (
+              <div className="flex-1 flex items-center justify-center py-20 animate-fade-up">
+                <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center max-w-sm">
+                  <div className="w-12 h-12 bg-[#1E293B]/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-6 h-6 text-[#64748B]" />
                   </div>
+                  <p className="text-lg text-[#F1F5F9] font-medium mb-2">No assets found</p>
+                  <p className="text-sm text-[#8B95A8] leading-relaxed">
+                    Try adjusting your search or filters to see more results.
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setSearch('')
+                      setTimeFilter('all')
+                      setRatingFilter('')
+                      setHasTargetOnly(false)
+                      setHighDataOnly(false)
+                    }}
+                    className="mt-6 text-[#00D4AA] text-sm font-medium hover:underline cursor-pointer"
+                  >
+                    Clear all filters
+                  </button>
                 </div>
               </div>
-            )
-          })}
+            )}
+          </div>
+
+          {/* Desktop Spacer: Reserves 420px width on xl screens so screener table doesn't get obscured */}
+          {quickPeekStock && (
+            <div className="hidden xl:block w-[420px] shrink-0 pointer-events-none" aria-hidden="true" />
+          )}
         </div>
 
-        {/* Load More Button */}
-        {filteredAndSorted.length > visibleCount && (
-          <div className="pt-4 pb-12 flex justify-center w-full relative z-20">
-            <button
-              onClick={() => setVisibleCount((c) => c + 25)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-[#1E293B] bg-[#141B2D]/80 backdrop-blur-md text-sm font-medium text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 hover:bg-[#1E293B] transition-all duration-200 shadow-lg shadow-black/20"
-            >
-              <span>Load more</span>
-              <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569]">
-                {filteredAndSorted.length - visibleCount} remaining
-              </span>
-            </button>
-          </div>
-        )}
-
-        {filteredAndSorted.length === 0 && !loading && (
-          <div className="flex-1 flex items-center justify-center py-20 animate-fade-up">
-            <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center max-w-sm">
-              <div className="w-12 h-12 bg-[#1E293B]/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-6 h-6 text-[#64748B]" />
-              </div>
-              <p className="text-lg text-[#F1F5F9] font-medium mb-2">No assets found</p>
-              <p className="text-sm text-[#8B95A8] leading-relaxed">
-                Try adjusting your search or filters to see more results.
-              </p>
-              <button 
-                onClick={() => {
-                  setSearch('')
-                  setTimeFilter('all')
-                  setRatingFilter('')
-                  setHasTargetOnly(false)
-                  setHighDataOnly(false)
-                }}
-                className="mt-6 text-[#00D4AA] text-sm font-medium hover:underline"
-              >
-                Clear all filters
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Responsive Quick Peek Drawer */}
+        {/* Viewport-Pinned Quick Intelligence Inspector Dock */}
         <ExploreQuickPeek
           stock={quickPeekStock}
           onClose={() => setQuickPeekStock(null)}
+          onPrev={handlePrevStock}
+          onNext={handleNextStock}
+          hasPrev={hasPrevStock}
+          hasNext={hasNextStock}
+          currentIndex={quickPeekIndex}
+          totalCount={filteredAndSorted.length}
         />
       </div>
     </main>
