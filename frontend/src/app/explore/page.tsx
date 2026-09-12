@@ -807,19 +807,21 @@ export default function ExplorePage() {
         </div>
 
         {/* Responsive Overlay Quick Peek for Mobile & Tablet (< xl) */}
-        <div className="xl:hidden">
-          <ExploreQuickPeek
-            stock={quickPeekStock}
-            onClose={() => setQuickPeekStock(null)}
-            onPrev={handlePrevStock}
-            onNext={handleNextStock}
-            hasPrev={hasPrevStock}
-            hasNext={hasNextStock}
-            currentIndex={quickPeekIndex}
-            totalCount={filteredAndSorted.length}
-            isInline={false}
-          />
-        </div>
+        {quickPeekStock && (
+          <div className="xl:hidden">
+            <ExploreQuickPeek
+              stock={quickPeekStock}
+              onClose={() => setQuickPeekStock(null)}
+              onPrev={handlePrevStock}
+              onNext={handleNextStock}
+              hasPrev={hasPrevStock}
+              hasNext={hasNextStock}
+              currentIndex={quickPeekIndex}
+              totalCount={filteredAndSorted.length}
+              isInline={false}
+            />
+          </div>
+        )}
       </div>
     </main>
   )

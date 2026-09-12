@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   X,
@@ -52,6 +53,11 @@ export default function ExploreQuickPeek({
 }: ExploreQuickPeekProps) {
   const [catalysts, setCatalysts] = useState<RecentCatalyst[]>([])
   const [loadingCatalysts, setLoadingCatalysts] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Listen for Escape key
   useEffect(() => {
@@ -61,6 +67,16 @@ export default function ExploreQuickPeek({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
+
+  // Prevent background body scroll when mobile/tablet overlay is active
+  useEffect(() => {
+    if (!stock || isInline) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [stock, isInline])
 
   // Fetch recent catalyst quotes whenever selected stock changes
   useEffect(() => {
@@ -133,6 +149,7 @@ export default function ExploreQuickPeek({
 
   const content = (
     <div
+      onClick={(e) => e.stopPropagation()}
       className={`
         relative w-full bg-[#141B2D]/95 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col overflow-hidden
         ${isInline ? 'rounded-2xl h-[calc(100vh-7rem)] max-h-[calc(100vh-7rem)]' : 'h-full rounded-t-3xl md:rounded-2xl'}
@@ -141,6 +158,13 @@ export default function ExploreQuickPeek({
         boxShadow: `0 0 45px -10px ${accentGlow}`,
       }}
     >
+      {/* Mobile Drag Pill Indicator */}
+      {!isInline && (
+        <div className="md:hidden flex justify-center pt-2.5 pb-1 bg-[#0A0F1A]/90 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-white/25" />
+        </div>
+      )}
+
       {/* Header Ribbon (Fixed Top) */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1E293B]/80 bg-[#0A0F1A]/80 shrink-0">
         <div className="flex items-center gap-2">
@@ -346,7 +370,7 @@ export default function ExploreQuickPeek({
       </div>
 
       {/* Footer Action Button (Always Pinned At Bottom) */}
-      <div className="p-3 border-t border-[#1E293B] bg-[#0A0F1A]/95 shrink-0 sticky bottom-0 z-10">
+      <div className={`p-3 border-t border-[#1E293B] bg-[#0A0F1A]/95 shrink-0 sticky bottom-0 z-10 ${!isInline ? 'pb-8 md:pb-3' : ''}`}>
         <Link
           href={`/ticker?s=${stock.ticker}`}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#00D4AA] to-[#00FFD0] text-[#0A0F1A] font-bold text-xs hover:opacity-95 active:scale-[0.99] transition-all shadow-lg shadow-[#00D4AA]/20 font-[family-name:var(--font-geist-mono)]"
@@ -367,20 +391,28 @@ export default function ExploreQuickPeek({
     )
   }
 
+  // Ensure portal only mounts in browser client
+  if (!mounted) return null
+
   // Overlay Mode (for Mobile bottom-sheet & Tablet slide-dock)
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Light Translucent Backdrop (No heavy blur, preserves table visibility) */}
+  // Portaled directly to document.body so it is never trapped by ancestor CSS transforms
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex flex-col justify-end md:flex-row md:items-center md:justify-end xl:hidden">
+      {/* Light Translucent Backdrop */}
       <div
-        className="fixed inset-0 bg-black/40 transition-opacity duration-200"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200 cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Responsive Slide-in Container */}
-      <div className="relative z-10 w-full md:w-[420px] h-[82vh] md:h-[calc(100vh-6rem)] mt-auto md:my-auto md:mr-6 flex flex-col overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-right duration-200">
+      {/* Responsive Slide-in Container: Bottom sheet on mobile, slide-dock on tablet */}
+      <div 
+        className="relative z-10 w-full md:w-[420px] max-h-[85vh] h-[85vh] md:h-[calc(100vh-6rem)] md:mr-6 flex flex-col overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-right duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {content}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

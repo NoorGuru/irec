@@ -560,7 +560,7 @@ export default function Home() {
         </header>
 
         {/* Live Marquee Ticker Tape Ribbon */}
-        <div className="mb-8 -mx-4 md:-mx-8">
+        <div className="relative z-40 mb-8 -mx-4 md:-mx-8">
           <HomeTickerTape tickers={aggregated} loading={pulseLoading && aggregated.length === 0} />
         </div>
 
