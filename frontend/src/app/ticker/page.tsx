@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
 import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 import { TVMiniChart, TVCompanyProfile, TVFundamentalData, ExpandableWidget } from '@/components/TVWidgets'
+import TargetCorridor from '@/components/TargetCorridor'
 import { Briefcase, DollarSign, ArrowLeft, Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, CreditCard, Globe, Lock, Satellite, Plus, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react'
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -777,6 +778,16 @@ function TickerContent() {
           </div>
         </div>
 
+
+        {/* Visual Target Price Corridor */}
+        <div className="mb-8 animate-fade-up stagger-2">
+          <TargetCorridor
+            prices={prices}
+            avgPrice={avgPrice}
+            currentPrice={position?.current_price || null}
+            ticker={symbol.toUpperCase()}
+          />
+        </div>
 
         {/* Summary stats */}
         <div className="relative z-0 grid grid-cols-2 md:grid-cols-4 gap-3 mb-10 animate-fade-up stagger-2">
