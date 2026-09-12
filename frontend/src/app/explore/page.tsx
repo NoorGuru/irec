@@ -3,11 +3,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, ChevronDown, ChevronUp, Activity, BarChart2, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Activity, BarChart2, ArrowUpDown, ArrowDown, ArrowUp, ArrowRight } from 'lucide-react'
 import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
 import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import Loading from '@/components/ui/loading'
+import ExploreQuickPeek from '@/components/ExploreQuickPeek'
 
 type SortField = 'ticker' | 'score' | 'mentions' | 'sentiment' | 'conviction' | 'target' | 'recency'
 type SortOrder = 'asc' | 'desc'
@@ -64,6 +65,7 @@ export default function ExplorePage() {
   const [hasTargetOnly, setHasTargetOnly] = useState(false)
   const [highDataOnly, setHighDataOnly] = useState(false)
   const [visibleCount, setVisibleCount] = useState(25)
+  const [quickPeekStock, setQuickPeekStock] = useState<StockDirectoryItem | null>(null)
 
   useEffect(() => {
     let active = true
@@ -421,6 +423,9 @@ export default function ExplorePage() {
                   <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider cursor-pointer group" onClick={() => toggleSort('recency')}>
                     <div className="flex items-center gap-1 group-hover:text-[#F1F5F9]">Last Active <SortIcon field="recency" /></div>
                   </th>
+                  <th className="px-5 py-4 text-xs font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)] uppercase tracking-wider text-right">
+                    Quick Peek
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1E293B]/50">
@@ -431,13 +436,20 @@ export default function ExplorePage() {
                   return (
                     <tr 
                       key={stock.ticker} 
-                      onClick={() => router.push(`/ticker?s=${stock.ticker}`)}
+                      onClick={() => setQuickPeekStock(stock)}
                       className={`group hover:bg-[#1E293B]/30 transition-colors cursor-pointer ${borderGlowClass}`}
                     >
                       <td className="px-5 py-4">
                         <div className="flex flex-col justify-center min-w-[120px]">
                           <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors leading-none tracking-wide">
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/ticker?s=${stock.ticker}`)
+                              }}
+                              className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] hover:underline transition-colors leading-none tracking-wide"
+                              title="Go directly to Ticker terminal"
+                            >
                               {stock.ticker}
                             </span>
                             {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
@@ -506,6 +518,19 @@ export default function ExplorePage() {
                           <span className="text-[#64748B] text-xs">—</span>
                         )}
                       </td>
+                      <td className="px-5 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setQuickPeekStock(stock)
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#8B95A8] hover:text-[#00D4AA] bg-[#141B2D]/80 hover:bg-[#00D4AA]/10 border border-[#1E293B] hover:border-[#00D4AA]/40 transition-all font-[family-name:var(--font-geist-mono)] cursor-pointer"
+                        >
+                          <span>Inspect</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}
@@ -521,7 +546,11 @@ export default function ExplorePage() {
             const borderClass = direction === 'BUY' ? 'border-l-4 border-l-[#00D4AA] border-r border-y border-[#1E293B]' : direction === 'SELL' ? 'border-l-4 border-l-[#FF4D6A] border-r border-y border-[#1E293B]' : stock.overall_sentiment !== null ? 'border border-[#1E293B] border-l-4 border-l-[#8B95A8]' : 'border border-[#1E293B]'
 
             return (
-              <Link key={stock.ticker} href={`/ticker?s=${stock.ticker}`} className={`block rounded-xl bg-[#141B2D]/60 p-4 active:scale-[0.98] transition-all shadow-md ${borderClass}`}>
+              <div 
+                key={stock.ticker} 
+                onClick={() => setQuickPeekStock(stock)} 
+                className={`block rounded-xl bg-[#141B2D]/60 p-4 active:scale-[0.98] transition-all shadow-md cursor-pointer ${borderClass}`}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
@@ -532,7 +561,6 @@ export default function ExplorePage() {
                     </div>
                     <span className="text-[11px] text-[#64748B] truncate max-w-[180px] mt-0.5">{stock.stock_name || 'Unknown'}</span>
                   </div>
-
                 </div>
 
                 <div className="flex items-center gap-4 mb-3">
@@ -586,8 +614,29 @@ export default function ExplorePage() {
                       </div>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#1E293B]/60">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setQuickPeekStock(stock)
+                      }}
+                      className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-[#8B95A8] hover:text-[#F1F5F9] bg-[#141B2D] border border-[#1E293B] text-center font-[family-name:var(--font-geist-mono)] cursor-pointer"
+                    >
+                      Quick Peek
+                    </button>
+                    <Link
+                      href={`/ticker?s=${stock.ticker}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-[#00D4AA] bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-center font-[family-name:var(--font-geist-mono)] flex items-center justify-center gap-1"
+                    >
+                      <span>Terminal</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
@@ -632,6 +681,12 @@ export default function ExplorePage() {
             </div>
           </div>
         )}
+
+        {/* Responsive Quick Peek Drawer */}
+        <ExploreQuickPeek
+          stock={quickPeekStock}
+          onClose={() => setQuickPeekStock(null)}
+        />
       </div>
     </main>
   )
