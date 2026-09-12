@@ -8,6 +8,7 @@ import { RadarResponse } from '@/lib/types'
 import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
 import { TVMiniChart, TVCompanyProfile, TVFundamentalData, ExpandableWidget } from '@/components/TVWidgets'
 import TargetCorridor from '@/components/TargetCorridor'
+import TickerAnalyticsDock from '@/components/TickerAnalyticsDock'
 import { Briefcase, DollarSign, ArrowLeft, Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, CreditCard, Globe, Lock, Satellite, Plus, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react'
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -771,12 +772,7 @@ function TickerContent() {
           </div>
         )}
 
-          {/* Rich Data Widgets */}
-        <div className="mb-4 space-y-4 w-full">
-          <div className="w-full rounded-xl overflow-hidden bg-[#141B2D] border border-white/5 shadow-2xl shadow-black/50">
-            <TVMiniChart symbol={symbol} sentiment={avgSentiment} />
-          </div>
-        </div>
+
 
 
         {/* Visual Target Price Corridor */}
@@ -871,15 +867,9 @@ function TickerContent() {
           </div>
         </div>
 
-        {/* Rich Data Widgets */}
-        <div className="mb-10 flex flex-col gap-4 w-full animate-fade-up stagger-3">
-          <ExpandableWidget key={`${symbol}-profile`} title="Company Profile" color="#00D4AA">
-            <TVCompanyProfile symbol={symbol} />
-          </ExpandableWidget>
-          
-          <ExpandableWidget key={`${symbol}-financials`} title="Fundamental Data" color="#3B82F6">
-            <TVFundamentalData symbol={symbol} />
-          </ExpandableWidget>
+        {/* Institutional Tabbed Analytics Dock */}
+        <div className="mb-10 animate-fade-up stagger-3">
+          <TickerAnalyticsDock symbol={symbol} sentiment={avgSentiment} />
         </div>
 
         {/* Videos Section Header */}
