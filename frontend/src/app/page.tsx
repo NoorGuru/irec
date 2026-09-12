@@ -6,7 +6,10 @@ import { Activity } from 'lucide-react'
 import PulseField from '@/components/PulseField'
 import RadarCard from '@/components/ui/radar-card'
 import { AggregatedTicker, RadarResponse } from '@/lib/types'
-import { TickerRow, getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
+import { getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
+import HomeTickerTape from '@/components/home/HomeTickerTape'
+import HomeLatestIntel from '@/components/home/HomeLatestIntel'
+import HomeMarketMovers from '@/components/home/HomeMarketMovers'
 
 function MarketPulseSkeleton() {
   return (
@@ -108,72 +111,8 @@ function TrendingRadarsSkeleton() {
   )
 }
 
-function CuratedPreviewsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-pulse">
-      {/* Most Discussed Column */}
-      <div>
-        <div className="flex items-center gap-2 mb-4 px-2">
-          <Activity className="w-4 h-4 text-[#00D4AA]/50" />
-          <div className="h-4 w-36 bg-[#1E293B] rounded" />
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className="h-[76px] rounded-r-xl rounded-l-sm bg-[#141B2D]/40 border border-[#1E293B]/40 border-l-4 border-l-[#1E293B] p-4 flex items-center justify-between gap-4"
-            >
-              <div className="flex flex-col gap-1.5">
-                <div className="h-5 w-16 bg-[#1E293B] rounded" />
-                <div className="h-2.5 w-24 bg-[#1E293B]/60 rounded" />
-              </div>
-              <div className="hidden md:flex flex-col gap-1 w-32">
-                <div className="h-4 w-16 bg-[#1E293B] rounded-full" />
-                <div className="h-2 w-full bg-[#1E293B] rounded-full" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <div className="h-3 w-12 bg-[#1E293B] rounded" />
-                <div className="h-3 w-16 bg-[#1E293B]/60 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Highest Conviction Column */}
-      <div>
-        <div className="flex items-center gap-2 mb-4 px-2">
-          <div className="w-4 h-4 rounded-full border-2 border-[#00D4AA]/50" />
-          <div className="h-4 w-40 bg-[#1E293B] rounded" />
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className="h-[76px] rounded-r-xl rounded-l-sm bg-[#141B2D]/40 border border-[#1E293B]/40 border-l-4 border-l-[#1E293B] p-4 flex items-center justify-between gap-4"
-            >
-              <div className="flex flex-col gap-1.5">
-                <div className="h-5 w-16 bg-[#1E293B] rounded" />
-                <div className="h-2.5 w-24 bg-[#1E293B]/60 rounded" />
-              </div>
-              <div className="hidden md:flex flex-col gap-1 w-32">
-                <div className="h-4 w-16 bg-[#1E293B] rounded-full" />
-                <div className="h-2 w-full bg-[#1E293B] rounded-full" />
-              </div>
-              <div className="flex flex-col gap-1">
-                <div className="h-3 w-12 bg-[#1E293B] rounded" />
-                <div className="h-3 w-16 bg-[#1E293B]/60 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
-  if (aggregated.length === 0) return null
+  const cardRef = useRef<HTMLDivElement>(null)
 
   const totalMentions = aggregated.reduce((s, t) => s + t.mention_count, 0)
   const overallSentiment = totalMentions > 0
@@ -229,6 +168,8 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
     }
   }, [overallSentiment])
 
+  if (aggregated.length === 0) return null
+
   const buckets = { strongBuy: 0, buy: 0, neutral: 0, sell: 0, strongSell: 0 }
   for (const t of aggregated) {
     if (t.consensus_sentiment >= 1.5) buckets.strongBuy++
@@ -239,7 +180,6 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
   }
   const total = aggregated.length
 
-  const cardRef = useRef<HTMLDivElement>(null)
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const el = cardRef.current
     if (!el) return
@@ -291,7 +231,7 @@ function MarketPulse({ aggregated }: { aggregated: AggregatedTicker[] }) {
                 href="/today"
                 className="inline-flex items-center gap-1.5 text-xs text-[#00D4AA] hover:text-[#00FFD0] font-bold tracking-wider uppercase font-[family-name:var(--font-geist-mono)] transition-all duration-300 group/pulse-link"
               >
-                <span>View Today's Plays Detail</span>
+                <span>View Today&apos;s Plays Detail</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transform group-hover/pulse-link:translate-x-1 transition-transform">
                   <path d="M5 12h14" />
                   <path d="m12 5 7 7-7 7" />
@@ -451,7 +391,18 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
 }
 
 export default function Home() {
-  const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
+  const [aggregated, setAggregated] = useState<AggregatedTicker[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('aura_home_pulse_v2')
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (parsed?.aggregated?.length > 0) return parsed.aggregated
+        }
+      } catch {}
+    }
+    return []
+  })
   const [radars, setRadars] = useState<RadarResponse[]>([])
   const [pulseLoading, setPulseLoading] = useState(true)
   const [radarsLoading, setRadarsLoading] = useState(true)
@@ -463,11 +414,15 @@ export default function Home() {
     fetch(`${backendUrl}/api/v1/home/pulse`)
       .then(res => res.ok ? res.json() : { aggregated: [] })
       .then(data => {
-        setAggregated(data.aggregated || [])
+        if (data?.aggregated?.length > 0) {
+          setAggregated(data.aggregated)
+          try {
+            localStorage.setItem('aura_home_pulse_v2', JSON.stringify(data))
+          } catch {}
+        }
       })
       .catch(error => {
         console.error("Failed to fetch pulse data:", error)
-        setAggregated([])
       })
       .finally(() => {
         setPulseLoading(false)
@@ -488,15 +443,6 @@ export default function Home() {
       })
   }, [])
 
-  // Pre-calculate curated lists for the homepage
-  const mostDiscussed = useMemo(() => {
-    return [...aggregated].sort((a, b) => b.mention_count - a.mention_count).slice(0, 5)
-  }, [aggregated])
-
-  const highestConviction = useMemo(() => {
-    return [...aggregated].sort((a, b) => b.avg_conviction - a.avg_conviction).slice(0, 5)
-  }, [aggregated])
-
   const topTicker = useMemo(() => {
     return aggregated.find(t => t.mention_count >= 3 && t.consensus_sentiment > 0)?.ticker
   }, [aggregated])
@@ -511,8 +457,8 @@ export default function Home() {
       />
 
       <div className="relative z-10 w-full max-w-[1400px] mx-auto">
-        <header className="mb-16 md:mb-20 pt-8 md:pt-16">
-          <div className="relative flex flex-col items-center mb-8 md:mb-10">
+        <header className="mb-8 md:mb-12 pt-6 md:pt-12">
+          <div className="relative flex flex-col items-center mb-6 md:mb-8">
             <div
               className="absolute w-[320px] h-[240px] md:w-[500px] md:h-[320px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glow-emerge"
               style={{ animationDelay: '600ms' }}
@@ -544,50 +490,82 @@ export default function Home() {
             </a>
           </div>
 
-          <div className="text-center animate-hero-rise flex flex-col items-center gap-6 mt-2" style={{ animationDelay: '900ms' }}>
-            <div className="flex flex-col items-center gap-4">
+          <div className="text-center animate-hero-rise flex flex-col items-center gap-5 mt-2" style={{ animationDelay: '900ms' }}>
+            <div className="flex flex-col items-center gap-3">
               <h2 className="text-2xl md:text-4xl font-medium tracking-tight text-[#E2E8F0]">
                 Every stock analyst. One clear signal.
               </h2>
-              <p className="text-lg md:text-xl text-[#8B95A8] font-light leading-relaxed max-w-2xl">
+              <p className="text-sm md:text-base text-[#8B95A8] font-light leading-relaxed max-w-2xl">
                 Discover market-moving conviction by tracking real-time sentiment across top YouTube finance channels.
               </p>
             </div>
 
-            {/* Quick Navigation Pills */}
-            <div className="flex flex-wrap justify-center gap-3">
+            {/* Platform Telemetry Status Badge */}
+            <div className="inline-flex items-center gap-2 sm:gap-3 px-3.5 py-1.5 rounded-full bg-[#141B2D]/80 border border-[#1E293B] backdrop-blur-md shadow-inner text-[11px] font-[family-name:var(--font-geist-mono)]">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D4AA] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00D4AA]" />
+              </span>
+              <span className="text-[#F1F5F9] font-bold">1,400+ signals</span>
+              <span className="text-[#334155]">•</span>
+              <span className="text-[#8B95A8]">50+ channels</span>
+              <span className="text-[#334155]">•</span>
+              <span className="text-[#00D4AA] font-bold">Live YouTube consensus</span>
+            </div>
+
+            {/* Quick Navigation Pills (All 5 Hubs) */}
+            <div className="flex flex-wrap justify-center gap-2.5 pt-1">
               <Link
                 href="/today"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/30 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-today"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/40 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-today"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
-                <span>Today's Plays</span>
+                <span>Today&apos;s Plays</span>
               </Link>
               <Link
                 href="/explore"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/30 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-explore"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/40 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-explore"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#64748B]" />
-                <span>Explore</span>
+                <span>Explore Screener</span>
               </Link>
               <Link
                 href="/radars"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#F59E0B]/30 text-xs font-semibold text-[#8B95A8] hover:text-[#F59E0B] transition-all duration-300 shadow-inner group/pill-radars"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#F59E0B]/40 text-xs font-semibold text-[#8B95A8] hover:text-[#F59E0B] transition-all duration-300 shadow-inner group/pill-radars"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
                 <span>Radars</span>
               </Link>
+              <Link
+                href="/channels"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#7C3AED]/40 text-xs font-semibold text-[#8B95A8] hover:text-[#A78BFA] transition-all duration-300 shadow-inner group/pill-channels"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]" />
+                <span>Channels</span>
+              </Link>
+              <Link
+                href="/videos"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#38BDF8]/40 text-xs font-semibold text-[#8B95A8] hover:text-[#38BDF8] transition-all duration-300 shadow-inner group/pill-videos"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
+                <span>Videos</span>
+              </Link>
             </div>
           </div>
 
-          <div className="mt-10 md:mt-12 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
+          <div className="mt-8 md:mt-10 relative h-px animate-hero-rise" style={{ animationDelay: '1200ms' }}>
             <div className="absolute inset-0 bg-[#1E293B]" />
             <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
           </div>
         </header>
 
+        {/* Live Marquee Ticker Tape Ribbon */}
+        <div className="mb-8 -mx-4 md:-mx-8">
+          <HomeTickerTape tickers={aggregated} loading={pulseLoading && aggregated.length === 0} />
+        </div>
+
         {/* Market Pulse Section */}
-        {pulseLoading ? (
+        {pulseLoading && aggregated.length === 0 ? (
           <div className="mb-6">
             <MarketPulseSkeleton />
           </div>
@@ -598,7 +576,7 @@ export default function Home() {
         ) : null}
 
         {/* Spotlight Cards Section */}
-        {pulseLoading ? (
+        {pulseLoading && aggregated.length === 0 ? (
           <div className="mb-6">
             <SpotlightCardsSkeleton />
           </div>
@@ -607,6 +585,14 @@ export default function Home() {
             <SpotlightCards aggregated={aggregated} />
           </div>
         ) : null}
+
+        {/* Fresh Video Intel Drops (3-Column Grid) */}
+        <HomeLatestIntel />
+
+        {/* Market Movers Interactive Tabbed Console */}
+        {aggregated.length > 0 && (
+          <HomeMarketMovers aggregated={aggregated} topTicker={topTicker} />
+        )}
 
         {/* Trending Radars Section */}
         {radarsLoading ? (
@@ -619,59 +605,15 @@ export default function Home() {
           </div>
         ) : null}
 
-        {/* Curated Previews (Most Discussed & Highest Conviction) */}
-        {pulseLoading ? (
-          <CuratedPreviewsSkeleton />
-        ) : aggregated.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-fade-up stagger-4">
-            {/* Most Discussed */}
-            <div>
-              <div className="flex items-center justify-between mb-4 px-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#00D4AA]" />
-                  <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[#E2E8F0] font-[family-name:var(--font-geist-mono)]">
-                    Most Discussed
-                  </h2>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {mostDiscussed.map((row, index) => (
-                  <TickerRow key={row.ticker} row={row} index={index} isTop={row.ticker === topTicker} compact={true} />
-                ))}
-              </div>
-            </div>
-
-            {/* Highest Conviction */}
-            <div>
-              <div className="flex items-center justify-between mb-4 px-2">
-                <div className="flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-[#00D4AA]">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                    <circle cx="12" cy="12" r="4" fill="currentColor" />
-                  </svg>
-                  <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[#E2E8F0] font-[family-name:var(--font-geist-mono)]">
-                    Highest Conviction
-                  </h2>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {highestConviction.map((row, index) => (
-                  <TickerRow key={row.ticker} row={row} index={index} isTop={false} compact={true} />
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Explore CTA */}
+        {/* Explore All Data CTA */}
         {!pulseLoading && aggregated.length > 0 && (
-          <div className="text-center animate-fade-up stagger-5 py-8">
+          <div className="text-center animate-fade-up py-8">
             <Link
               href="/explore"
-              className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-[#00D4AA] font-bold tracking-wide hover:bg-[#00D4AA]/20 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(0,212,170,0.15)] hover:shadow-[0_0_30px_rgba(0,212,170,0.3)]"
+              className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-[#00D4AA] font-bold tracking-wide hover:bg-[#00D4AA]/20 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(0,212,170,0.15)] hover:shadow-[0_0_30px_rgba(0,212,170,0.3)] font-[family-name:var(--font-geist-mono)]"
             >
-              <span>Explore All Data</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <span>Explore All Tracked Stocks</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14" />
                 <path d="m12 5 7 7-7 7" />
               </svg>
