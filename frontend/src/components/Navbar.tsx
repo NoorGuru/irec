@@ -170,10 +170,11 @@ function CommandPalette({
             />
             <nav className="hidden md:flex items-center space-x-6">
               <Link
-                href="/directory"
+                href="/explore"
+                onClick={handleClose}
                 className="text-sm font-medium text-[#8B95A8] hover:text-[#00D4AA] transition-colors tracking-wide"
               >
-                Directory
+                Explore
               </Link>
             </nav>
             <kbd className="hidden md:flex items-center mr-4 px-2 py-1 rounded-md bg-[#0A0F1A] border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-[10px] text-[#475569]">
