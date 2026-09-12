@@ -24,11 +24,14 @@
   - Text: `#F1F5F9` (Primary), `#8B95A8` (Muted)
 - **Micro-Animations:** Use subtle hover uplifts (`hover:-translate-y-1`) and ambient glows. Make the UI feel *alive*.
 
-## 4. Tech Stack Rules
+## 4. Tech Stack & UX Rules
 *(Read `tech.md` for full details)*
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS 4.
   - *Critical Constraint:* The frontend compiles to a **Static Export** (`output: "export"`). Do not use Next.js dynamic edge functions, server actions, or Next.js Image Optimization (`next/image`).
   - *OpenGraph Constraint:* Because of `trailingSlash: true`, OG tags will break. Use the hidden API route `src/app/api/generate-og/route.tsx` to design the OG banner, then export it manually to `public/og.png`.
+  - *JSX Link Nesting:* Never nest Next.js `<Link>` components within other `<Link>` tags in composite cards. Use a container `<div>` with navigation handlers and `e.stopPropagation()` on inner action buttons.
+  - *Data Density & Screeners:* When screening data lists (e.g. `/explore`), provide slide-out peek drawers (desktop right-panel, mobile bottom-sheet) to inspect details without disrupting scroll position.
+  - *Institutional Docks:* Avoid vertically stacking multiple heavy TradingView/financial widgets; consolidate them into tabbed consoles (`TickerAnalyticsDock`) that preserve DOM state.
 - **Backend:** FastAPI (Python 3.12+), Uvicorn, Supabase (PostgreSQL).
 
 ## 5. Agent Instructions for Updating This File
