@@ -36,6 +36,7 @@ interface Recommendation {
   conviction_level: number
   catalyst_notes: string
   videos: {
+    title?: string | null
     video_url: string
     youtube_video_id: string
     published_at: string
@@ -894,69 +895,119 @@ function TickerContent() {
           </div>
         </div>
 
-        {/* Recommendations list */}
+        {/* Recommendations list: Editorial Evidence Dossiers */}
         <div className="space-y-4">
-          {recommendations.map((rec, index) => (
-            <div
-              key={index}
-              className={`
-                rounded-xl border border-[#1E293B] bg-[#141B2D]/60 p-5 md:p-6
-                animate-fade-up stagger-${Math.min(index + 3, 10)}
-              `}
-            >
-              {/* Top row: channel + date */}
-              <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mb-4">
-                <Link
-                  href={`/channel?id=${rec.videos.channel_id}`}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#F1F5F9] hover:text-[#00D4AA] transition-colors duration-200 group/channel"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-[#475569] group-hover/channel:text-[#00D4AA] transition-colors shrink-0" aria-hidden="true">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="group-hover/channel:underline decoration-[#00D4AA]/30 underline-offset-2">
-                    {rec.videos.channels.channel_name}
-                  </span>
-                </Link>
-                <span className="text-xs text-[#64748B]">
-                  {formatDate(rec.videos.published_at)}
-                </span>
-              </div>
+          {recommendations.map((rec, index) => {
+            const isRecBull = rec.sentiment >= 0.5
+            const isRecBear = rec.sentiment <= -0.5
+            const accentBorder = isRecBull ? 'border-l-4 border-l-[#00D4AA]' : isRecBear ? 'border-l-4 border-l-[#FF4D6A]' : 'border-l-4 border-l-[#8B95A8]'
+            const trustWeight = rec.videos.channels.trust_weight || 1.0
 
-              {/* Video thumbnail link */}
-              <div className="mb-4">
-                <VideoThumbnailLink youtubeVideoId={rec.videos.youtube_video_id} />
-              </div>
+            return (
+              <div
+                key={index}
+                className={`
+                  group rounded-2xl border border-white/5 bg-[#141B2D]/70 backdrop-blur-xl p-5 md:p-6
+                  ${accentBorder} shadow-lg shadow-black/20 hover:shadow-2xl hover:border-white/10 hover:-translate-y-0.5
+                  transition-all duration-300 animate-fade-up stagger-${Math.min(index + 3, 10)}
+                `}
+              >
+                {/* Dossier Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#1E293B]/60 mb-4">
+                  {/* Channel info & trust */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#0A0F1A] border border-[#1E293B] flex items-center justify-center text-sm font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] shadow-inner">
+                      {rec.videos.channels.channel_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/channel?id=${rec.videos.channel_id}`}
+                          className="font-bold text-sm text-[#F1F5F9] hover:text-[#00D4AA] transition-colors"
+                        >
+                          {rec.videos.channels.channel_name}
+                        </Link>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20 font-[family-name:var(--font-geist-mono)]">
+                          Trust {trustWeight.toFixed(1)}x
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-[#64748B] mt-0.5">
+                        <span>{formatDate(rec.videos.published_at)}</span>
+                        <span>•</span>
+                        <span>{formatRelativeTime(rec.videos.published_at)}</span>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Stats row */}
-              <div className="flex items-center flex-wrap gap-3 mb-3">
-                <span className={getSentimentBadgeClass(rec.sentiment)}>
-                  <SentimentArrow value={rec.sentiment} />
-                  {getSentimentLabel(rec.sentiment)}
-                </span>
-                <span className="text-xs text-[#64748B]">
-                  Target: {rec.target_price !== null ? (
-                    <span className="font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                      ${rec.target_price.toFixed(2)}
+                  {/* Rating + Conviction + Target Badges */}
+                  <div className="flex items-center flex-wrap gap-2 self-start sm:self-auto font-[family-name:var(--font-geist-mono)]">
+                    <span className={getSentimentBadgeClass(rec.sentiment)}>
+                      <SentimentArrow value={rec.sentiment} />
+                      {getSentimentLabel(rec.sentiment)}
                     </span>
-                  ) : '—'}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-[#64748B]">Conviction:</span>
-                  <ConvictionDots level={rec.conviction_level} />
+                    {rec.target_price !== null && (
+                      <span className="text-xs font-bold text-[#F1F5F9] bg-[#0A0F1A] border border-[#1E293B] px-2.5 py-1 rounded-lg">
+                        Target <span className="text-[#00FFD0]">${rec.target_price.toFixed(2)}</span>
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0A0F1A] border border-[#1E293B]">
+                      <span className="text-[10px] text-[#64748B]">Conviction</span>
+                      <ConvictionDots level={rec.conviction_level} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Catalyst Pull Quote */}
+                {rec.catalyst_notes && (
+                  <div className="mb-5 p-4 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B] relative overflow-hidden">
+                    <div className="absolute top-2 right-3 text-3xl font-serif text-[#1E293B] select-none pointer-events-none">&ldquo;</div>
+                    <div className="flex items-start gap-2.5">
+                      <div className={`w-1 self-stretch rounded-full shrink-0 ${isRecBull ? 'bg-[#00D4AA]' : isRecBear ? 'bg-[#FF4D6A]' : 'bg-[#64748B]'}`} />
+                      <p className="text-sm text-[#E2E8F0] font-normal leading-relaxed italic relative z-10">
+                        {rec.catalyst_notes}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Source Video Preview Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#0A0F1A]/40 border border-[#1E293B]/60 group/vid hover:border-[#00D4AA]/30 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative shrink-0 rounded-lg overflow-hidden w-20 h-12 bg-[#0A0F1A] border border-[#1E293B]">
+                      <img
+                        src={`https://i.ytimg.com/vi/${rec.videos.youtube_video_id}/mqdefault.jpg`}
+                        alt=""
+                        className="w-full h-full object-cover opacity-80 group-hover/vid:opacity-100 transition-opacity"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-[#0A0F1A]/80 flex items-center justify-center group-hover/vid:scale-110 transition-transform">
+                          <svg width="8" height="8" viewBox="0 0 16 18" fill="none" className="ml-0.5 text-[#00D4AA]">
+                            <path d="M1 1.5L15 9L1 16.5V1.5Z" fill="currentColor" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-[#F1F5F9] font-medium truncate group-hover/vid:text-[#00D4AA] transition-colors">
+                        {rec.videos.title || `Deep Dive by ${rec.videos.channels.channel_name}`}
+                      </p>
+                      <span className="text-[10px] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+                        YouTube Analysis Source
+                      </span>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/video?id=${rec.videos.youtube_video_id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#8B95A8] group-hover/vid:text-[#00D4AA] bg-[#141B2D] border border-[#1E293B] group-hover/vid:border-[#00D4AA]/40 transition-all shrink-0 self-end sm:self-auto font-[family-name:var(--font-geist-mono)]"
+                  >
+                    <span>Inspect Video Signal</span>
+                    <ArrowLeft className="w-3 h-3 rotate-180" />
+                  </Link>
                 </div>
               </div>
-
-              {/* Catalyst notes */}
-              {rec.catalyst_notes && (
-                <p className="text-sm text-[#8B95A8] leading-relaxed">
-                  {rec.catalyst_notes}
-                </p>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
