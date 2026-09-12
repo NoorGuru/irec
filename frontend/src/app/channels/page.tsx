@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Loading from '@/components/ui/loading'
+import {
+  Search, LayoutGrid, List, ChevronRight
+} from 'lucide-react'
 
 // ─── Types ───
 
@@ -42,6 +45,7 @@ interface ChannelProfile {
   avg_sentiment: number
   avg_conviction: number
   top_tickers: string[]
+  all_covered_tickers: Set<string>
   latest_video_date: string | null
   latest_video_youtube_id: string | null
   bullish_pct: number
@@ -49,8 +53,8 @@ interface ChannelProfile {
   importance_score: number
 }
 
-type SortKey = 'activity' | 'conviction' | 'picks'
-type FilterKey = 'all' | 'bullish' | 'mixed' | 'bearish'
+type SortKey = 'activity' | 'conviction' | 'picks' | 'trust' | 'bullish'
+type FilterKey = 'all' | 'bullish' | 'mixed' | 'bearish' | 'high-trust'
 
 // ─── Avatar Fallback Colors ───
 
@@ -68,7 +72,7 @@ function getAvatarColor(channelId: string): string {
   return AVATAR_COLORS[code % AVATAR_COLORS.length]
 }
 
-// ─── Build Profiles with Importance Scoring ───
+// ─── Build Profiles with Enhanced Intelligence ───
 
 function buildProfiles(
   channels: ChannelData[],
@@ -114,9 +118,11 @@ function buildProfiles(
     const bearish = chRecs.filter((r) => r.sentiment <= -1).length
     const total = chRecs.length || 1
 
-    // Top tickers by frequency
+    // Top tickers by frequency and full covered set
     const tickerCount = new Map<string, number>()
+    const allCovered = new Set<string>()
     for (const r of chRecs) {
+      allCovered.add(r.ticker.toUpperCase())
       tickerCount.set(r.ticker, (tickerCount.get(r.ticker) || 0) + 1)
     }
     const topTickers = [...tickerCount.entries()]
@@ -130,7 +136,7 @@ function buildProfiles(
     )
     const latestVideo = sortedVideos[0] || null
 
-    // Recency score for importance
+    // Recency score
     const latestDate = latestVideo ? new Date(latestVideo.published_at).getTime() : 0
     const daysSinceLatest = latestDate ? (now - latestDate) / (1000 * 60 * 60 * 24) : 999
     let recencyScore = 0.1
@@ -155,6 +161,7 @@ function buildProfiles(
       avg_sentiment: avgSentiment,
       avg_conviction: avgConviction,
       top_tickers: topTickers,
+      all_covered_tickers: allCovered,
       latest_video_date: latestVideo?.published_at || null,
       latest_video_youtube_id: latestVideo?.youtube_video_id || null,
       bullish_pct: (bullish / total) * 100,
@@ -166,19 +173,27 @@ function buildProfiles(
 
 // ─── Helpers ───
 
-function getBiasLabel(avgSentiment: number, bullishPct: number): { label: string; color: string } {
-  if (bullishPct >= 80 || avgSentiment >= 1.0) return { label: 'Very Bullish', color: 'text-[#00FFD0]' }
-  if (avgSentiment >= 0.5 || bullishPct >= 60) return { label: 'Bullish', color: 'text-[#00D4AA]' }
-  if (avgSentiment <= -1.0 || bullishPct <= 10) return { label: 'Very Bearish', color: 'text-[#FF1744]' }
-  if (avgSentiment <= -0.5 || bullishPct <= 30) return { label: 'Bearish', color: 'text-[#FF4D6A]' }
-  return { label: 'Mixed', color: 'text-[#8B95A8]' }
+function getBiasLabel(avgSentiment: number, bullishPct: number): { label: string; color: string; bg: string } {
+  if (bullishPct >= 80 || avgSentiment >= 1.2) {
+    return { label: 'High Conviction Bull', color: 'text-[#00FFD0]', bg: 'bg-[#00FFD0]/10 border-[#00FFD0]/30' }
+  }
+  if (avgSentiment >= 0.5 || bullishPct >= 60) {
+    return { label: 'Bullish', color: 'text-[#00D4AA]', bg: 'bg-[#00D4AA]/10 border-[#00D4AA]/30' }
+  }
+  if (avgSentiment <= -1.2 || bullishPct <= 15) {
+    return { label: 'Defensive / Bearish', color: 'text-[#FF1744]', bg: 'bg-[#FF1744]/10 border-[#FF1744]/30' }
+  }
+  if (avgSentiment <= -0.5 || bullishPct <= 35) {
+    return { label: 'Cautious Hedged', color: 'text-[#FF4D6A]', bg: 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30' }
+  }
+  return { label: 'Balanced', color: 'text-[#8B95A8]', bg: 'bg-[#8B95A8]/10 border-[#8B95A8]/30' }
 }
 
 function timeAgo(dateStr: string): string {
   const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return ''
+  if (isNaN(date.getTime())) return '—'
   const diff = Date.now() - date.getTime()
-  if (diff < 0) return ''
+  if (diff < 0) return '—'
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   if (days === 0) return 'today'
   if (days === 1) return '1d ago'
@@ -201,7 +216,7 @@ function ChannelAvatar({ profile, size = 48 }: { profile: ChannelProfile; size?:
         alt={profile.channel_name}
         width={size}
         height={size}
-        className="rounded-full object-cover ring-2 ring-[#1E293B] group-hover:ring-[#00D4AA]/40 transition-all duration-300"
+        className="rounded-full object-cover ring-2 ring-white/10 group-hover:ring-[#00D4AA]/50 transition-all duration-300"
         style={{ width: size, height: size }}
         onError={() => setImgError(true)}
       />
@@ -210,7 +225,7 @@ function ChannelAvatar({ profile, size = 48 }: { profile: ChannelProfile; size?:
 
   return (
     <div
-      className="rounded-full flex items-center justify-center font-[family-name:var(--font-geist-mono)] font-bold ring-2 ring-[#1E293B] group-hover:ring-[#00D4AA]/40 transition-all duration-300"
+      className="rounded-full flex items-center justify-center font-[family-name:var(--font-geist-mono)] font-bold ring-2 ring-white/10 group-hover:ring-[#00D4AA]/50 transition-all duration-300"
       style={{ width: size, height: size, backgroundColor: `${color}20`, color }}
     >
       <span style={{ fontSize: size * 0.4 }}>{initial}</span>
@@ -218,313 +233,165 @@ function ChannelAvatar({ profile, size = 48 }: { profile: ChannelProfile; size?:
   )
 }
 
-// ─── SortFilterBar ───
+// ─── Mini Conviction Gauge ───
 
-function SortFilterBar({
-  sort,
-  setSort,
-  filter,
-  setFilter,
-  search,
-  setSearch,
-  counts,
-}: {
-  sort: SortKey
-  setSort: (s: SortKey) => void
-  filter: FilterKey
-  setFilter: (f: FilterKey) => void
-  search: string
-  setSearch: (s: string) => void
-  counts: Record<FilterKey, number>
-}) {
-  const sortOptions: { key: SortKey; label: string }[] = [
-    { key: 'activity', label: 'Activity' },
-    { key: 'conviction', label: 'Conviction' },
-    { key: 'picks', label: 'Picks' },
-  ]
+function ConvictionDots({ level }: { level: number }) {
+  return (
+    <div className="flex items-center gap-1.5" title={`Avg Conviction: ${level.toFixed(1)}/10`}>
+      <div className="flex gap-0.5">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div
+            key={i}
+            className={`w-1 h-2.5 rounded-[1px] ${
+              i < Math.round(level / 2) ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+            }`}
+          />
+        ))}
+      </div>
+      <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9] font-bold">
+        {level.toFixed(1)}
+      </span>
+    </div>
+  )
+}
 
-  const filterOptions: { key: FilterKey; label: string; activeColor: string; activeBg: string }[] = [
-    { key: 'all', label: 'All', activeColor: 'text-[#F1F5F9]', activeBg: 'bg-[#1E293B] border-[#2D3A4F]' },
-    { key: 'bullish', label: 'Bullish', activeColor: 'text-[#00D4AA]', activeBg: 'bg-[#00D4AA]/10 border-[#00D4AA]/30' },
-    { key: 'mixed', label: 'Mixed', activeColor: 'text-[#8B95A8]', activeBg: 'bg-[#8B95A8]/10 border-[#8B95A8]/30' },
-    { key: 'bearish', label: 'Bearish', activeColor: 'text-[#FF4D6A]', activeBg: 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30' },
-  ]
+// ─── Card Component ───
+
+function ChannelGridCard({ profile }: { profile: ChannelProfile }) {
+  const router = useRouter()
+  const bias = getBiasLabel(profile.avg_sentiment, profile.bullish_pct)
+
+  const handleCardClick = () => {
+    router.push(`/channel?id=${profile.channel_id}&name=${encodeURIComponent(profile.channel_name)}`)
+  }
 
   return (
-    <div className="space-y-3">
-      {/* Search + filter pills */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-          <svg
-            width="14" height="14" viewBox="0 0 24 24" fill="none"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#475569]"
-          >
-            <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search channels..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#0A0F1A] border border-[#1E293B] text-sm text-[#F1F5F9] placeholder-[#475569] focus:outline-none focus:border-[#00D4AA]/50 transition-colors"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          {filterOptions.map((f) => {
-            const isActive = filter === f.key
-            return (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 ${
-                  isActive
-                    ? `${f.activeBg} ${f.activeColor}`
-                    : 'bg-transparent border-transparent text-[#64748B] hover:border-[#1E293B] hover:bg-[#141B2D]/40'
-                }`}
-              >
-                {f.label}
-                <span className={`ml-1.5 font-[family-name:var(--font-geist-mono)] text-[10px] ${isActive ? 'opacity-80' : 'opacity-50'}`}>
-                  {counts[f.key]}
+    <div
+      onClick={handleCardClick}
+      className="group relative flex flex-col justify-between p-6 rounded-2xl bg-[#141B2D]/50 hover:bg-[#141B2D]/90 border border-[#1E293B] hover:border-[#00D4AA]/40 transition-all duration-300 hover:-translate-y-1 cursor-pointer shadow-xl shadow-black/20 overflow-hidden"
+    >
+      {/* Background radial accent */}
+      <div
+        className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-gradient-to-br from-[#00D4AA]/10 to-transparent blur-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
+      />
+
+      <div>
+        {/* Header: Avatar, Name & Trust Badge */}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <ChannelAvatar profile={profile} size={48} />
+            <div className="min-w-0">
+              <h3 className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors truncate">
+                {profile.channel_name}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${bias.bg} ${bias.color}`}>
+                  {bias.label}
                 </span>
-              </button>
-            )
-          })}
+                <span className="text-[10px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
+                  {profile.trust_weight.toFixed(1)}× Trust
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Pulse Bar */}
+        <div className="space-y-1.5 mb-4">
+          <div className="flex justify-between items-center text-[10px] font-[family-name:var(--font-geist-mono)] text-[#64748B]">
+            <span>{Math.round(profile.bullish_pct)}% Bull</span>
+            <span>{Math.round(profile.bearish_pct)}% Bear</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-[#0A0F1A] border border-[#1E293B] overflow-hidden flex shadow-inner">
+            {profile.bearish_pct > 0 && (
+              <div
+                className="h-full bg-gradient-to-r from-[#FF1744] to-[#FF4D6A]"
+                style={{ width: `${profile.bearish_pct}%` }}
+              />
+            )}
+            <div
+              className="h-full bg-[#475569]"
+              style={{ width: `${Math.max(0, 100 - profile.bullish_pct - profile.bearish_pct)}%` }}
+            />
+            {profile.bullish_pct > 0 && (
+              <div
+                className="h-full bg-gradient-to-r from-[#00D4AA] to-[#00FFD0]"
+                style={{ width: `${profile.bullish_pct}%` }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Key Metrics Strip */}
+        <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B] mb-4 text-center font-[family-name:var(--font-geist-mono)]">
+          <div>
+            <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Calls</span>
+            <span className="text-sm font-bold text-[#F1F5F9]">{profile.total_recommendations}</span>
+          </div>
+          <div>
+            <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Conviction</span>
+            <span className="text-sm font-bold text-[#00D4AA]">{profile.avg_conviction.toFixed(1)}</span>
+          </div>
+          <div>
+            <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Activity</span>
+            <span className="text-xs text-[#8B95A8]">{profile.latest_video_date ? timeAgo(profile.latest_video_date) : '—'}</span>
+          </div>
+        </div>
+
+        {/* Top Tickers Covered */}
+        {profile.top_tickers.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748B] font-[family-name:var(--font-geist-mono)] block">
+              Core Coverage
+            </span>
+            <div className="flex items-center flex-wrap gap-1.5">
+              {profile.top_tickers.map((ticker) => (
+                <button
+                  key={ticker}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    router.push(`/ticker?s=${ticker}`)
+                  }}
+                  className="px-2 py-0.5 rounded-md bg-[#0A0F1A] border border-[#1E293B] hover:border-[#00D4AA]/40 text-[#8B95A8] hover:text-[#00D4AA] font-[family-name:var(--font-geist-mono)] text-[11px] font-bold transition-all"
+                >
+                  {ticker}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Sort row */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] mr-1">Sort</span>
-        {sortOptions.map((opt) => (
-          <button
-            key={opt.key}
-            onClick={() => setSort(opt.key)}
-            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 ${
-              sort === opt.key
-                ? 'bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/30'
-                : 'text-[#64748B] hover:text-[#8B95A8] border border-transparent'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      {/* Footer link */}
+      <div className="pt-4 border-t border-white/5 mt-5 flex items-center justify-between text-xs font-semibold text-[#00D4AA] group-hover:text-[#00FFD0]">
+        <span>Open Analyst Dossier</span>
+        <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
       </div>
     </div>
   )
 }
 
-// ─── ChannelHeroCard ───
-
-function ChannelHeroCard({ profile }: { profile: ChannelProfile }) {
-  const bias = getBiasLabel(profile.avg_sentiment, profile.bullish_pct)
-  const bgImage = profile.channel_thumbnail_url
-    || (profile.latest_video_youtube_id ? `https://i.ytimg.com/vi/${profile.latest_video_youtube_id}/mqdefault.jpg` : null)
-
-  return (
-    <Link
-      href={`/channel?id=${profile.channel_id}`}
-      className="group relative col-span-1 md:col-span-2 lg:col-span-2 block rounded-2xl border border-[#1E293B] bg-[#141B2D] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#00D4AA]/10 hover:border-[#00D4AA]/30 animate-fade-up stagger-1"
-    >
-      {/* Background: video thumbnail atmosphere */}
-      {bgImage && (
-        <div className="absolute inset-0 z-0">
-          <img
-            src={bgImage}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover blur-sm opacity-25"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1A] via-[#0A0F1A]/80 to-[#0A0F1A]/50" />
-        </div>
-      )}
-
-      <div className="relative z-10 p-6 md:p-8 flex flex-col md:flex-row md:items-start gap-6">
-        {/* Left: Avatar + identity */}
-        <div className="flex items-start gap-4 flex-1 min-w-0">
-          <ChannelAvatar profile={profile} size={64} />
-          <div className="flex-1 min-w-0">
-            <h3 className="font-[family-name:var(--font-geist-mono)] text-2xl md:text-3xl font-bold text-[#F1F5F9] tracking-tight group-hover:text-[#00D4AA] transition-colors break-words">
-              {profile.channel_name}
-            </h3>
-            <div className={`text-xl md:text-2xl font-semibold mt-1 ${bias.color}`}>
-              {bias.label}
-            </div>
-            <div className="flex items-center gap-3 mt-2 text-xs text-[#64748B]">
-              <span>{profile.total_videos} video{profile.total_videos !== 1 ? 's' : ''}</span>
-              <span className="text-[#1E293B]">·</span>
-              <span>{profile.total_recommendations} picks</span>
-              {profile.latest_video_date && (
-                <>
-                  <span className="text-[#1E293B]">·</span>
-                  <span>{timeAgo(profile.latest_video_date)}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Stats */}
-        <div className="flex items-center gap-6 md:gap-8 shrink-0">
-          <div className="text-center">
-            <div className="font-[family-name:var(--font-geist-mono)] text-3xl font-bold text-[#F1F5F9]">
-              {profile.total_recommendations}
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.15em] text-[#475569] mt-0.5">Picks</div>
-          </div>
-          <div className="text-center">
-            <div className="font-[family-name:var(--font-geist-mono)] text-3xl font-bold text-[#F1F5F9]">
-              {profile.avg_conviction.toFixed(1)}
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.15em] text-[#475569] mt-0.5">Conviction</div>
-          </div>
-          <div className="text-center">
-            <div className="font-[family-name:var(--font-geist-mono)] text-3xl font-bold text-[#F1F5F9]">
-              {profile.trust_weight.toFixed(1)}<span className="text-lg text-[#475569]">×</span>
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.15em] text-[#475569] mt-0.5">Trust</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom: Sentiment pulse + tickers */}
-      <div className="relative z-10 px-6 md:px-8 pb-6 md:pb-8">
-        {/* Pulse bar */}
-        <div className="relative w-full h-2 rounded-full bg-[#1E293B] overflow-hidden mb-4">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full pulse-bar-fill"
-            style={{
-              width: `${((profile.avg_sentiment + 2) / 4) * 100}%`,
-              background: 'linear-gradient(90deg, #FF1744 0%, #FF4D6A 20%, #F59E0B 50%, #00D4AA 80%, #00FFD0 100%)',
-            }}
-          />
-        </div>
-
-        {/* Ticker pills + date */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center flex-wrap gap-1.5">
-            {profile.top_tickers.slice(0, 5).map((ticker) => (
-              <span
-                key={ticker}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/ticker?s=${ticker}` }}
-                className="font-[family-name:var(--font-geist-mono)] text-[11px] font-medium px-2 py-0.5 rounded-md bg-[#0A0F1A]/80 border border-[#1E293B] text-[#8B95A8] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 transition-all cursor-pointer relative z-20"
-              >
-                {ticker}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Glow overlay */}
-      <div
-        className="absolute -inset-px rounded-2xl pointer-events-none z-0"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(0,212,170,0.04) 0%, transparent 60%)' }}
-        aria-hidden="true"
-      />
-    </Link>
-  )
-}
-
-// ─── ChannelCompactCard ───
-
-function ChannelCompactCard({ profile, index }: { profile: ChannelProfile; index: number }) {
-  const staggerClass = `stagger-${Math.min(index + 1, 10)}`
-  const bias = getBiasLabel(profile.avg_sentiment, profile.bullish_pct)
-  const bgImage = profile.channel_thumbnail_url
-    || (profile.latest_video_youtube_id ? `https://i.ytimg.com/vi/${profile.latest_video_youtube_id}/mqdefault.jpg` : null)
-
-  return (
-    <Link
-      href={`/channel?id=${profile.channel_id}`}
-      className={`group relative block rounded-xl border border-[#1E293B] bg-[#141B2D]/60 overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#00D4AA]/5 hover:border-[#2D3A4F] animate-fade-up ${staggerClass}`}
-    >
-      {/* Background: video thumbnail atmosphere */}
-      {bgImage && (
-        <div className="absolute inset-0 z-0">
-          <img
-            src={bgImage}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover blur-sm opacity-20"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141B2D] via-[#141B2D]/80 to-[#141B2D]/50" />
-        </div>
-      )}
-
-      <div className="relative z-10 p-5">
-        {/* Top: Avatar + name */}
-        <div className="flex items-center gap-3 mb-3">
-          <ChannelAvatar profile={profile} size={40} />
-          <div className="flex-1 min-w-0">
-            <h3 className="font-[family-name:var(--font-geist-mono)] text-lg font-bold text-[#F1F5F9] tracking-tight group-hover:text-[#00D4AA] transition-colors truncate">
-              {profile.channel_name}
-            </h3>
-            <span className={`text-sm font-medium ${bias.color}`}>
-              {bias.label}
-            </span>
-          </div>
-        </div>
-
-        {/* Mini pulse bar */}
-        <div className="relative w-full h-[3px] rounded-full bg-[#1E293B] overflow-hidden mb-3">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full pulse-bar-fill"
-            style={{
-              width: `${((profile.avg_sentiment + 2) / 4) * 100}%`,
-              background: 'linear-gradient(90deg, #FF1744 0%, #FF4D6A 20%, #F59E0B 50%, #00D4AA 80%, #00FFD0 100%)',
-            }}
-          />
-        </div>
-
-        {/* Stats row */}
-        <div className="flex items-center justify-between text-[11px] font-[family-name:var(--font-geist-mono)] text-[#64748B] mb-3">
-          <span><span className="text-[#8B95A8]">{profile.total_recommendations}</span> picks</span>
-          <span><span className="text-[#8B95A8]">{profile.avg_conviction.toFixed(1)}</span>/10</span>
-          <span><span className="text-[#8B95A8]">{profile.trust_weight.toFixed(1)}</span>×</span>
-        </div>
-
-        {/* Ticker pills */}
-        {profile.top_tickers.length > 0 && (
-          <div className="flex items-center flex-wrap gap-1">
-            {profile.top_tickers.slice(0, 3).map((ticker) => (
-              <span
-                key={ticker}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/ticker?s=${ticker}` }}
-                className="font-[family-name:var(--font-geist-mono)] text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] text-[#64748B] hover:text-[#00D4AA] hover:border-[#00D4AA]/30 transition-all cursor-pointer relative z-20"
-              >
-                {ticker}
-              </span>
-            ))}
-            {profile.top_tickers.length > 3 && (
-              <span className="text-[10px] text-[#475569]">+{profile.top_tickers.length - 3}</span>
-            )}
-          </div>
-        )}
-      </div>
-    </Link>
-  )
-}
-
-// ─── Main Page Component ───
+// ─── Main Directory Page ───
 
 export default function ChannelsPage() {
+  const router = useRouter()
   const [profiles, setProfiles] = useState<ChannelProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [sort, setSort] = useState<SortKey>('activity')
   const [filter, setFilter] = useState<FilterKey>('all')
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('grid')
 
   useEffect(() => {
     async function fetchData() {
       const supabase = createClient()
 
-      async function fetchAll(
+      async function fetchAll<T>(
         table: string,
         selectStr: string,
         orderBy?: { column: string; ascending: boolean }
-      ) {
-        let allData: any[] = []
+      ): Promise<T[]> {
+        let allData: T[] = []
         const pageSize = 1000
         let from = 0
         
@@ -540,7 +407,7 @@ export default function ChannelsPage() {
           }
           if (!data || data.length === 0) break
           
-          allData = allData.concat(data)
+          allData = allData.concat(data as unknown as T[])
           if (data.length < pageSize) break
           from += pageSize
         }
@@ -549,13 +416,13 @@ export default function ChannelsPage() {
 
       const [channelsRes, videosRes, recsRes] = await Promise.all([
         supabase.from('channels').select('channel_id, channel_name, trust_weight, created_at, channel_thumbnail_url, youtube_channel_id'),
-        fetchAll('videos', 'video_id, channel_id, youtube_video_id, published_at', { column: 'published_at', ascending: false }),
-        fetchAll('recommendations', 'ticker, sentiment, conviction_level, target_price, video_id', { column: 'video_id', ascending: true }),
+        fetchAll<VideoData>('videos', 'video_id, channel_id, youtube_video_id, published_at', { column: 'published_at', ascending: false }),
+        fetchAll<RecommendationData>('recommendations', 'ticker, sentiment, conviction_level, target_price, video_id', { column: 'video_id', ascending: true }),
       ])
 
       const channels = (channelsRes.data || []) as ChannelData[]
-      const videos = (videosRes || []) as VideoData[]
-      const recs = (recsRes || []) as RecommendationData[]
+      const videos = videosRes || []
+      const recs = recsRes || []
 
       setProfiles(buildProfiles(channels, videos, recs))
       setLoading(false)
@@ -563,31 +430,49 @@ export default function ChannelsPage() {
     fetchData()
   }, [])
 
+  // Aggregate stats
+  const totalRecs = profiles.reduce((s, p) => s + p.total_recommendations, 0)
+  const totalVideos = profiles.reduce((s, p) => s + p.total_videos, 0)
+  const totalBullish = profiles.reduce((s, p) => s + (p.total_recommendations * (p.bullish_pct / 100)), 0)
+  const platformBullRatio = totalRecs > 0 ? Math.round((totalBullish / totalRecs) * 100) : 0
+
   // Filter counts
   const filterCounts = useMemo(() => {
-    const counts: Record<FilterKey, number> = { all: profiles.length, bullish: 0, mixed: 0, bearish: 0 }
+    const counts: Record<FilterKey, number> = {
+      all: profiles.length,
+      bullish: 0,
+      mixed: 0,
+      bearish: 0,
+      'high-trust': 0
+    }
     for (const p of profiles) {
       if (p.avg_sentiment >= 0.5) counts.bullish++
       else if (p.avg_sentiment <= -0.5) counts.bearish++
       else counts.mixed++
+
+      if (p.trust_weight >= 1.5) counts['high-trust']++
     }
     return counts
   }, [profiles])
 
-  // Sort + filter + search
+  // Processed list (search + filter + sort)
   const processed = useMemo(() => {
     let list = [...profiles]
+
+    // Search by channel name OR ticker covered
+    if (search.trim()) {
+      const q = search.trim().toUpperCase()
+      list = list.filter((p) =>
+        p.channel_name.toUpperCase().includes(q) ||
+        p.all_covered_tickers.has(q)
+      )
+    }
 
     // Filter
     if (filter === 'bullish') list = list.filter((p) => p.avg_sentiment >= 0.5)
     else if (filter === 'bearish') list = list.filter((p) => p.avg_sentiment <= -0.5)
     else if (filter === 'mixed') list = list.filter((p) => p.avg_sentiment > -0.5 && p.avg_sentiment < 0.5)
-
-    // Search
-    if (search) {
-      const q = search.toLowerCase()
-      list = list.filter((p) => p.channel_name.toLowerCase().includes(q))
-    }
+    else if (filter === 'high-trust') list = list.filter((p) => p.trust_weight >= 1.5)
 
     // Sort
     switch (sort) {
@@ -596,6 +481,12 @@ export default function ChannelsPage() {
         break
       case 'picks':
         list.sort((a, b) => b.total_recommendations - a.total_recommendations)
+        break
+      case 'trust':
+        list.sort((a, b) => b.trust_weight - a.trust_weight)
+        break
+      case 'bullish':
+        list.sort((a, b) => b.bullish_pct - a.bullish_pct)
         break
       case 'activity':
       default:
@@ -607,129 +498,245 @@ export default function ChannelsPage() {
     }
 
     return list
-  }, [profiles, sort, filter, search])
+  }, [profiles, search, filter, sort])
 
-  // Hero threshold: top 70th percentile AND >= 5 recs
-  const heroProfiles = useMemo(() => {
-    if (processed.length < 3) return []
-    const scores = processed.map((p) => p.importance_score).sort((a, b) => b - a)
-    const threshold = scores[Math.floor(scores.length * 0.3)] || 0
-    const heroes = processed.filter(
-      (p) => p.importance_score >= threshold && p.total_recommendations >= 5
-    )
-    // Max 2 heroes to avoid layout weirdness
-    return heroes.slice(0, 2)
-  }, [processed])
-
-  const compactProfiles = useMemo(() => {
-    const heroIds = new Set(heroProfiles.map((p) => p.channel_id))
-    return processed.filter((p) => !heroIds.has(p.channel_id))
-  }, [processed, heroProfiles])
-
-  // Aggregate stats
-  const totalRecs = profiles.reduce((s, p) => s + p.total_recommendations, 0)
-  const totalVideos = profiles.reduce((s, p) => s + p.total_videos, 0)
-
-  // Loading state
   if (loading) {
-    return <Loading title="Channels" subtitle="Loading analyst profiles..." />
-  }
-
-  // Empty state
-  if (profiles.length === 0) {
-    return (
-      <div className="min-h-screen px-4 py-8 md:px-8 md:py-12">
-        <div className="max-w-5xl mx-auto">
-          <header className="mt-12 mb-12 animate-fade-up stagger-1">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
-              The Analysts
-            </h1>
-          </header>
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center animate-fade-up stagger-2">
-            <p className="text-lg text-[#8B95A8]">No channels yet.</p>
-            <p className="mt-2 text-sm text-[#64748B]">
-              Channels appear once a video is ingested.{' '}
-              <Link href="/admin/ingest" className="text-[#00D4AA] hover:underline">
-                Ingest a video
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    )
+    return <Loading title="Analysts Directory" subtitle="Loading analyst consensus networks..." />
   }
 
   return (
-    <div className="min-h-screen px-4 py-8 md:px-8 md:py-12 pb-24">
-      <div className="max-w-6xl mx-auto">
-        {/* Page header */}
-        <header className="mt-12 mb-4 animate-fade-up stagger-1">
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-[#F1F5F9]">
-            The Analysts
-          </h1>
-          <p className="mt-3 text-lg text-[#8B95A8] font-light max-w-lg">
-            Every channel tracked by aura. Their signal, their conviction, their coverage.
-          </p>
+    <div className="min-h-screen bg-[#0A0F1A] text-[#E2E8F0] px-4 py-8 md:px-8 md:py-12 pb-28 font-[family-name:var(--font-geist-sans)] selection:bg-[#00D4AA]/30">
+      <div className="max-w-6xl mx-auto space-y-10">
+
+        {/* ─── Hero Header & Macro Signal Ribbon ─── */}
+        <header className="space-y-6 animate-fade-up stagger-1">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-[#00D4AA] animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#64748B] font-[family-name:var(--font-geist-mono)]">
+                  Consensus Engine
+                </span>
+              </div>
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight text-[#F1F5F9] font-[family-name:var(--font-geist-mono)]">
+                The Analysts
+              </h1>
+              <p className="text-sm md:text-base text-[#8B95A8] mt-2 max-w-xl font-light">
+                Every financial analyst tracked by Aura. Monitor their conviction calibration, coverage footprint, and sentiment history.
+              </p>
+            </div>
+
+            {/* Macro Stats Strip */}
+            <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#141B2D]/60 border border-[#1E293B] font-[family-name:var(--font-geist-mono)] text-xs shrink-0 shadow-lg">
+              <div>
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Tracked</span>
+                <span className="text-base font-bold text-[#F1F5F9]">{profiles.length}</span>
+              </div>
+              <div className="h-7 w-px bg-[#1E293B]" />
+              <div>
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Videos</span>
+                <span className="text-base font-bold text-[#F1F5F9]">{totalVideos}</span>
+              </div>
+              <div className="h-7 w-px bg-[#1E293B]" />
+              <div>
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Calls</span>
+                <span className="text-base font-bold text-[#00D4AA]">{totalRecs}</span>
+              </div>
+              <div className="h-7 w-px bg-[#1E293B]" />
+              <div>
+                <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Bull Ratio</span>
+                <span className="text-base font-bold text-[#00FFD0]">{platformBullRatio}%</span>
+              </div>
+            </div>
+          </div>
         </header>
 
-        {/* Aggregate stats strip */}
-        <div className="flex items-center gap-4 mb-8 animate-fade-up stagger-2">
-          <div className="font-[family-name:var(--font-geist-mono)] text-xs text-[#64748B] tracking-wide flex items-center gap-3">
-            <span><span className="text-[#8B95A8]">{profiles.length}</span> channels</span>
-            <span className="text-[#1E293B]">·</span>
-            <span><span className="text-[#8B95A8]">{totalVideos}</span> videos</span>
-            <span className="text-[#1E293B]">·</span>
-            <span><span className="text-[#8B95A8]">{totalRecs}</span> recommendations</span>
+        {/* ─── Filter, Search & View Controls Bar ─── */}
+        <section className="space-y-4 animate-fade-up stagger-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 rounded-2xl bg-[#141B2D]/60 border border-[#1E293B]">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[240px] max-w-md">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#475569]" />
+              <input
+                type="text"
+                placeholder="Search by analyst name or stock ticker (e.g. NVDA)..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#0A0F1A] border border-[#1E293B] text-xs text-[#F1F5F9] placeholder-[#475569] focus:outline-none focus:border-[#00D4AA]/50 font-[family-name:var(--font-geist-mono)]"
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(
+                [
+                  { key: 'all', label: 'All' },
+                  { key: 'bullish', label: 'Bullish' },
+                  { key: 'mixed', label: 'Mixed' },
+                  { key: 'bearish', label: 'Bearish' },
+                  { key: 'high-trust', label: 'High Trust (≥1.5×)' },
+                ] as const
+              ).map((f) => {
+                const isActive = filter === f.key
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => setFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                      isActive
+                        ? 'bg-[#00D4AA]/15 border-[#00D4AA]/40 text-[#00D4AA]'
+                        : 'bg-[#0A0F1A] border-[#1E293B] text-[#64748B] hover:text-[#E2E8F0]'
+                    }`}
+                  >
+                    <span>{f.label}</span>
+                    <span className="ml-1.5 text-[10px] font-mono opacity-60">
+                      {filterCounts[f.key]}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Sort & View Mode Controls */}
+            <div className="flex items-center gap-3 shrink-0">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#0A0F1A] border border-[#1E293B] text-[#8B95A8] focus:outline-none focus:border-[#00D4AA]/50 font-[family-name:var(--font-geist-mono)]"
+              >
+                <option value="activity">Sort by Activity</option>
+                <option value="conviction">Sort by Conviction</option>
+                <option value="picks">Sort by Total Calls</option>
+                <option value="trust">Sort by Trust Weight</option>
+                <option value="bullish">Sort by Bullish %</option>
+              </select>
+
+              <div className="flex items-center gap-1 rounded-xl bg-[#0A0F1A] p-1 border border-[#1E293B]">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[#00D4AA]/20 text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
+                  title="Grid Cards"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('leaderboard')}
+                  className={`p-1.5 rounded-lg transition-all ${viewMode === 'leaderboard' ? 'bg-[#00D4AA]/20 text-[#00D4AA]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
+                  title="Leaderboard Table"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Pulse line separator */}
-        <div className="relative h-px mb-8 animate-fade-up stagger-2">
-          <div className="absolute inset-0 bg-[#1E293B]" />
-          <div className="absolute inset-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA] to-transparent hero-pulse-line" />
-        </div>
-
-        {/* Sort/Filter bar */}
-        <div className="py-3 mb-6 animate-fade-up stagger-3">
-          <SortFilterBar
-            sort={sort}
-            setSort={setSort}
-            filter={filter}
-            setFilter={setFilter}
-            search={search}
-            setSearch={setSearch}
-            counts={filterCounts}
-          />
-        </div>
-
-        {/* Magazine Grid */}
+        {/* ─── Analysts Content View ─── */}
         {processed.length === 0 ? (
-          <div className="rounded-xl border border-[#1E293B] bg-[#141B2D]/40 p-12 text-center animate-fade-up">
-            <p className="text-lg text-[#8B95A8]">No channels match your filters.</p>
+          <div className="p-12 rounded-3xl bg-[#141B2D]/40 border border-[#1E293B] text-center space-y-3 animate-fade-up">
+            <p className="text-lg text-[#8B95A8]">No analysts found matching &ldquo;{search}&rdquo;.</p>
             <button
-              onClick={() => { setFilter('all'); setSearch('') }}
-              className="mt-3 text-sm text-[#00D4AA] hover:underline"
+              onClick={() => { setSearch(''); setFilter('all') }}
+              className="px-4 py-2 rounded-xl bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-xs font-semibold text-[#00D4AA] hover:bg-[#00D4AA]/20 transition-all"
             >
-              Clear filters
+              Reset Filters
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 grid-flow-dense">
-            {/* Hero cards */}
-            {heroProfiles.map((profile) => (
-              <ChannelHeroCard key={profile.channel_id} profile={profile} />
-            ))}
-
-            {/* Compact cards */}
-            {compactProfiles.map((profile, index) => (
-              <ChannelCompactCard
-                key={profile.channel_id}
-                profile={profile}
-                index={index + heroProfiles.length}
-              />
+        ) : viewMode === 'grid' ? (
+          /* ─── GRID CARDS VIEW ─── */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-fade-up stagger-4">
+            {processed.map((profile) => (
+              <ChannelGridCard key={profile.channel_id} profile={profile} />
             ))}
           </div>
+        ) : (
+          /* ─── LEADERBOARD TABLE VIEW ─── */
+          <div className="rounded-2xl border border-[#1E293B] bg-[#141B2D]/40 overflow-hidden shadow-2xl animate-fade-up stagger-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs font-[family-name:var(--font-geist-mono)]">
+                <thead>
+                  <tr className="border-b border-[#1E293B] bg-[#0A0F1A]/90 text-[#64748B] uppercase tracking-wider text-[10px]">
+                    <th className="py-3.5 px-4 w-12 text-center">Rank</th>
+                    <th className="py-3.5 px-4">Analyst</th>
+                    <th className="py-3.5 px-4">Trust Tier</th>
+                    <th className="py-3.5 px-4">Consensus Bias</th>
+                    <th className="py-3.5 px-4">Conviction</th>
+                    <th className="py-3.5 px-4">Total Calls</th>
+                    <th className="py-3.5 px-4">Top Tickers</th>
+                    <th className="py-3.5 px-4">Latest Video</th>
+                    <th className="py-3.5 px-4 text-right">Dossier</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1E293B]/50 text-[#C8D1DE]">
+                  {processed.map((profile, index) => {
+                    const bias = getBiasLabel(profile.avg_sentiment, profile.bullish_pct)
+                    return (
+                      <tr
+                        key={profile.channel_id}
+                        onClick={() => router.push(`/channel?id=${profile.channel_id}&name=${encodeURIComponent(profile.channel_name)}`)}
+                        className="hover:bg-[#141B2D] transition-colors cursor-pointer group"
+                      >
+                        <td className="py-4 px-4 text-center font-bold text-[#64748B]">
+                          #{index + 1}
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <ChannelAvatar profile={profile} size={32} />
+                            <span className="font-bold text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors text-sm">
+                              {profile.channel_name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-[#8B95A8] font-bold">
+                            {profile.trust_weight.toFixed(1)}×
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${bias.bg} ${bias.color}`}>
+                            {bias.label} ({Math.round(profile.bullish_pct)}% Bull)
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <ConvictionDots level={profile.avg_conviction} />
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap font-bold text-[#F1F5F9]">
+                          {profile.total_recommendations}
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            {profile.top_tickers.slice(0, 3).map((ticker) => (
+                              <span
+                                key={ticker}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  router.push(`/ticker?s=${ticker}`)
+                                }}
+                                className="px-1.5 py-0.5 rounded bg-[#0A0F1A] border border-[#1E293B] text-[10px] text-[#8B95A8] hover:text-[#00D4AA]"
+                              >
+                                {ticker}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap text-[#8B95A8]">
+                          {profile.latest_video_date ? timeAgo(profile.latest_video_date) : '—'}
+                        </td>
+                        <td className="py-4 px-4 whitespace-nowrap text-right">
+                          <span className="text-[#00D4AA] group-hover:text-[#00FFD0] font-bold inline-flex items-center gap-1 text-xs">
+                            <span>Inspect</span>
+                            <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
+
       </div>
     </div>
   )
