@@ -692,7 +692,7 @@ export function VideosTab() {
           setBulkModalOpen(open)
         }}
       >
-        <DialogContent className="bg-[#141B2D] border-[#1E293B] text-[#F1F5F9] max-w-xl">
+        <DialogContent className="sm:max-w-xl w-full bg-[#141B2D] border border-[#1E293B] text-[#F1F5F9] overflow-hidden p-6 ring-0 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg text-[#F1F5F9]">
               <Zap className="w-5 h-5 text-[#00D4AA]" />
@@ -704,9 +704,9 @@ export function VideosTab() {
           </DialogHeader>
 
           {/* Body */}
-          <div className="py-3 space-y-4">
+          <div className="py-2 space-y-4 min-w-0 w-full overflow-hidden">
             {bulkStatus === 'idle' && (
-              <div className="space-y-4">
+              <div className="space-y-4 min-w-0 w-full">
                 <div className="p-3.5 rounded-lg bg-[#0A0F1A] border border-[#1E293B] space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[#8B95A8]">Selected Videos:</span>
@@ -738,9 +738,9 @@ export function VideosTab() {
             )}
 
             {(bulkStatus === 'running' || bulkStatus === 'completed' || bulkStatus === 'stopped') && (
-              <div className="space-y-4">
+              <div className="space-y-4 min-w-0 w-full">
                 {/* Progress Bar & Percentage */}
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0 w-full">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-mono text-[#8B95A8]">
                       Progress: <strong className="text-[#F1F5F9]">{bulkCompletedCount}</strong> / {bulkTotal} videos
@@ -760,42 +760,42 @@ export function VideosTab() {
                 </div>
 
                 {/* Live Stats Badges */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="p-2 rounded bg-[#0A0F1A] border border-[#1E293B]">
-                    <div className="text-[10px] text-[#8B95A8] uppercase tracking-wider">Processed</div>
-                    <div className="font-mono font-bold text-[#F1F5F9] mt-0.5">{bulkCompletedCount}</div>
+                <div className="grid grid-cols-3 gap-2.5 text-center text-xs min-w-0 w-full">
+                  <div className="p-2.5 rounded-lg bg-[#0A0F1A] border border-[#1E293B]">
+                    <div className="text-[10px] text-[#8B95A8] uppercase tracking-wider font-medium">Processed</div>
+                    <div className="font-mono font-bold text-sm text-[#F1F5F9] mt-0.5">{bulkCompletedCount}</div>
                   </div>
-                  <div className="p-2 rounded bg-[#0A0F1A] border border-[#00D4AA]/20">
-                    <div className="text-[10px] text-[#00D4AA] uppercase tracking-wider">Succeeded</div>
-                    <div className="font-mono font-bold text-[#00D4AA] mt-0.5">{bulkSuccessCount}</div>
+                  <div className="p-2.5 rounded-lg bg-[#0A0F1A] border border-[#00D4AA]/30">
+                    <div className="text-[10px] text-[#00D4AA] uppercase tracking-wider font-medium">Succeeded</div>
+                    <div className="font-mono font-bold text-sm text-[#00D4AA] mt-0.5">{bulkSuccessCount}</div>
                   </div>
-                  <div className="p-2 rounded bg-[#0A0F1A] border border-[#FF4D6A]/20">
-                    <div className="text-[10px] text-[#FF4D6A] uppercase tracking-wider">Failed</div>
-                    <div className="font-mono font-bold text-[#FF4D6A] mt-0.5">{bulkFailedCount}</div>
+                  <div className="p-2.5 rounded-lg bg-[#0A0F1A] border border-[#FF4D6A]/30">
+                    <div className="text-[10px] text-[#FF4D6A] uppercase tracking-wider font-medium">Failed</div>
+                    <div className="font-mono font-bold text-sm text-[#FF4D6A] mt-0.5">{bulkFailedCount}</div>
                   </div>
                 </div>
 
                 {/* Real-time Activity Feed */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0 w-full">
                   <span className="text-[11px] font-semibold text-[#8B95A8] uppercase tracking-wider">Live Activity</span>
-                  <div className="h-44 overflow-y-auto rounded-lg bg-[#0A0F1A] border border-[#1E293B] p-2 space-y-1.5 font-mono text-[11px]">
+                  <div className="h-44 overflow-y-auto overflow-x-hidden rounded-lg bg-[#0A0F1A] border border-[#1E293B] p-2.5 space-y-2 font-mono text-[11px] min-w-0 w-full">
                     {bulkRecentLogs.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-[#8B95A8]/50">
                         {bulkStatus === 'running' ? 'Connecting to workers...' : 'No activity yet'}
                       </div>
                     ) : (
                       bulkRecentLogs.map((log, i) => (
-                        <div key={i} className="flex items-start gap-2 py-1 border-b border-[#1E293B]/40 last:border-0">
+                        <div key={i} className="flex items-start gap-2.5 py-1 border-b border-[#1E293B]/40 last:border-0 min-w-0 w-full">
                           {log.ok ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-[#00D4AA] shrink-0 mt-0.5" />
                           ) : (
                             <XCircle className="w-3.5 h-3.5 text-[#FF4D6A] shrink-0 mt-0.5" />
                           )}
-                          <div className="flex-1 min-w-0">
-                            <p className="truncate text-[#F1F5F9] font-medium" title={log.title}>
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <p className="truncate text-[#F1F5F9] font-medium leading-tight">
                               {log.title}
                             </p>
-                            <p className={`text-[10px] ${log.ok ? 'text-[#8B95A8]' : 'text-[#FF4D6A]'}`}>
+                            <p className={`text-[10px] truncate mt-0.5 ${log.ok ? 'text-[#8B95A8]' : 'text-[#FF4D6A]'}`}>
                               {log.message}
                             </p>
                           </div>
@@ -808,13 +808,13 @@ export function VideosTab() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="border-t border-[#1E293B] bg-[#0A0F1A]/80 p-4 -mx-6 -mb-6 flex sm:flex-row items-center justify-end gap-2">
             {bulkStatus === 'idle' && (
               <>
                 <Button
                   variant="outline"
                   onClick={() => setBulkModalOpen(false)}
-                  className="border-[#1E293B] text-[#8B95A8]"
+                  className="border-[#1E293B] text-[#8B95A8] hover:text-[#F1F5F9] text-xs"
                 >
                   Cancel
                 </Button>
