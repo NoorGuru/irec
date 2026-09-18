@@ -338,11 +338,18 @@ export default function TargetCorridor({
         {/* Card 4: Avg Conviction */}
         <div className="p-4 rounded-xl bg-[#0A0F1A]/80 border border-[#1E293B] flex flex-col justify-between">
           <span className="text-xs text-[#64748B] mb-1 font-[family-name:var(--font-geist-sans)]">Avg Conviction</span>
-          <p className="text-2xl font-bold text-[#F1F5F9]">
-            {avgConviction.toFixed(1)}<span className="text-sm text-[#64748B]">/10</span>
+          <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
+            {Math.round(avgConviction <= 10 ? avgConviction * 10 : avgConviction)}
+            <span className="text-sm text-[#64748B] font-normal">/100</span>
           </p>
-          <div className="mt-2">
-            <ConvictionDots level={Math.round(avgConviction)} />
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+              (avgConviction <= 10 ? avgConviction * 10 : avgConviction) >= 75
+                ? 'bg-[#00D4AA]/10 text-[#00FFD0] border border-[#00D4AA]/20'
+                : 'bg-[#1E293B] text-[#8B95A8]'
+            }`}>
+              {(avgConviction <= 10 ? avgConviction * 10 : avgConviction) >= 75 ? '✦ High Conviction' : 'Standard Core'}
+            </span>
           </div>
         </div>
       </div>

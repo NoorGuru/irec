@@ -25,6 +25,11 @@ export interface SignalRecommendation {
   sentiment: number
   target_price: number | null
   conviction_level: number
+  conviction_score?: number | null
+  conviction_confidence?: number | null
+  sentiment_score?: number | null
+  sentiment_confidence?: number | null
+  quote?: string | null
   catalyst_notes: string
   videos: {
     title?: string | null
@@ -503,7 +508,24 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                     )}
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0A0F1A] border border-[#1E293B]">
                       <span className="text-[10px] text-[#64748B]">Conviction</span>
-                      <ConvictionDots level={rec.conviction_level} />
+                      <span className={`text-xs font-bold font-[family-name:var(--font-geist-mono)] ${
+                        (rec.conviction_score ?? rec.conviction_level * 10) >= 75
+                          ? 'text-[#00D4AA]'
+                          : (rec.conviction_score ?? rec.conviction_level * 10) >= 50
+                          ? 'text-[#F1F5F9]'
+                          : 'text-[#8B95A8]'
+                      }`}>
+                        {Math.round(rec.conviction_score ?? rec.conviction_level * 10)}
+                        <span className="text-[10px] text-[#64748B] font-normal">/100</span>
+                      </span>
+                      {rec.conviction_score !== undefined && rec.conviction_score !== null && (
+                        <span
+                          className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#00FFD0] bg-[#00D4AA]/10 border border-[#00D4AA]/20 px-1.5 py-0.5 rounded-full"
+                          title={rec.conviction_confidence ? `Signal Clarity: ${Math.round(rec.conviction_confidence * 100)}%` : 'Calibrated Signal'}
+                        >
+                          ✦ {rec.conviction_confidence ? `${Math.round(rec.conviction_confidence * 100)}%` : 'Calibrated'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -637,11 +659,25 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
 
                       {/* Conviction */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <ConvictionDots level={rec.conviction_level} />
-                          <span className="text-[10px] font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)]">
-                            {rec.conviction_level}/10
+                        <div className="flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)]">
+                          <span className={`text-xs font-bold ${
+                            (rec.conviction_score ?? rec.conviction_level * 10) >= 75
+                              ? 'text-[#00D4AA]'
+                              : (rec.conviction_score ?? rec.conviction_level * 10) >= 50
+                              ? 'text-[#F1F5F9]'
+                              : 'text-[#8B95A8]'
+                          }`}>
+                            {Math.round(rec.conviction_score ?? rec.conviction_level * 10)}
                           </span>
+                          <span className="text-[10px] text-[#64748B]">/100</span>
+                          {rec.conviction_score !== undefined && rec.conviction_score !== null && (
+                            <span
+                              className="text-[9px] text-[#00FFD0] bg-[#00D4AA]/10 border border-[#00D4AA]/20 px-1 py-0.5 rounded leading-none"
+                              title={rec.conviction_confidence ? `Clarity: ${Math.round(rec.conviction_confidence * 100)}%` : 'Calibrated'}
+                            >
+                              ✦
+                            </span>
+                          )}
                         </div>
                       </td>
 

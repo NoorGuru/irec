@@ -203,6 +203,55 @@ function JobCard({
   const [workerUrl, setWorkerUrl] = useState<string | null>(null)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const [isRecalibrating, setIsRecalibrating] = useState(false)
+  const [recalibrateAudit, setRecalibrateAudit] = useState<{
+    recalibrated_count: number
+    recommendations: Array<{
+      ticker: string
+      conviction_score?: number
+      conviction_confidence?: number
+      conviction_level?: number
+      sentiment_score?: number
+      sentiment_confidence?: number
+      sentiment?: number
+    }>
+  } | null>(null)
+  const [recalibrateError, setRecalibrateError] = useState<string | null>(null)
+
+  const handleRecalibrateVideo = async (targetVideoId?: string | null) => {
+    if (!targetVideoId) return
+    setIsRecalibrating(true)
+    setRecalibrateError(null)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        setRecalibrateError('Session expired. Please log in again.')
+        setIsRecalibrating(false)
+        return
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/admin/videos/${targetVideoId}/recalibrate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.detail || `Recalibration failed (${res.status})`)
+      }
+
+      const data = await res.json()
+      setRecalibrateAudit(data)
+    } catch (e: any) {
+      setRecalibrateError(e.message || 'Recalibration failed')
+    } finally {
+      setIsRecalibrating(false)
+    }
+  }
 
   const handleTranscriptChange = useCallback((text: string) => {
     let cleanText = text
@@ -605,6 +654,14 @@ function JobCard({
           <div className="flex gap-2">
             <button onClick={() => startExtraction('reextract')} className="flex-1 rounded-lg border border-[#00D4AA]/20 bg-[#00D4AA]/10 py-2.5 text-xs font-semibold text-[#00D4AA] hover:bg-[#00D4AA]/20">Re-extract (Fast)</button>
             <button onClick={() => startExtraction('force_reingest')} className="flex-1 rounded-lg border border-[#F59E0B]/20 bg-[#F59E0B]/10 py-2.5 text-xs font-semibold text-[#F59E0B] hover:bg-[#F59E0B]/20">Full Re-ingest</button>
+            <button
+              onClick={() => handleRecalibrateVideo(extractVideoId(config.url) || duplicateVideo?.video_id)}
+              disabled={isRecalibrating}
+              className="flex-1 rounded-lg border border-[#00D4AA]/30 bg-[#00D4AA]/15 py-2.5 text-xs font-semibold text-[#00FFD0] hover:bg-[#00D4AA]/25 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+            >
+              {isRecalibrating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              ⚡ Recalibrate (v2)
+            </button>
           </div>
         </div>
       )}
@@ -612,17 +669,82 @@ function JobCard({
       {/* Result */}
       {result && (
         <div className="mb-6 rounded-xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-5 space-y-4 relative z-10">
-          <div className="flex flex-wrap gap-2">
-            {result.tickers_extracted.map((ticker) => (
-              <Link key={ticker} href={`/ticker?s=${ticker}`} target="_blank" className="rounded-md bg-[#00D4AA]/10 px-2.5 py-1 text-xs font-bold text-[#00D4AA] hover:bg-[#00D4AA]/20">
-                {ticker}
-              </Link>
-            ))}
-            {result.tickers_extracted.length === 0 && <span className="text-xs text-[#8B95A8]">No tickers found.</span>}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {result.tickers_extracted.map((ticker) => (
+                <Link key={ticker} href={`/ticker?s=${ticker}`} target="_blank" className="rounded-md bg-[#00D4AA]/10 px-2.5 py-1 text-xs font-bold text-[#00D4AA] hover:bg-[#00D4AA]/20">
+                  {ticker}
+                </Link>
+              ))}
+              {result.tickers_extracted.length === 0 && <span className="text-xs text-[#8B95A8]">No tickers found.</span>}
+            </div>
+            <button
+              onClick={() => handleRecalibrateVideo(result.video_id)}
+              disabled={isRecalibrating}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#00D4AA]/30 bg-[#00D4AA]/10 text-xs font-semibold text-[#00D4AA] hover:bg-[#00D4AA]/20 transition-colors disabled:opacity-50"
+              title="Recalibrate continuous scores (v2)"
+            >
+              {isRecalibrating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              ⚡ Recalibrate (v2)
+            </button>
           </div>
           <div className="flex gap-3 mt-3">
             <Link href={`/video?id=${result.video_id}`} target="_blank" className="text-xs text-[#00D4AA] hover:underline">View Video →</Link>
             {result.channel_id && <Link href={`/channel?id=${result.channel_id}`} target="_blank" className="text-xs text-[#00D4AA] hover:underline">View Channel →</Link>}
+          </div>
+        </div>
+      )}
+
+      {/* Recalibrate Audit Feedback */}
+      {recalibrateError && (
+        <div className="mb-6 rounded-xl border border-[#FF4D6A]/20 bg-[#FF4D6A]/5 px-4 py-3 text-xs text-[#FF4D6A] relative z-10">
+          {recalibrateError}
+        </div>
+      )}
+
+      {recalibrateAudit && (
+        <div className="mb-6 rounded-xl border border-[#00D4AA]/30 bg-[#0A0F1A]/80 p-4 space-y-3 relative z-10 backdrop-blur-sm shadow-inner shadow-[#00D4AA]/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-[#00D4AA]" />
+              <span className="text-xs font-semibold text-[#F1F5F9] uppercase tracking-wider">
+                Calibrated Scoring Audit (v2)
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-[#8B95A8]">
+              {recalibrateAudit.recalibrated_count} signal{recalibrateAudit.recalibrated_count !== 1 ? 's' : ''} recalibrated
+            </span>
+          </div>
+
+          <div className="grid gap-2">
+            {recalibrateAudit.recommendations.map((rec) => (
+              <div
+                key={rec.ticker}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-[#141B2D] border border-[#1E293B]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-bold text-sm text-[#F1F5F9]">{rec.ticker}</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-[#8B95A8]">Initial:</span>
+                    <span className="font-mono text-[#8B95A8]">{rec.conviction_level ?? '—'}/10</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#8B95A8]">Calibrated:</span>
+                    <span className="font-mono font-bold text-[#00D4AA]">
+                      {rec.conviction_score !== undefined && rec.conviction_score !== null ? `${Math.round(rec.conviction_score)}/100` : '—'}
+                    </span>
+                  </div>
+                  {rec.conviction_confidence !== undefined && rec.conviction_confidence !== null && (
+                    <span className="px-1.5 py-0.5 rounded bg-[#00D4AA]/10 text-[#00D4AA] font-mono text-[10px] border border-[#00D4AA]/20">
+                      ✦ {Math.round(rec.conviction_confidence * 100)}% clarity
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

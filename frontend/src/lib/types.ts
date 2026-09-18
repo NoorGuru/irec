@@ -4,6 +4,11 @@ export interface RecommendationRow {
   sentiment: number
   target_price: number | null
   conviction_level: number
+  conviction_score?: number | null
+  conviction_confidence?: number | null
+  sentiment_score?: number | null
+  sentiment_confidence?: number | null
+  quote?: string | null
   videos: {
     channel_id: string
     channels: {

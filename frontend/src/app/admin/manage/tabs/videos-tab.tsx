@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Trash2, RefreshCw, Search, Filter, CheckSquare, Square, Pencil, Check, X, ExternalLink } from 'lucide-react'
+import { Loader2, Trash2, RefreshCw, Search, Filter, CheckSquare, Square, Pencil, Check, X, ExternalLink, Zap } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -72,6 +72,9 @@ export function VideosTab() {
   const [deleting, setDeleting] = useState(false)
   const [reextracting, setReextracting] = useState(false)
   const [reextractResult, setReextractResult] = useState<{ success: number; failed: number } | null>(null)
+  const [recalibratingId, setRecalibratingId] = useState<string | null>(null)
+  const [bulkRecalibrating, setBulkRecalibrating] = useState(false)
+  const [recalibrateNotice, setRecalibrateNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null)
   const [editVideoTitle, setEditVideoTitle] = useState('')
@@ -252,6 +255,74 @@ export function VideosTab() {
     }
   }, [editingVideoId, editVideoTitle, editVideoPublishedAt])
 
+  // ─── Recalibrate (v2) ───
+
+  const handleRecalibrate = useCallback(async (videoId: string) => {
+    setRecalibratingId(videoId)
+    setRecalibrateNotice(null)
+    try {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`${BACKEND_URL}/api/v1/admin/videos/${videoId}/recalibrate`, {
+        method: 'POST',
+        headers,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setRecalibrateNotice({
+          type: 'success',
+          message: `Recalibrated ${data.recalibrated_count} signal(s) with continuous v2 scores.`,
+        })
+      } else {
+        const err = await res.json().catch(() => null)
+        setRecalibrateNotice({
+          type: 'error',
+          message: err?.detail || 'Recalibration failed.',
+        })
+      }
+    } catch (e) {
+      console.error('Failed to recalibrate video:', e)
+      setRecalibrateNotice({
+        type: 'error',
+        message: 'Network error while recalibrating.',
+      })
+    } finally {
+      setRecalibratingId(null)
+    }
+  }, [])
+
+  const handleBulkRecalibrate = useCallback(async () => {
+    if (selected.size === 0) return
+    setBulkRecalibrating(true)
+    setRecalibrateNotice(null)
+    let success = 0
+    let failed = 0
+    try {
+      const headers = await getAuthHeaders()
+      const videoIds = Array.from(selected)
+      for (const vid of videoIds) {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/v1/admin/videos/${vid}/recalibrate`, {
+            method: 'POST',
+            headers,
+          })
+          if (res.ok) success++
+          else failed++
+        } catch {
+          failed++
+        }
+      }
+      setRecalibrateNotice({
+        type: failed === 0 ? 'success' : 'error',
+        message: `Bulk recalibration complete: ${success} succeeded${failed > 0 ? `, ${failed} failed` : ''}.`,
+      })
+      setSelected(new Set())
+    } catch (e) {
+      console.error('Bulk recalibration error:', e)
+    } finally {
+      setBulkRecalibrating(false)
+    }
+  }, [selected])
+
   // ─── Loading ───
 
   if (loading) {
@@ -287,15 +358,26 @@ export function VideosTab() {
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && (
-            <Button
-              size="sm"
-              onClick={handleBulkReextract}
-              disabled={reextracting}
-              className="bg-[#00D4AA] hover:bg-[#00D4AA]/80 text-[#0A0F1A] font-medium"
-            >
-              {reextracting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-              Re-extract ({selected.size})
-            </Button>
+            <>
+              <Button
+                size="sm"
+                onClick={handleBulkRecalibrate}
+                disabled={bulkRecalibrating || reextracting}
+                className="bg-[#00D4AA]/10 hover:bg-[#00D4AA]/20 text-[#00D4AA] border border-[#00D4AA]/30 font-medium"
+              >
+                {bulkRecalibrating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+                ⚡ Recalibrate v2 ({selected.size})
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleBulkReextract}
+                disabled={reextracting || bulkRecalibrating}
+                className="bg-[#00D4AA] hover:bg-[#00D4AA]/80 text-[#0A0F1A] font-medium"
+              >
+                {reextracting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                Re-extract ({selected.size})
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -325,6 +407,19 @@ export function VideosTab() {
           </select>
         )}
       </div>
+
+      {/* Recalibrate Notice */}
+      {recalibrateNotice && (
+        <div className={`rounded-lg p-3 flex items-center gap-3 border ${
+          recalibrateNotice.type === 'success'
+            ? 'bg-[#00D4AA]/10 border-[#00D4AA]/30 text-[#00D4AA]'
+            : 'bg-[#FF4D6A]/10 border-[#FF4D6A]/30 text-[#FF4D6A]'
+        }`}>
+          <Zap className="w-4 h-4 shrink-0" />
+          <span className="text-sm">{recalibrateNotice.message}</span>
+          <button onClick={() => setRecalibrateNotice(null)} className="ml-auto text-[#8B95A8] hover:text-[#F1F5F9]">✕</button>
+        </div>
+      )}
 
       {/* Re-extract Result */}
       {reextractResult && (
@@ -441,14 +536,31 @@ export function VideosTab() {
                 )}
               </div>
 
-              {/* Delete */}
-              <button
-                onClick={() => setDeleteTarget(video)}
-                className="p-1.5 text-[#8B95A8] hover:text-[#FF4D6A] hover:bg-[#FF4D6A]/10 rounded transition-colors flex-shrink-0"
-                title="Delete video"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {/* Actions */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {/* Recalibrate (v2) */}
+                <button
+                  onClick={() => handleRecalibrate(video.video_id)}
+                  disabled={recalibratingId === video.video_id}
+                  className="p-1.5 text-[#8B95A8] hover:text-[#00D4AA] hover:bg-[#00D4AA]/10 rounded transition-colors flex-shrink-0 disabled:opacity-50"
+                  title="⚡ Recalibrate (v2) — Continuous scoring"
+                >
+                  {recalibratingId === video.video_id ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-[#00D4AA]" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={() => setDeleteTarget(video)}
+                  className="p-1.5 text-[#8B95A8] hover:text-[#FF4D6A] hover:bg-[#FF4D6A]/10 rounded transition-colors flex-shrink-0"
+                  title="Delete video"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}

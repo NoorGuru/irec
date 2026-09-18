@@ -68,6 +68,7 @@ Respond with a JSON object matching this schema:
     {
       "ticker": "SYMBOL",
       "stock_name": "Company Name (REQUIRED - never leave empty)",
+      "quote": "<1-2 verbatim sentences from the speaker discussing this stock>",
       "sentiment": <int -2 to 2>,
       "target_price": <float or null>,
       "conviction_level": <int 1 to 10>,
@@ -255,4 +256,9 @@ async def parse_recommendations(
                 rec.stock_name = lookup_stock_name(rec.ticker)
             valid_recs.append(rec)
 
-    return valid_recs, parsed.video_summary
+    # Calibrate recommendations using Jev System One
+    from .typesafe_service import score_recommendations_batch
+
+    calibrated_recs = await score_recommendations_batch(valid_recs, transcript)
+
+    return calibrated_recs, parsed.video_summary

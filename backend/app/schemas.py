@@ -14,6 +14,11 @@ class Recommendation(BaseModel):
     target_price: float | None = None
     conviction_level: int = Field(..., ge=1, le=10)
     catalyst_notes: str = Field(..., min_length=1, max_length=2000)
+    quote: str = Field("", max_length=1000)
+    conviction_score: float | None = Field(None, ge=0.0, le=100.0)
+    conviction_confidence: float | None = Field(None, ge=0.0, le=1.0)
+    sentiment_score: float | None = Field(None, ge=-2.0, le=2.0)
+    sentiment_confidence: float | None = Field(None, ge=0.0, le=1.0)
 
     @field_validator("ticker", mode="before")
     @classmethod

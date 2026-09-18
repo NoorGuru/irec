@@ -316,6 +316,38 @@ async def get_video_for_reextract(youtube_video_id: str) -> dict | None:
         return None
 
 
+def _build_recommendation_records(
+    video_id: str,
+    recommendations: list[Recommendation],
+    include_calibrated: bool = True,
+) -> list[dict]:
+    """Format recommendation records for database insertion."""
+    records = []
+    for rec in recommendations:
+        record = {
+            "video_id": video_id,
+            "ticker": rec.ticker,
+            "stock_name": rec.stock_name,
+            "sentiment": rec.sentiment,
+            "target_price": rec.target_price,
+            "conviction_level": rec.conviction_level,
+            "catalyst_notes": rec.catalyst_notes,
+        }
+        if include_calibrated:
+            if rec.conviction_score is not None:
+                record["conviction_score"] = rec.conviction_score
+            if rec.conviction_confidence is not None:
+                record["conviction_confidence"] = rec.conviction_confidence
+            if rec.sentiment_score is not None:
+                record["sentiment_score"] = rec.sentiment_score
+            if rec.sentiment_confidence is not None:
+                record["sentiment_confidence"] = rec.sentiment_confidence
+            if rec.quote:
+                record["quote"] = rec.quote
+        records.append(record)
+    return records
+
+
 async def replace_recommendations(
     video_id: str,
     recommendations: list[Recommendation],
@@ -323,19 +355,15 @@ async def replace_recommendations(
     title: str | None = None,
     duration: str | None = None,
 ) -> None:
-    """Replace all recommendations for a video and update metadata.
-
-    Deletes existing recommendations, inserts new ones, and updates
-    video_summary/title/duration on the video record.
-    """
+    """Replace all recommendations for a video with a new set."""
     try:
         client = _get_client()
 
-        # Delete old recommendations
+        # Delete existing recommendations for this video
         client.table("recommendations").delete().eq("video_id", video_id).execute()
 
-        # Update video metadata
-        update_record: dict = {}
+        # Optionally update video metadata if provided
+        update_record = {}
         if video_summary is not None:
             update_record["video_summary"] = video_summary
         if title is not None:
@@ -348,19 +376,17 @@ async def replace_recommendations(
 
         # Insert new recommendations
         if recommendations:
-            records = [
-                {
-                    "video_id": video_id,
-                    "ticker": rec.ticker,
-                    "stock_name": rec.stock_name,
-                    "sentiment": rec.sentiment,
-                    "target_price": rec.target_price,
-                    "conviction_level": rec.conviction_level,
-                    "catalyst_notes": rec.catalyst_notes,
-                }
-                for rec in recommendations
-            ]
-            client.table("recommendations").insert(records).execute()
+            try:
+                records = _build_recommendation_records(video_id, recommendations, include_calibrated=True)
+                client.table("recommendations").insert(records).execute()
+            except Exception as e:
+                err_str = str(e).lower()
+                if "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
+                    logger.warning(f"Calibrated columns not yet migrated: {e}. Falling back to baseline columns.")
+                    records = _build_recommendation_records(video_id, recommendations, include_calibrated=False)
+                    client.table("recommendations").insert(records).execute()
+                else:
+                    raise
     except Exception as e:
         logger.error(f"Database error during replace_recommendations: {e}")
         raise HTTPException(
@@ -383,19 +409,17 @@ async def insert_recommendations(
 
     try:
         client = _get_client()
-        records = [
-            {
-                "video_id": video_id,
-                "ticker": rec.ticker,
-                "stock_name": rec.stock_name,
-                "sentiment": rec.sentiment,
-                "target_price": rec.target_price,
-                "conviction_level": rec.conviction_level,
-                "catalyst_notes": rec.catalyst_notes,
-            }
-            for rec in recommendations
-        ]
-        client.table("recommendations").insert(records).execute()
+        try:
+            records = _build_recommendation_records(video_id, recommendations, include_calibrated=True)
+            client.table("recommendations").insert(records).execute()
+        except Exception as e:
+            err_str = str(e).lower()
+            if "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
+                logger.warning(f"Calibrated columns not yet migrated: {e}. Falling back to baseline columns.")
+                records = _build_recommendation_records(video_id, recommendations, include_calibrated=False)
+                client.table("recommendations").insert(records).execute()
+            else:
+                raise
     except HTTPException:
         raise
     except Exception as e:

@@ -24,6 +24,11 @@ interface Recommendation {
   target_price: number | null
   conviction_level: number | null
   catalyst_notes: string | null
+  conviction_score?: number | null
+  conviction_confidence?: number | null
+  sentiment_score?: number | null
+  sentiment_confidence?: number | null
+  quote?: string | null
   video_title: string | null
   channel_name: string
   extracted_at: string
@@ -78,7 +83,7 @@ export function RecommendationsTab() {
 
   const fetchRecs = useCallback(async () => {
     const supabase = createClient()
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('recommendations')
       .select(`
         id,
@@ -88,10 +93,35 @@ export function RecommendationsTab() {
         target_price,
         conviction_level,
         catalyst_notes,
+        conviction_score,
+        conviction_confidence,
+        sentiment_score,
+        sentiment_confidence,
+        quote,
         videos!inner(title, extracted_at, channels!inner(channel_name))
       `)
       .order('id', { ascending: false })
       .limit(5000)
+
+    if (error) {
+      // Fallback without calibrated columns if migration hasn't run yet
+      const fallback = await supabase
+        .from('recommendations')
+        .select(`
+          id,
+          ticker,
+          stock_name,
+          sentiment,
+          target_price,
+          conviction_level,
+          catalyst_notes,
+          videos!inner(title, extracted_at, channels!inner(channel_name))
+        `)
+        .order('id', { ascending: false })
+        .limit(5000)
+      data = fallback.data as any
+      error = fallback.error
+    }
 
     if (error) {
       console.error('Failed to fetch recommendations:', error)
@@ -109,6 +139,11 @@ export function RecommendationsTab() {
         target_price: r.target_price as number | null,
         conviction_level: r.conviction_level as number | null,
         catalyst_notes: r.catalyst_notes as string | null,
+        conviction_score: r.conviction_score as number | null | undefined,
+        conviction_confidence: r.conviction_confidence as number | null | undefined,
+        sentiment_score: r.sentiment_score as number | null | undefined,
+        sentiment_confidence: r.sentiment_confidence as number | null | undefined,
+        quote: r.quote as string | null | undefined,
         video_title: video?.title || null,
         channel_name: video?.channels?.channel_name || 'Unknown',
         extracted_at: video?.extracted_at || '',
@@ -456,16 +491,30 @@ export function RecommendationsTab() {
                           ))}
                         </div>
                       ) : (
-                        <div className="flex gap-0.5 mt-1">
-                          {[...Array(10)].map((_, i) => (
-                            <div
-                              key={i}
-                              className={`w-2.5 h-5 rounded-sm ${
-                                (rec.conviction_level || 0) > i ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
-                              }`}
-                            />
-                          ))}
-                          <span className="text-xs font-mono text-[#8B95A8] ml-1.5">{rec.conviction_level || '—'}/10</span>
+                        <div>
+                          <div className="flex items-center gap-0.5 mt-1">
+                            {[...Array(10)].map((_, i) => (
+                              <div
+                                key={i}
+                                className={`w-2.5 h-5 rounded-sm ${
+                                  (rec.conviction_level || 0) > i ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+                                }`}
+                              />
+                            ))}
+                            <span className="text-xs font-mono text-[#8B95A8] ml-1.5">{rec.conviction_level || '—'}/10</span>
+                          </div>
+                          {rec.conviction_score !== null && rec.conviction_score !== undefined && (
+                            <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-mono">
+                              <span className="text-[#00D4AA] font-bold">
+                                {Math.round(rec.conviction_score)}/100
+                              </span>
+                              {rec.conviction_confidence !== null && rec.conviction_confidence !== undefined && (
+                                <span className="text-[9px] text-[#00D4AA] px-1 py-0.5 rounded bg-[#00D4AA]/10 border border-[#00D4AA]/20">
+                                  ✦ {Math.round(rec.conviction_confidence * 100)}%
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -476,6 +525,14 @@ export function RecommendationsTab() {
                       <p className="text-xs text-[#8B95A8] mt-1 truncate">{rec.video_title || '—'}</p>
                     </div>
                   </div>
+
+                  {/* Verbatim quote */}
+                  {rec.quote && (
+                    <div className="mt-3 pt-3 border-t border-[#1E293B]/50">
+                      <label className="text-[10px] font-mono text-[#8B95A8] uppercase tracking-wider">Verbatim Quote</label>
+                      <p className="text-xs italic text-[#F1F5F9]/80 mt-1 pl-2.5 border-l-2 border-[#00D4AA]/60">&ldquo;{rec.quote}&rdquo;</p>
+                    </div>
+                  )}
 
                   {/* Catalyst notes */}
                   {(rec.catalyst_notes || isEditing) && (
