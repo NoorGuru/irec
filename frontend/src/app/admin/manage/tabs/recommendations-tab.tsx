@@ -45,7 +45,7 @@ async function getAuthHeaders() {
   }
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || ''
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://irec-backend-f5xyrqhyjq-uc.a.run.app').replace(/\/$/, '')
 
 function sentimentLabel(s: number): string {
   switch (s) {

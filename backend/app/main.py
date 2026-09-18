@@ -26,9 +26,18 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Aura API")
 
-# CORS configuration from environment variable (comma-separated list of origins)
-_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
-origins = [origin.strip() for origin in _cors_origins.split(",") if origin.strip()]
+# CORS configuration: default allowed origins for local dev and production
+DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "https://aura.bynoor.io",
+    "https://www.aura.bynoor.io",
+]
+_cors_origins = os.environ.get("CORS_ORIGINS", "")
+env_origins = [origin.strip() for origin in _cors_origins.split(",") if origin.strip()]
+origins = list(set(DEFAULT_ORIGINS + env_origins))
 
 app.add_middleware(
     CORSMiddleware,

@@ -627,89 +627,123 @@ async def recalibrate_video_signals(
     Fetches the video transcript and existing recommendations, re-evaluates
     them via Jev System One, and updates the database records in place.
     """
+    import uuid
     from app.database import replace_recommendations
     from app.schemas import Recommendation
     from app.typesafe_service import score_recommendations_batch
 
     client = _get_client()
 
-    # Find video by UUID video_id or youtube_video_id
-    vid_resp = (
-        client.table("videos")
-        .select("video_id, youtube_video_id, transcript, title, video_summary")
-        .or_(f"video_id.eq.{video_id},youtube_video_id.eq.{video_id}")
-        .limit(1)
-        .execute()
-    )
-    if not vid_resp.data:
-        raise HTTPException(status_code=404, detail="Video not found")
+    try:
+        # Check if video_id is a valid UUID to avoid PostgREST 22P02 error
+        is_uuid = False
+        try:
+            uuid.UUID(str(video_id))
+            is_uuid = True
+        except (ValueError, AttributeError):
+            is_uuid = False
 
-    video = vid_resp.data[0]
-    actual_video_id = video["video_id"]
-    transcript = video.get("transcript") or ""
+        if is_uuid:
+            vid_resp = (
+                client.table("videos")
+                .select("video_id, youtube_video_id, transcript, title, video_summary")
+                .eq("video_id", video_id)
+                .limit(1)
+                .execute()
+            )
+        else:
+            vid_resp = (
+                client.table("videos")
+                .select("video_id, youtube_video_id, transcript, title, video_summary")
+                .eq("youtube_video_id", video_id)
+                .limit(1)
+                .execute()
+            )
 
-    if not transcript:
-        raise HTTPException(
-            status_code=422,
-            detail="Video has no transcript stored — cannot recalibrate",
+        # Fallback: if is_uuid was true but not found by UUID, try as youtube_video_id
+        if is_uuid and not vid_resp.data:
+            vid_resp = (
+                client.table("videos")
+                .select("video_id, youtube_video_id, transcript, title, video_summary")
+                .eq("youtube_video_id", video_id)
+                .limit(1)
+                .execute()
+            )
+
+        if not vid_resp.data:
+            raise HTTPException(status_code=404, detail=f"Video not found for identifier: {video_id}")
+
+        video = vid_resp.data[0]
+        actual_video_id = video["video_id"]
+        transcript = video.get("transcript") or ""
+
+        if not transcript:
+            raise HTTPException(
+                status_code=422,
+                detail="Video has no transcript stored — cannot recalibrate",
+            )
+
+        # Fetch existing recommendations
+        recs_resp = (
+            client.table("recommendations")
+            .select("*")
+            .eq("video_id", actual_video_id)
+            .execute()
+        )
+        raw_recs = recs_resp.data or []
+        if not raw_recs:
+            return {
+                "status": "success",
+                "video_id": actual_video_id,
+                "recalibrated_count": 0,
+                "recommendations": [],
+            }
+
+        # Convert to Recommendation models
+        recommendations: list[Recommendation] = []
+        for r in raw_recs:
+            recommendations.append(
+                Recommendation(
+                    ticker=r["ticker"],
+                    stock_name=r.get("stock_name") or "",
+                    sentiment=r.get("sentiment", 0),
+                    target_price=r.get("target_price"),
+                    conviction_level=r.get("conviction_level", 5),
+                    catalyst_notes=r.get("catalyst_notes") or "",
+                    quote=r.get("quote") or "",
+                )
+            )
+
+        # Re-score via Jev System One
+        calibrated_recs = await score_recommendations_batch(recommendations, transcript)
+
+        # Update database records
+        await replace_recommendations(
+            video_id=actual_video_id,
+            recommendations=calibrated_recs,
+            video_summary=video.get("video_summary"),
+            title=video.get("title"),
         )
 
-    # Fetch existing recommendations
-    recs_resp = (
-        client.table("recommendations")
-        .select("*")
-        .eq("video_id", actual_video_id)
-        .execute()
-    )
-    raw_recs = recs_resp.data or []
-    if not raw_recs:
         return {
             "status": "success",
             "video_id": actual_video_id,
-            "recalibrated_count": 0,
-            "recommendations": [],
+            "recalibrated_count": len(calibrated_recs),
+            "recommendations": [
+                {
+                    "ticker": rec.ticker,
+                    "conviction_score": rec.conviction_score,
+                    "conviction_confidence": rec.conviction_confidence,
+                    "conviction_level": rec.conviction_level,
+                    "sentiment_score": rec.sentiment_score,
+                    "sentiment_confidence": rec.sentiment_confidence,
+                    "sentiment": rec.sentiment,
+                }
+                for rec in calibrated_recs
+            ],
         }
-
-    # Convert to Recommendation models
-    recommendations: list[Recommendation] = []
-    for r in raw_recs:
-        recommendations.append(
-            Recommendation(
-                ticker=r["ticker"],
-                stock_name=r.get("stock_name") or "",
-                sentiment=r.get("sentiment", 0),
-                target_price=r.get("target_price"),
-                conviction_level=r.get("conviction_level", 5),
-                catalyst_notes=r.get("catalyst_notes") or "",
-                quote=r.get("quote") or "",
-            )
-        )
-
-    # Re-score via Jev System One
-    calibrated_recs = await score_recommendations_batch(recommendations, transcript)
-
-    # Update database records
-    await replace_recommendations(
-        video_id=actual_video_id,
-        recommendations=calibrated_recs,
-        video_summary=video.get("video_summary"),
-        title=video.get("title"),
-    )
-
-    return {
-        "status": "success",
-        "video_id": actual_video_id,
-        "recalibrated_count": len(calibrated_recs),
-        "recommendations": [
-            {
-                "ticker": rec.ticker,
-                "conviction_score": rec.conviction_score,
-                "conviction_confidence": rec.conviction_confidence,
-                "conviction_level": rec.conviction_level,
-                "sentiment_score": rec.sentiment_score,
-                "sentiment_confidence": rec.sentiment_confidence,
-                "sentiment": rec.sentiment,
-            }
-            for rec in calibrated_recs
-        ],
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to recalibrate video {video_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Recalibration failed: {str(e)}")

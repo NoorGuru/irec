@@ -11,6 +11,7 @@ const YOUTUBE_URL_REGEX =
   /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?.*v=|^(https?:\/\/)?youtu\.be\/|^(https?:\/\/)?(www\.)?youtube\.com\/(shorts|live)\//
 
 const TRANSCRIPT_WORKER_URL = process.env.NEXT_PUBLIC_TRANSCRIPT_WORKER_URL || 'https://yt-transcript-proxy.abukhleif94.workers.dev'
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || 'https://irec-backend-f5xyrqhyjq-uc.a.run.app').replace(/\/$/, '')
 
 function extractVideoId(urlStr: string): string | null {
   try {
@@ -231,7 +232,7 @@ function JobCard({
         return
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/admin/videos/${targetVideoId}/recalibrate`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/admin/videos/${targetVideoId}/recalibrate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +248,11 @@ function JobCard({
       const data = await res.json()
       setRecalibrateAudit(data)
     } catch (e: any) {
-      setRecalibrateError(e.message || 'Recalibration failed')
+      console.error('Recalibration error:', e)
+      const msg = (e.message === 'Load failed' || e.message === 'Failed to fetch')
+        ? 'Connection to backend failed. Please verify backend service is active.'
+        : (e.message || 'Recalibration failed')
+      setRecalibrateError(msg)
     } finally {
       setIsRecalibrating(false)
     }
@@ -384,7 +389,7 @@ function JobCard({
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/extract/stream`,
+        `${BACKEND_URL}/api/v1/extract/stream`,
         {
           method: 'POST',
           headers: {
