@@ -112,3 +112,53 @@ async def test_score_conviction_and_sentiment_mocked():
         assert res["sentiment_score"] == 1.5
         assert res["sentiment"] == 2
         assert res["sentiment_confidence"] == 0.87
+
+
+@pytest.mark.anyio
+async def test_recalibrate_video_signals_with_youtube_id():
+    from app.admin_routes import recalibrate_video_signals
+
+    mock_client = MagicMock()
+
+    def table_side_effect(table_name):
+        t = MagicMock()
+        if table_name == "videos":
+            t.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
+                data=[{
+                    "video_id": "11111111-2222-3333-4444-555555555555",
+                    "youtube_video_id": "dQw4w9WgXcQ",
+                    "transcript": "AAPL is great",
+                    "title": "Top Tech",
+                    "video_summary": "Summary",
+                }]
+            )
+            return t
+        elif table_name == "recommendations":
+            t.select.return_value.eq.return_value.execute.return_value = MagicMock(
+                data=[{
+                    "ticker": "AAPL",
+                    "stock_name": "Apple Inc",
+                    "sentiment": 1,
+                    "conviction_level": 7,
+                    "target_price": 250.0,
+                    "catalyst_notes": "AI phones",
+                    "quote": "AAPL is great",
+                }]
+            )
+            t.delete.return_value.eq.return_value.execute.return_value = MagicMock()
+            t.insert.return_value.execute.return_value = MagicMock()
+            return t
+        return t
+
+    mock_client.table.side_effect = table_side_effect
+
+    with patch("app.admin_routes._get_client", return_value=mock_client), \
+         patch("app.database._get_client", return_value=mock_client), \
+         patch("app.typesafe_service.is_typesafe_configured", return_value=False):
+        # Call with 11-character YouTube video ID (non-UUID)
+        result = await recalibrate_video_signals(video_id="dQw4w9WgXcQ")
+        assert result["status"] == "success"
+        assert result["recalibrated_count"] == 1
+        assert result["recommendations"][0]["ticker"] == "AAPL"
+        assert result["recommendations"][0]["conviction_score"] == 70.0
+
