@@ -35,6 +35,7 @@
 - **Transcript Worker**: Cloudflare Worker (`https://yt-transcript-proxy.abukhleif94.workers.dev`)
 - **Frontend hosting**: Static (GitHub Pages via CNAME)
 - **CI/CD**: GitHub Actions (deploy-backend.yml, deploy-frontend.yml, deploy-worker.yml)
+- **Cloud Storage & CLI Policy**: Always use `gcloud storage` commands for any bucket or artifact operations. Do NOT use legacy `gsutil` CLI (deprecated by Google, removed from default CLI bundles after March 2027).
 
 ## Common Commands
 

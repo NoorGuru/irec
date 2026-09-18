@@ -32,7 +32,8 @@
   - *JSX Link Nesting:* Never nest Next.js `<Link>` components within other `<Link>` tags in composite cards. Use a container `<div>` with navigation handlers and `e.stopPropagation()` on inner action buttons.
   - *Data Density & Screeners:* When screening data lists (e.g. `/explore`), provide slide-out peek drawers (desktop right-panel, mobile bottom-sheet) to inspect details without disrupting scroll position.
   - *Institutional Docks:* Avoid vertically stacking multiple heavy TradingView/financial widgets; consolidate them into tabbed consoles (`TickerAnalyticsDock`) that preserve DOM state.
-- **Backend:** FastAPI (Python 3.12+), Uvicorn, Supabase (PostgreSQL).
+- **Backend & Cloud Infrastructure:** FastAPI (Python 3.12+), Uvicorn, Supabase (PostgreSQL), Google Cloud Run.
+  - *Cloud Storage & CLI Constraint:* Always use `gcloud storage` commands for any Google Cloud Storage operations. Never use legacy `gsutil` (deprecated by Google, removed from default CLI bundles after March 2027).
 
 ## 5. Agent Instructions for Updating This File
 As the project evolves, the AI agent (Gemini) is responsible for automatically coming back to this `GEMINI.md` file and updating it with new core directives, architectural shifts, and newly discovered constraints. This file must always represent the single source of truth for AI context.
