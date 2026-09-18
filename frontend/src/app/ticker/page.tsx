@@ -35,6 +35,11 @@ interface Recommendation {
   sentiment: number
   target_price: number | null
   conviction_level: number
+  conviction_score?: number | null
+  conviction_confidence?: number | null
+  sentiment_score?: number | null
+  sentiment_confidence?: number | null
+  quote?: string | null
   catalyst_notes: string
   videos: {
     title?: string | null
@@ -252,7 +257,7 @@ function TickerContent() {
 
   // Compute aggregate stats for this ticker
   const avgSentiment = recommendations.reduce((s, r) => s + r.sentiment, 0) / recommendations.length
-  const avgConviction = recommendations.reduce((s, r) => s + r.conviction_level, 0) / recommendations.length
+  const avgConviction = recommendations.reduce((s, r) => s + (r.conviction_score != null ? r.conviction_score : r.conviction_level * 10), 0) / (recommendations.length || 1)
   const prices = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
   const rawAvgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null
   const avgPrice = rawAvgPrice !== null ? Math.round(rawAvgPrice) : null
