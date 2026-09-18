@@ -30,6 +30,11 @@ interface RecommendationRow {
   sentiment: number
   target_price: number | null
   conviction_level: number
+  conviction_score?: number | null
+  conviction_confidence?: number | null
+  sentiment_score?: number | null
+  sentiment_confidence?: number | null
+  quote?: string | null
   catalyst_notes: string
 }
 
@@ -169,9 +174,32 @@ function TickerCard({ rec, index }: { rec: RecommendationRow; index: number }) {
 
       {/* Conviction */}
       <div className="pl-4 mb-5">
-        <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block mb-2">Conviction</span>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block">Conviction</span>
+          {rec.conviction_score !== undefined && rec.conviction_score !== null ? (
+            <div className="flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)]">
+              <span className="text-xs font-bold text-[#00D4AA]">{Math.round(rec.conviction_score)}/100</span>
+              {rec.conviction_confidence !== undefined && rec.conviction_confidence !== null && (
+                <span className="text-[9px] text-[#00FFD0] bg-[#00D4AA]/10 border border-[#00D4AA]/20 px-1 py-0.5 rounded leading-none">
+                  ✦ {Math.round(rec.conviction_confidence * 100)}%
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px] font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)]">{rec.conviction_level}/10</span>
+          )}
+        </div>
         <ConvictionBar level={rec.conviction_level} />
       </div>
+
+      {/* Verbatim quote */}
+      {rec.quote && (
+        <div className="pl-4 pt-3 pb-1 border-t border-[#1E293B]/40">
+          <p className="text-xs italic text-[#F1F5F9]/80 pl-2.5 border-l-2 border-[#00D4AA]/60">
+            &ldquo;{rec.quote}&rdquo;
+          </p>
+        </div>
+      )}
 
       {/* Catalyst Notes */}
       {rec.catalyst_notes && (
@@ -294,10 +322,18 @@ function VideoContent() {
       setVideo(videoData as unknown as VideoRow)
 
       // Fetch recommendations for this video
-      const { data: recsData } = await supabase
+      let { data: recsData, error: recsError } = await supabase
         .from('recommendations')
-        .select('id, ticker, stock_name, sentiment, target_price, conviction_level, catalyst_notes')
+        .select('id, ticker, stock_name, sentiment, target_price, conviction_level, conviction_score, conviction_confidence, sentiment_score, sentiment_confidence, quote, catalyst_notes')
         .eq('video_id', (videoData as { video_id: string }).video_id)
+
+      if (recsError) {
+        const fallback = await supabase
+          .from('recommendations')
+          .select('id, ticker, stock_name, sentiment, target_price, conviction_level, catalyst_notes')
+          .eq('video_id', (videoData as { video_id: string }).video_id)
+        recsData = fallback.data as any
+      }
 
       setRecommendations((recsData as unknown as RecommendationRow[]) || [])
       setLoading(false)

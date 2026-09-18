@@ -135,14 +135,19 @@ function TickerContent() {
         const supabase = createClient()
         
         // 1. Fetch main data concurrently
-        const [recsRes, radarsRes] = await Promise.all([
-          supabase
+        const fetchRecs = async () => {
+          let res = await supabase
             .from("recommendations")
             .select(`
               id,
               sentiment,
               target_price,
               conviction_level,
+              conviction_score,
+              conviction_confidence,
+              sentiment_score,
+              sentiment_confidence,
+              quote,
               catalyst_notes,
               stock_name,
               videos!inner(
@@ -154,7 +159,34 @@ function TickerContent() {
                 channels!inner(channel_name, trust_weight)
               )
             `)
-            .eq("ticker", symbol.toUpperCase()),
+            .eq("ticker", symbol.toUpperCase())
+
+          if (res.error) {
+            res = (await supabase
+              .from("recommendations")
+              .select(`
+                id,
+                sentiment,
+                target_price,
+                conviction_level,
+                catalyst_notes,
+                stock_name,
+                videos!inner(
+                  title,
+                  youtube_video_id,
+                  video_url,
+                  published_at,
+                  channel_id,
+                  channels!inner(channel_name, trust_weight)
+                )
+              `)
+              .eq("ticker", symbol.toUpperCase())) as any
+          }
+          return res
+        }
+
+        const [recsRes, radarsRes] = await Promise.all([
+          fetchRecs(),
           fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/v1/radars/ticker/${symbol.toUpperCase()}`)
             .then(res => res.ok ? res.json() : [])
             .catch(() => [])
