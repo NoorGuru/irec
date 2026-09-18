@@ -299,7 +299,13 @@ export function VideosTab() {
     try {
       const headers = await getAuthHeaders()
       const videoIds = Array.from(selected)
+      let index = 0
       for (const vid of videoIds) {
+        index++
+        setRecalibrateNotice({
+          type: 'success',
+          message: `Recalibrating video ${index} of ${videoIds.length}... (${success} completed${failed > 0 ? `, ${failed} failed` : ''})`,
+        })
         try {
           const res = await fetch(`${BACKEND_URL}/api/v1/admin/videos/${vid}/recalibrate`, {
             method: 'POST',
