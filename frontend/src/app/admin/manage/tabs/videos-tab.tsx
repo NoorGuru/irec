@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, Trash2, RefreshCw, Search, Filter, CheckSquare, Square, Pencil, Check, X, ExternalLink, Zap } from 'lucide-react'
+import { Loader2, Trash2, RefreshCw, Search, Filter, CheckSquare, Square, Pencil, Check, X, ExternalLink, Zap, AlertCircle, CheckCircle2, XCircle, StopCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,7 +73,14 @@ export function VideosTab() {
   const [reextracting, setReextracting] = useState(false)
   const [reextractResult, setReextractResult] = useState<{ success: number; failed: number } | null>(null)
   const [recalibratingId, setRecalibratingId] = useState<string | null>(null)
-  const [bulkRecalibrating, setBulkRecalibrating] = useState(false)
+  const [bulkModalOpen, setBulkModalOpen] = useState(false)
+  const [bulkStatus, setBulkStatus] = useState<'idle' | 'running' | 'completed' | 'stopped'>('idle')
+  const [bulkTotal, setBulkTotal] = useState(0)
+  const [bulkCompletedCount, setBulkCompletedCount] = useState(0)
+  const [bulkSuccessCount, setBulkSuccessCount] = useState(0)
+  const [bulkFailedCount, setBulkFailedCount] = useState(0)
+  const [bulkRecentLogs, setBulkRecentLogs] = useState<{ id: string; title: string; ok: boolean; message: string }[]>([])
+  const abortBulkRef = useRef(false)
   const [recalibrateNotice, setRecalibrateNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null)
@@ -290,44 +297,114 @@ export function VideosTab() {
     }
   }, [])
 
-  const handleBulkRecalibrate = useCallback(async () => {
-    if (selected.size === 0) return
-    setBulkRecalibrating(true)
-    setRecalibrateNotice(null)
-    let success = 0
-    let failed = 0
+  const handleOpenBulkModal = useCallback(() => {
+    setBulkModalOpen(true)
+    setBulkStatus('idle')
+    setBulkTotal(selected.size)
+    setBulkCompletedCount(0)
+    setBulkSuccessCount(0)
+    setBulkFailedCount(0)
+    setBulkRecentLogs([])
+    abortBulkRef.current = false
+  }, [selected.size])
+
+  const handleStartBulkRecalibrate = useCallback(async (countToRun?: number) => {
+    const allIds = Array.from(selected)
+    const targetIds = countToRun ? allIds.slice(0, countToRun) : allIds
+    if (targetIds.length === 0) return
+
+    setBulkStatus('running')
+    setBulkTotal(targetIds.length)
+    setBulkCompletedCount(0)
+    setBulkSuccessCount(0)
+    setBulkFailedCount(0)
+    setBulkRecentLogs([])
+    abortBulkRef.current = false
+
+    let headers: Record<string, string>
     try {
-      const headers = await getAuthHeaders()
-      const videoIds = Array.from(selected)
-      let index = 0
-      for (const vid of videoIds) {
-        index++
-        setRecalibrateNotice({
-          type: 'success',
-          message: `Recalibrating video ${index} of ${videoIds.length}... (${success} completed${failed > 0 ? `, ${failed} failed` : ''})`,
-        })
+      headers = await getAuthHeaders()
+    } catch {
+      setBulkStatus('completed')
+      setBulkRecentLogs([{ id: 'err', title: 'Auth Error', ok: false, message: 'Could not obtain auth session' }])
+      return
+    }
+
+    const queue = [...targetIds]
+    const processedSuccessIds = new Set<string>()
+
+    const CONCURRENCY = 3
+    const worker = async () => {
+      while (queue.length > 0 && !abortBulkRef.current) {
+        const vid = queue.shift()
+        if (!vid) break
+
+        const vInfo = videos.find((v) => v.video_id === vid)
+        const vTitle = vInfo?.title || vInfo?.youtube_video_id || vid
+
         try {
           const res = await fetch(`${BACKEND_URL}/api/v1/admin/videos/${vid}/recalibrate`, {
             method: 'POST',
             headers,
           })
-          if (res.ok) success++
-          else failed++
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}))
+            processedSuccessIds.add(vid)
+            setBulkSuccessCount((prev) => prev + 1)
+            setBulkRecentLogs((prev) => [
+              {
+                id: vid,
+                title: vTitle,
+                ok: true,
+                message: `Recalibrated ${data.recalibrated_count ?? 0} signals`,
+              },
+              ...prev.slice(0, 49),
+            ])
+          } else {
+            const err = await res.json().catch(() => ({}))
+            setBulkFailedCount((prev) => prev + 1)
+            setBulkRecentLogs((prev) => [
+              {
+                id: vid,
+                title: vTitle,
+                ok: false,
+                message: err?.detail || `HTTP ${res.status}`,
+              },
+              ...prev.slice(0, 49),
+            ])
+          }
         } catch {
-          failed++
+          setBulkFailedCount((prev) => prev + 1)
+          setBulkRecentLogs((prev) => [
+            {
+              id: vid,
+              title: vTitle,
+              ok: false,
+              message: 'Network error or timeout',
+            },
+            ...prev.slice(0, 49),
+          ])
+        } finally {
+          setBulkCompletedCount((prev) => prev + 1)
         }
       }
-      setRecalibrateNotice({
-        type: failed === 0 ? 'success' : 'error',
-        message: `Bulk recalibration complete: ${success} succeeded${failed > 0 ? `, ${failed} failed` : ''}.`,
-      })
-      setSelected(new Set())
-    } catch (e) {
-      console.error('Bulk recalibration error:', e)
-    } finally {
-      setBulkRecalibrating(false)
     }
-  }, [selected])
+
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, targetIds.length) }, () => worker())
+    )
+
+    setBulkStatus(abortBulkRef.current ? 'stopped' : 'completed')
+    // Remove successful items from selection
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const id of processedSuccessIds) {
+        next.delete(id)
+      }
+      return next
+    })
+    fetchVideos()
+  }, [selected, videos, fetchVideos])
 
   // ─── Loading ───
 
@@ -367,17 +444,17 @@ export function VideosTab() {
             <>
               <Button
                 size="sm"
-                onClick={handleBulkRecalibrate}
-                disabled={bulkRecalibrating || reextracting}
+                onClick={handleOpenBulkModal}
+                disabled={reextracting || bulkStatus === 'running'}
                 className="bg-[#00D4AA]/10 hover:bg-[#00D4AA]/20 text-[#00D4AA] border border-[#00D4AA]/30 font-medium"
               >
-                {bulkRecalibrating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+                {bulkStatus === 'running' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
                 ⚡ Recalibrate v2 ({selected.size})
               </Button>
               <Button
                 size="sm"
                 onClick={handleBulkReextract}
-                disabled={reextracting || bulkRecalibrating}
+                disabled={reextracting || bulkStatus === 'running'}
                 className="bg-[#00D4AA] hover:bg-[#00D4AA]/80 text-[#0A0F1A] font-medium"
               >
                 {reextracting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
@@ -603,6 +680,192 @@ export function VideosTab() {
               {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Delete
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Recalibrate Progress Modal */}
+      <Dialog
+        open={bulkModalOpen}
+        onOpenChange={(open) => {
+          if (bulkStatus === 'running') return
+          setBulkModalOpen(open)
+        }}
+      >
+        <DialogContent className="bg-[#141B2D] border-[#1E293B] text-[#F1F5F9] max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg text-[#F1F5F9]">
+              <Zap className="w-5 h-5 text-[#00D4AA]" />
+              <span>Bulk Recalibrate Signals (v2)</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#8B95A8]">
+              Continuous conviction scoring (0–100), sentiment (-2 to +2), clarity, and verbatim quotes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Body */}
+          <div className="py-3 space-y-4">
+            {bulkStatus === 'idle' && (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-lg bg-[#0A0F1A] border border-[#1E293B] space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#8B95A8]">Selected Videos:</span>
+                    <span className="font-mono font-bold text-[#F1F5F9]">{selected.size}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#8B95A8]">Engine:</span>
+                    <span className="text-[#00D4AA] font-mono font-semibold">Jev System One • Continuous</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#8B95A8]">Processing Mode:</span>
+                    <span className="text-[#8B95A8]">3 concurrent workers</span>
+                  </div>
+                </div>
+
+                {selected.size > 25 ? (
+                  <div className="p-3 rounded-lg bg-[#FFB800]/10 border border-[#FFB800]/20 text-xs text-[#FFD700] flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                      You have <strong>{selected.size}</strong> videos selected. For fastest execution, you can run the first 25 or 50, or proceed with the entire queue.
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#8B95A8]">
+                    Ready to recalibrate {selected.size} video{selected.size !== 1 ? 's' : ''}. Each video re-evaluates its stored transcript in place.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {(bulkStatus === 'running' || bulkStatus === 'completed' || bulkStatus === 'stopped') && (
+              <div className="space-y-4">
+                {/* Progress Bar & Percentage */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-mono text-[#8B95A8]">
+                      Progress: <strong className="text-[#F1F5F9]">{bulkCompletedCount}</strong> / {bulkTotal} videos
+                    </span>
+                    <span className="font-mono font-bold text-[#00D4AA]">
+                      {bulkTotal > 0 ? Math.round((bulkCompletedCount / bulkTotal) * 100) : 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-[#0A0F1A] border border-[#1E293B] h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#00D4AA] to-[#00FFD0] transition-all duration-300 rounded-full"
+                      style={{
+                        width: `${bulkTotal > 0 ? Math.min(100, Math.round((bulkCompletedCount / bulkTotal) * 100)) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Live Stats Badges */}
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="p-2 rounded bg-[#0A0F1A] border border-[#1E293B]">
+                    <div className="text-[10px] text-[#8B95A8] uppercase tracking-wider">Processed</div>
+                    <div className="font-mono font-bold text-[#F1F5F9] mt-0.5">{bulkCompletedCount}</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#0A0F1A] border border-[#00D4AA]/20">
+                    <div className="text-[10px] text-[#00D4AA] uppercase tracking-wider">Succeeded</div>
+                    <div className="font-mono font-bold text-[#00D4AA] mt-0.5">{bulkSuccessCount}</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#0A0F1A] border border-[#FF4D6A]/20">
+                    <div className="text-[10px] text-[#FF4D6A] uppercase tracking-wider">Failed</div>
+                    <div className="font-mono font-bold text-[#FF4D6A] mt-0.5">{bulkFailedCount}</div>
+                  </div>
+                </div>
+
+                {/* Real-time Activity Feed */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-[#8B95A8] uppercase tracking-wider">Live Activity</span>
+                  <div className="h-44 overflow-y-auto rounded-lg bg-[#0A0F1A] border border-[#1E293B] p-2 space-y-1.5 font-mono text-[11px]">
+                    {bulkRecentLogs.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-[#8B95A8]/50">
+                        {bulkStatus === 'running' ? 'Connecting to workers...' : 'No activity yet'}
+                      </div>
+                    ) : (
+                      bulkRecentLogs.map((log, i) => (
+                        <div key={i} className="flex items-start gap-2 py-1 border-b border-[#1E293B]/40 last:border-0">
+                          {log.ok ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#00D4AA] shrink-0 mt-0.5" />
+                          ) : (
+                            <XCircle className="w-3.5 h-3.5 text-[#FF4D6A] shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-[#F1F5F9] font-medium" title={log.title}>
+                              {log.title}
+                            </p>
+                            <p className={`text-[10px] ${log.ok ? 'text-[#8B95A8]' : 'text-[#FF4D6A]'}`}>
+                              {log.message}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            {bulkStatus === 'idle' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setBulkModalOpen(false)}
+                  className="border-[#1E293B] text-[#8B95A8]"
+                >
+                  Cancel
+                </Button>
+                {selected.size > 25 && (
+                  <Button
+                    onClick={() => handleStartBulkRecalibrate(25)}
+                    className="bg-[#1E293B] hover:bg-[#2A374F] text-[#F1F5F9] text-xs"
+                  >
+                    Run First 25
+                  </Button>
+                )}
+                {selected.size > 50 && (
+                  <Button
+                    onClick={() => handleStartBulkRecalibrate(50)}
+                    className="bg-[#1E293B] hover:bg-[#2A374F] text-[#F1F5F9] text-xs"
+                  >
+                    Run First 50
+                  </Button>
+                )}
+                <Button
+                  onClick={() => handleStartBulkRecalibrate()}
+                  className="bg-[#00D4AA] hover:bg-[#00D4AA]/80 text-[#0A0F1A] font-medium text-xs"
+                >
+                  <Zap className="w-3.5 h-3.5 mr-1.5" />
+                  {selected.size > 25 ? `Recalibrate All (${selected.size})` : `Start Recalibrating (${selected.size})`}
+                </Button>
+              </>
+            )}
+
+            {bulkStatus === 'running' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  abortBulkRef.current = true
+                }}
+                className="w-full border-[#FF4D6A]/30 text-[#FF4D6A] hover:bg-[#FF4D6A]/10 text-xs"
+              >
+                <StopCircle className="w-4 h-4 mr-1.5" />
+                Stop Recalibration
+              </Button>
+            )}
+
+            {(bulkStatus === 'completed' || bulkStatus === 'stopped') && (
+              <Button
+                onClick={() => setBulkModalOpen(false)}
+                className="w-full bg-[#00D4AA] hover:bg-[#00D4AA]/80 text-[#0A0F1A] font-medium text-xs"
+              >
+                <Check className="w-4 h-4 mr-1.5" />
+                Done ({bulkSuccessCount} updated{bulkFailedCount > 0 ? `, ${bulkFailedCount} failed` : ''})
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
