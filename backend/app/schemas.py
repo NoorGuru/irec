@@ -21,6 +21,8 @@ class Recommendation(BaseModel):
     sentiment_confidence: float | None = Field(None, ge=0.0, le=1.0)
     initial_conviction_level: int | None = Field(None, ge=1, le=10)
     initial_sentiment: int | None = Field(None, ge=-2, le=2)
+    target_price_verified: bool | None = None
+    is_verified: bool | None = None
 
     @field_validator("ticker", mode="before")
     @classmethod

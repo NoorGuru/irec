@@ -46,6 +46,8 @@ class RecommendationUpdate(BaseModel):
     stock_name: str | None = Field(None, max_length=100)
     sentiment: int | None = Field(None, ge=-2, le=2)
     target_price: float | None = None
+    target_price_verified: bool | None = None
+    is_verified: bool | None = None
     conviction_level: int | None = Field(None, ge=1, le=10)
     catalyst_notes: str | None = Field(None, max_length=2000)
 
@@ -711,6 +713,10 @@ async def recalibrate_video_signals(
                     conviction_level=r.get("conviction_level", 5),
                     catalyst_notes=r.get("catalyst_notes") or "",
                     quote=r.get("quote") or "",
+                    initial_conviction_level=r.get("initial_conviction_level"),
+                    initial_sentiment=r.get("initial_sentiment"),
+                    target_price_verified=r.get("target_price_verified"),
+                    is_verified=r.get("is_verified"),
                 )
             )
 
@@ -738,6 +744,9 @@ async def recalibrate_video_signals(
                     "sentiment_score": rec.sentiment_score,
                     "sentiment_confidence": rec.sentiment_confidence,
                     "sentiment": rec.sentiment,
+                    "target_price": rec.target_price,
+                    "target_price_verified": rec.target_price_verified,
+                    "is_verified": rec.is_verified,
                 }
                 for rec in calibrated_recs
             ],

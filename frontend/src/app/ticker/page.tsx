@@ -34,6 +34,8 @@ interface Recommendation {
   stock_name: string
   sentiment: number
   target_price: number | null
+  target_price_verified?: boolean | null
+  is_verified?: boolean | null
   conviction_level: number
   conviction_score?: number | null
   conviction_confidence?: number | null
@@ -147,6 +149,8 @@ function TickerContent() {
               id,
               sentiment,
               target_price,
+              target_price_verified,
+              is_verified,
               conviction_level,
               conviction_score,
               conviction_confidence,

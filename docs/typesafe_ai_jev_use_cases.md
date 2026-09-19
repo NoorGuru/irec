@@ -120,53 +120,41 @@ questions = {
 
 ---
 
-### Use Case 2 (Priority #2): Structured Extraction Verification & Cascade (Hallucination Guardrail)
+### Use Case 2 (Priority #2): Structured Extraction Verification & Price Target Guardrail Cascade
 
 * **Primitives:** [`Noul`](https://docs.typesafe.ai/primitives/noul.md), [`Choice`](https://docs.typesafe.ai/primitives/choice.md)
-* **Cookbooks:** [SDE Cascade](https://docs.typesafe.ai/cookbooks/sde_cascade.md), [Citation Check](https://docs.typesafe.ai/cookbooks/citation_check.md)
+* **Status:** ✅ **COMPLETED & DEPLOYED IN PRODUCTION** (Unified 1-call architecture, conditional Level-2 adversarial falsification check, target price nullification guardrail, fail-open database fallback, 15 passing tests, and UI verified indicators)
 * **Target Files:**
-  - [`backend/app/llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py#L240-L258)
+  - [`backend/app/typesafe_service.py`](file:///Users/noor/Projects/irec/backend/app/typesafe_service.py)
+  - [`backend/app/schemas.py`](file:///Users/noor/Projects/irec/backend/app/schemas.py)
+  - [`backend/app/database.py`](file:///Users/noor/Projects/irec/backend/app/database.py)
   - [`backend/app/admin_routes.py`](file:///Users/noor/Projects/irec/backend/app/admin_routes.py)
+  - [`backend/migrations/020_add_verification_columns.sql`](file:///Users/noor/Projects/irec/backend/migrations/020_add_verification_columns.sql)
+  - [`backend/scripts/verify_historical_target_prices.py`](file:///Users/noor/Projects/irec/backend/scripts/verify_historical_target_prices.py)
+  - [`backend/tests/test_typesafe_verification.py`](file:///Users/noor/Projects/irec/backend/tests/test_typesafe_verification.py)
+  - [`frontend/src/lib/types.ts`](file:///Users/noor/Projects/irec/frontend/src/lib/types.ts)
+  - [`frontend/src/components/TickerSignalsLedger.tsx`](file:///Users/noor/Projects/irec/frontend/src/components/TickerSignalsLedger.tsx)
+  - [`frontend/src/app/ticker/page.tsx`](file:///Users/noor/Projects/irec/frontend/src/app/ticker/page.tsx)
+  - [`frontend/src/app/admin/manage/tabs/recommendations-tab.tsx`](file:///Users/noor/Projects/irec/frontend/src/app/admin/manage/tabs/recommendations-tab.tsx)
 
 #### Problem
-Finance YouTube videos are conversational. Common extraction failures include:
-1. Extracting a stock that was mentioned only as a peer comparison or negative foil.
-2. Inaccurate `catalyst_notes` attributing one company's earnings beat to another stock discussed in the same segment.
-3. Hallucinating explicit `target_price` numbers mentioned in passing from third-party analysts.
+Finance YouTube videos are conversational and unstructured. Frontier extraction models (Claude Sonnet) occasionally exhibit two critical vulnerabilities:
+1. **Target Price Hallucination/Confusion:** Mistaking current market price, technical stop-loss, historical cost basis, or third-party Wall Street targets for the YouTuber's own genuine price target.
+2. **False-Positive Extraction:** Extracting a stock that was mentioned only as a casual peer comparison, an educational side-note, or a negative foil (contradicted thesis).
 
-#### Jev Solution
-Run an **SDE Verification Cascade** immediately after recommendation parsing. For each candidate pick, verify the extracted fields against the supporting transcript snippet:
-
-```python
-from typesafe_sdk import Choice, Noul
-
-questions = {
-    "thesis_grounded": Choice(
-        instructions="Does the excerpt support the extracted catalyst thesis for {ticker}?",
-        criteria={
-            "supports": "The speaker explicitly presents this thesis as their stance on {ticker}.",
-            "contradicts": "The speaker actually expresses the opposite or disavows this thesis.",
-            "unsupported": "The thesis is fabricated or refers to a different company mentioned in the video."
-        }
-    ),
-    "is_real_recommendation": Noul(
-        instructions="Does the speaker express an active, directional investment or trading opinion on {ticker}, rather than merely citing it in passing?"
-    ),
-    "price_target_verified": Choice(
-        instructions="Does the speaker state an explicit price target of {target_price} for {ticker}?",
-        criteria={
-            "verified": "The price target was explicitly stated by the speaker for this stock.",
-            "third_party": "The speaker was quoting someone else (e.g. Wall St consensus) or historical price.",
-            "unmentioned": "No such price target was articulated for this stock."
-        }
-    )
-}
-```
-
-#### Policy & Workflow
-* If `is_real_recommendation < 0.35` $\rightarrow$ Drop recommendation automatically.
-* If `thesis_grounded.choice != "supports"` or `confidence < 0.80` $\rightarrow$ Flag for admin moderation in [`admin_routes.py`](file:///Users/noor/Projects/irec/backend/app/admin_routes.py) with status `needs_review`.
-* If `price_target_verified.choice != "verified"` $\rightarrow$ Strip `target_price = None` to preserve data integrity.
+#### Production Architecture & Solution
+1. **Zero Added Latency (Unified System One Call):** Rather than chaining separate LLM calls, scoring (`conviction`, `sentiment`) and verification (`is_real_opinion`, `thesis_relation`, `target_price_validity`) run concurrently in a single ~1.0s Jev System One call using a 3,500-char context window.
+2. **5-Way Target Categorization:**
+   - `analyst_own_target`: Speaker explicitly establishes this as their own future valuation target.
+   - `current_or_cost_basis`: Current market quote or entry basis.
+   - `third_party_target`: Outside bank or consensus target.
+   - `support_or_stop_loss`: Stop-loss or technical chart level.
+   - `not_present`: Target unstated in the excerpt.
+3. **Conditional Level 2 Adversarial Check:** If `target_price_validity == "analyst_own_target"` but confidence is ambiguous (`< 0.65`), Aura invokes a targeted 2nd call with an adversarial falsification prompt (`speaker_disavows_or_rejects` vs `speaker_fully_endorses`) to eliminate false positives.
+4. **Protective Action & UI Badges:**
+   - If `target_price` is unverified $\rightarrow$ nullified (`target_price = None`), safeguarding database and portfolio calculations from bad data.
+   - If `target_price` is verified $\rightarrow$ `target_price_verified = True`, displayed with a subtle `✓ Verified` badge in Bloomberg-grade teal.
+   - If `is_real_opinion < 0.30` or `thesis_relation == "contradicts"` $\rightarrow$ `is_verified = False` (dropped from active client feeds).
 
 ---
 

@@ -24,6 +24,8 @@ export interface SignalRecommendation {
   stock_name: string
   sentiment: number
   target_price: number | null
+  target_price_verified?: boolean | null
+  is_verified?: boolean | null
   conviction_level: number
   conviction_score?: number | null
   conviction_confidence?: number | null
@@ -118,20 +120,24 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
   const [visibleCount, setVisibleCount] = useState(6)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  // Compute facet statistics
+  // Compute facet statistics (only for verified recommendations)
+  const verifiedRecs = useMemo(() => {
+    return recommendations.filter((r) => r.is_verified !== false)
+  }, [recommendations])
+
   const counts = useMemo(() => {
     return {
-      all: recommendations.length,
-      bullish: recommendations.filter((r) => r.sentiment >= 0.5).length,
-      bearish: recommendations.filter((r) => r.sentiment <= -0.5).length,
-      target: recommendations.filter((r) => r.target_price !== null && r.target_price > 0).length,
-      highConviction: recommendations.filter((r) => r.conviction_level >= 8).length,
+      all: verifiedRecs.length,
+      bullish: verifiedRecs.filter((r) => r.sentiment >= 0.5).length,
+      bearish: verifiedRecs.filter((r) => r.sentiment <= -0.5).length,
+      target: verifiedRecs.filter((r) => r.target_price !== null && r.target_price > 0).length,
+      highConviction: verifiedRecs.filter((r) => r.conviction_level >= 8).length,
     }
-  }, [recommendations])
+  }, [verifiedRecs])
 
   // Filter and Sort Pipeline
   const filteredAndSortedSignals = useMemo(() => {
-    let result = [...recommendations]
+    let result = [...verifiedRecs]
 
     // 1. Facet Filter
     if (filterType === 'bullish') {
@@ -502,8 +508,16 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                       {getSentimentLabel(rec.sentiment)}
                     </span>
                     {rec.target_price !== null && (
-                      <span className="text-xs font-bold text-[#F1F5F9] bg-[#0A0F1A] border border-[#1E293B] px-2.5 py-1 rounded-lg">
-                        Target <span className="text-[#00FFD0]">${rec.target_price.toFixed(2)}</span>
+                      <span className="text-xs font-bold text-[#F1F5F9] bg-[#0A0F1A] border border-[#1E293B] px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
+                        <span>Target <span className="text-[#00FFD0]">${rec.target_price.toFixed(2)}</span></span>
+                        {rec.target_price_verified && (
+                          <span
+                            className="inline-flex items-center text-[9px] font-mono font-medium text-[#00D4AA] bg-[#00D4AA]/10 border border-[#00D4AA]/25 px-1 py-0.5 rounded tracking-tight"
+                            title="Price target verified from transcript context"
+                          >
+                            ✓ Verified
+                          </span>
+                        )}
                       </span>
                     )}
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0A0F1A] border border-[#1E293B]">
@@ -660,9 +674,19 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                       {/* Target Price */}
                       <td className="py-3 px-4 whitespace-nowrap font-[family-name:var(--font-geist-mono)] font-bold">
                         {rec.target_price !== null ? (
-                          <span className="text-[#00FFD0] bg-[#0A0F1A] px-2 py-1 rounded-md border border-[#1E293B]">
-                            ${rec.target_price.toFixed(2)}
-                          </span>
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="text-[#00FFD0] bg-[#0A0F1A] px-2 py-1 rounded-md border border-[#1E293B]">
+                              ${rec.target_price.toFixed(2)}
+                            </span>
+                            {rec.target_price_verified && (
+                              <span
+                                className="text-[9px] font-mono text-[#00D4AA] bg-[#00D4AA]/10 border border-[#00D4AA]/25 px-1 py-0.5 rounded tracking-tight"
+                                title="Target price verified directly from transcript"
+                              >
+                                ✓
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[#64748B]">—</span>
                         )}
@@ -774,8 +798,11 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                     </span>
 
                     {rec.target_price !== null && (
-                      <span className="text-xs font-bold font-[family-name:var(--font-geist-mono)] text-[#00FFD0] bg-[#0A0F1A] px-2 py-0.5 rounded border border-[#1E293B]">
-                        ${rec.target_price.toFixed(2)}
+                      <span className="inline-flex items-center gap-1 text-xs font-bold font-[family-name:var(--font-geist-mono)] text-[#00FFD0] bg-[#0A0F1A] px-2 py-0.5 rounded border border-[#1E293B]">
+                        <span>${rec.target_price.toFixed(2)}</span>
+                        {rec.target_price_verified && (
+                          <span className="text-[9px] text-[#00D4AA]" title="Target verified">✓</span>
+                        )}
                       </span>
                     )}
 

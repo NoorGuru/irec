@@ -43,7 +43,7 @@ def slice_transcript_context(
     quote: str = "",
     ticker: str = "",
     stock_name: str = "",
-    window_chars: int = 1500,
+    window_chars: int = 3500,
 ) -> str:
     """Slice a relevant, boundary-safe context window from the full transcript.
 
@@ -138,25 +138,33 @@ async def triage_transcript(
 
 
 # ---------------------------------------------------------------------------
-# Use Case 1: Calibrated Conviction (0-100) & Sentiment (-2 to +2)
+# Use Case 1 & 2: Unified Scoring & Extraction Verification Cascade
 # ---------------------------------------------------------------------------
 async def score_conviction_and_sentiment(
     ticker: str,
     catalyst_notes: str,
     transcript_snippet: str,
+    target_price: float | None = None,
     model: str = DEFAULT_MODEL,
 ) -> dict[str, Any]:
-    """Score analyst conviction (0-100) and sentiment (-2 to +2) via Jev System One.
+    """Score analyst conviction (0-100) and sentiment (-2 to +2), and verify candidate pick & target price via Jev System One.
 
-    Returns continuous expected-value scores and calibrated confidence metrics.
+    Unified single-call evaluation:
+    - Conviction: Continuous 0-100 expected value
+    - Sentiment: Continuous -2 to +2 expected value
+    - Gate 1 (Opinion): Is it an active recommendation rather than a passing mention? (Noul)
+    - Gate 2 (Thesis): Does the context support the catalyst thesis? (Choice)
+    - Gate 3 (Target Price): Is target_price the analyst's genuine target? (Choice, with conditional adversarial escalation)
     """
-    state = {
+    state: dict[str, Any] = {
         "ticker": ticker,
         "catalyst_notes": catalyst_notes,
         "transcript_context": transcript_snippet,
     }
+    if target_price is not None:
+        state["candidate_target_price"] = f"${target_price}"
 
-    questions = {
+    questions: dict[str, Any] = {
         "conviction": Score(
             instructions=(
                 f"Rate the analyst's conviction level and portfolio capital commitment on {ticker} "
@@ -180,7 +188,34 @@ async def score_conviction_and_sentiment(
                 "Strongly bullish: aggressive accumulation, top buy pick, major upside target.",
             ],
         ),
+        "is_real_opinion": Noul(
+            instructions=(
+                f"Does the speaker express an active, dedicated investment thesis or recommendation on {ticker} "
+                "(such as buying, holding, shorting, or accumulating a position), "
+                "rather than merely citing it in passing as a benchmark, competitor comparison, or macro example?"
+            )
+        ),
+        "thesis_relation": Choice(
+            instructions=f"Does the transcript context support the extracted catalyst thesis for {ticker}?",
+            criteria={
+                "supports": "The speaker explicitly presents this thesis as their stance on this stock.",
+                "contradicts": "The speaker actually says the opposite or warns against this thesis.",
+                "unsupported": "The thesis is unmentioned, fabricated, or refers to a different company.",
+            },
+        ),
     }
+
+    if target_price is not None:
+        questions["target_price_validity"] = Choice(
+            instructions=f"Analyze how the candidate price target of ${target_price} relates to {ticker} in the transcript context.",
+            criteria={
+                "analyst_own_target": f"The speaker explicitly establishes ${target_price} as their own future price target or valuation objective for {ticker}.",
+                "current_or_cost_basis": f"${target_price} is the current market price, entry price, or past cost basis.",
+                "third_party_target": f"${target_price} is set by an outside party or Wall Street bank (e.g. Goldman Sachs, Morgan Stanley).",
+                "support_or_stop_loss": f"${target_price} is a stop-loss, technical support, or breakdown level.",
+                "not_present": f"${target_price} is not stated in the transcript context.",
+            },
+        )
 
     async with _get_async_client() as client:
         response = await client.system_one(
@@ -189,33 +224,88 @@ async def score_conviction_and_sentiment(
             questions=questions,
         )
 
-    conv_score = response.scores["conviction"]
-    sent_score = response.scores["sentiment"]
+        conv_score = getattr(response, "scores", {}).get("conviction") if hasattr(response, "scores") else None
+        sent_score = getattr(response, "scores", {}).get("sentiment") if hasattr(response, "scores") else None
 
-    # Continuous 0.0 to 100.0 scale: (Jev Score / 4.0) * 100.0
-    conviction_score_val = round((conv_score.score / 4.0) * 100.0, 1)
+        # Continuous 0.0 to 100.0 scale: (Jev Score / 4.0) * 100.0
+        if conv_score is not None:
+            conviction_score_val = round((conv_score.score / 4.0) * 100.0, 1)
+            conv_conf = conv_score.confidence
+            if conv_conf <= 0.0 and hasattr(conv_score, "probabilities") and conv_score.probabilities:
+                conv_conf = max(conv_score.probabilities.values())
+            elif conv_conf <= 0.0:
+                conv_conf = 0.20
+        else:
+            conviction_score_val = 50.0
+            conv_conf = 0.20
 
-    # Legacy 1 to 10 integer scale for backward compatibility
-    conviction_level_val = max(1, min(10, round(conviction_score_val / 10.0)))
+        conviction_level_val = max(1, min(10, round(conviction_score_val / 10.0)))
 
-    # Continuous -2.00 to +2.00 scale: (Jev Score - 2.0)
-    sentiment_score_val = round(sent_score.score - 2.0, 2)
+        # Continuous -2.00 to +2.00 scale: (Jev Score - 2.0)
+        if sent_score is not None:
+            sentiment_score_val = round(sent_score.score - 2.0, 2)
+            sent_conf = sent_score.confidence
+            if sent_conf <= 0.0 and hasattr(sent_score, "probabilities") and sent_score.probabilities:
+                sent_conf = max(sent_score.probabilities.values())
+            elif sent_conf <= 0.0:
+                sent_conf = 0.20
+        else:
+            sentiment_score_val = 0.0
+            sent_conf = 0.20
 
-    # Legacy -2 to 2 integer scale
-    sentiment_val = max(-2, min(2, round(sentiment_score_val)))
+        sentiment_val = max(-2, min(2, round(sentiment_score_val)))
 
-    # Signal clarity: use Jev confidence if > 0, otherwise fallback to mode probability
-    conv_conf = conv_score.confidence
-    if conv_conf <= 0.0 and hasattr(conv_score, "probabilities") and conv_score.probabilities:
-        conv_conf = max(conv_score.probabilities.values())
-    elif conv_conf <= 0.0:
-        conv_conf = 0.20
+        # Parse Verification Gates
+        opinion_noul = 1.0
+        if hasattr(response, "nouls") and "is_real_opinion" in response.nouls:
+            opinion_noul = response.nouls["is_real_opinion"].noul
 
-    sent_conf = sent_score.confidence
-    if sent_conf <= 0.0 and hasattr(sent_score, "probabilities") and sent_score.probabilities:
-        sent_conf = max(sent_score.probabilities.values())
-    elif sent_conf <= 0.0:
-        sent_conf = 0.20
+        thesis_choice = None
+        if hasattr(response, "choices") and "thesis_relation" in response.choices:
+            thesis_choice = response.choices["thesis_relation"]
+
+        target_price_status = None
+        target_price_confidence = None
+        target_price_verified = False
+
+        if target_price is not None and hasattr(response, "choices") and "target_price_validity" in response.choices:
+            tp_choice = response.choices["target_price_validity"]
+            target_price_status = tp_choice.choice
+            target_price_confidence = tp_choice.confidence
+
+            # Level 2 Escalation: If Call 1 target check is ambiguous (conf < 0.65), run adversarial cross-examination
+            if target_price_status == "analyst_own_target" and target_price_confidence < 0.65:
+                try:
+                    adv_questions = {
+                        "adversarial_target_falsification": Choice(
+                            instructions=f"Specifically scrutinize whether the speaker disavows, hedges, or distances themselves from the ${target_price} price objective for {ticker}.",
+                            criteria={
+                                "speaker_disavows_or_rejects": f"The speaker explicitly distances themselves from ${target_price}, expresses skepticism, or refuses to endorse it as their target.",
+                                "speaker_fully_endorses": f"The speaker firmly commits to ${target_price} as their personal price target or expected valuation for {ticker}.",
+                                "neutral_or_unclear": "Neither strongly endorsed nor rejected.",
+                            },
+                        )
+                    }
+                    adv_resp = await client.system_one(model=model, state=state, questions=adv_questions)
+                    if hasattr(adv_resp, "choices") and "adversarial_target_falsification" in adv_resp.choices:
+                        adv_choice = adv_resp.choices["adversarial_target_falsification"]
+                        if adv_choice.choice == "speaker_fully_endorses" and adv_choice.confidence >= 0.70:
+                            target_price_verified = True
+                        else:
+                            target_price_verified = False
+                            target_price_status = adv_choice.choice
+                except Exception as adv_err:
+                    logger.warning(f"Adversarial check error for {ticker}: {adv_err}")
+                    target_price_verified = False
+            elif target_price_status == "analyst_own_target" and target_price_confidence >= 0.65:
+                target_price_verified = True
+            else:
+                target_price_verified = False
+
+        # Gate 1 & Gate 2 Verification
+        is_real = opinion_noul >= 0.30
+        contradicts = bool(thesis_choice and thesis_choice.choice == "contradicts" and thesis_choice.confidence >= 0.70)
+        is_verified = is_real and not contradicts
 
     return {
         "conviction_score": conviction_score_val,
@@ -224,6 +314,13 @@ async def score_conviction_and_sentiment(
         "sentiment_score": sentiment_score_val,
         "sentiment_confidence": round(sent_conf, 2),
         "sentiment": sentiment_val,
+        "is_verified": is_verified,
+        "is_real_opinion_prob": round(opinion_noul, 2),
+        "thesis_status": thesis_choice.choice if thesis_choice else "supports",
+        "thesis_confidence": round(thesis_choice.confidence, 2) if thesis_choice else 1.0,
+        "target_price_status": target_price_status,
+        "target_price_confidence": round(target_price_confidence, 2) if target_price_confidence else None,
+        "target_price_verified": target_price_verified,
     }
 
 
@@ -232,19 +329,21 @@ async def score_single_recommendation(
     transcript: str,
     model: str = DEFAULT_MODEL,
 ) -> Recommendation:
-    """Evaluate calibrated scores for a single recommendation with fail-open fallback."""
+    """Evaluate calibrated scores and verify recommendation & target price with fail-open fallback."""
     try:
         snippet = slice_transcript_context(
             transcript=transcript,
             quote=rec.quote,
             ticker=rec.ticker,
             stock_name=rec.stock_name,
+            window_chars=3500,
         )
 
         calibrated = await score_conviction_and_sentiment(
             ticker=rec.ticker,
             catalyst_notes=rec.catalyst_notes,
             transcript_snippet=snippet,
+            target_price=rec.target_price,
             model=model,
         )
 
@@ -261,16 +360,34 @@ async def score_single_recommendation(
         rec.sentiment_score = calibrated["sentiment_score"]
         rec.sentiment_confidence = calibrated["sentiment_confidence"]
         rec.sentiment = calibrated["sentiment"]
+        rec.is_verified = calibrated.get("is_verified", True)
+        rec.target_price_verified = calibrated.get("target_price_verified", False)
+
+        # Gate 3: Apply target price auto-nullification if unverified
+        if rec.target_price is not None:
+            if not rec.target_price_verified:
+                logger.info(
+                    f"[GUARD] Nullifying unverified target price ${rec.target_price} for {rec.ticker} "
+                    f"(status={calibrated.get('target_price_status')})"
+                )
+                rec.target_price = None
+            else:
+                logger.info(
+                    f"[GUARD] Target price ${rec.target_price} verified for {rec.ticker} "
+                    f"(conf={calibrated.get('target_price_confidence')})"
+                )
 
     except Exception as e:
         logger.warning(
-            f"TypeSafe scoring failed for {rec.ticker}: {e}. Failing open with Claude baseline."
+            f"TypeSafe scoring/verification failed for {rec.ticker}: {e}. Failing open with Claude baseline."
         )
         # Fail-open: ensure baseline integer values remain intact
         if rec.conviction_score is None and rec.conviction_level:
             rec.conviction_score = float(rec.conviction_level * 10)
         if rec.sentiment_score is None and rec.sentiment is not None:
             rec.sentiment_score = float(rec.sentiment)
+        rec.is_verified = True
+        rec.target_price_verified = False
 
     return rec
 
@@ -280,18 +397,20 @@ async def score_recommendations_batch(
     transcript: str,
     model: str = DEFAULT_MODEL,
 ) -> list[Recommendation]:
-    """Score a batch of recommendations in parallel using Jev System One."""
+    """Score and verify a batch of recommendations in parallel using Jev System One."""
     if not recs:
         return recs
 
     if not is_typesafe_configured():
-        logger.warning("TYPESAFE_API_KEY not configured. Skipping calibrated scoring.")
+        logger.warning("TYPESAFE_API_KEY not configured. Skipping calibrated scoring & verification.")
         # Ensure default conviction_score is populated from conviction_level for consistency
         for rec in recs:
             if rec.conviction_score is None:
                 rec.conviction_score = float(rec.conviction_level * 10)
             if rec.sentiment_score is None:
                 rec.sentiment_score = float(rec.sentiment)
+            rec.is_verified = True
+            rec.target_price_verified = False
         return recs
 
     tasks = [
@@ -304,12 +423,21 @@ async def score_recommendations_batch(
     scored_recs = []
     for idx, res in enumerate(results):
         if isinstance(res, Exception):
-            logger.warning(f"Error scoring rec {recs[idx].ticker}: {res}")
+            logger.warning(f"Error scoring/verifying rec {recs[idx].ticker}: {res}")
+            recs[idx].is_verified = True
             scored_recs.append(recs[idx])
         else:
             scored_recs.append(res)
 
-    return scored_recs
+    # Gate 1 & 2: Filter out dropped casual mentions or contradicted recommendations
+    verified_recs = []
+    for r in scored_recs:
+        if getattr(r, "is_verified", True) is False:
+            logger.info(f"[GUARD] Dropping unverified/casual mention of {r.ticker}")
+        else:
+            verified_recs.append(r)
+
+    return verified_recs
 
 
 # ---------------------------------------------------------------------------

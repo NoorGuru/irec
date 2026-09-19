@@ -3,6 +3,8 @@ export interface RecommendationRow {
   stock_name: string
   sentiment: number
   target_price: number | null
+  target_price_verified?: boolean | null
+  is_verified?: boolean | null
   conviction_level: number
   conviction_score?: number | null
   conviction_confidence?: number | null

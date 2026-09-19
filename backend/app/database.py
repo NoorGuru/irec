@@ -321,6 +321,7 @@ def _build_recommendation_records(
     recommendations: list[Recommendation],
     include_calibrated: bool = True,
     include_initial: bool = True,
+    include_verification: bool = True,
 ) -> list[dict]:
     """Format recommendation records for database insertion."""
     records = []
@@ -350,6 +351,11 @@ def _build_recommendation_records(
                 record["sentiment_confidence"] = rec.sentiment_confidence
             if rec.quote:
                 record["quote"] = rec.quote
+        if include_verification:
+            if rec.target_price_verified is not None:
+                record["target_price_verified"] = rec.target_price_verified
+            if rec.is_verified is not None:
+                record["is_verified"] = rec.is_verified
         records.append(record)
     return records
 
@@ -383,13 +389,25 @@ async def replace_recommendations(
         # Insert new recommendations
         if recommendations:
             try:
-                records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True)
+                records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True, include_verification=True)
                 client.table("recommendations").insert(records).execute()
             except Exception as e:
                 err_str = str(e).lower()
-                if "initial_conviction_level" in err_str or "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
+                if "target_price_verified" in err_str or "is_verified" in err_str:
+                    logger.warning(f"Verification columns not yet migrated: {e}. Falling back without verification columns.")
+                    try:
+                        records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True, include_verification=False)
+                        client.table("recommendations").insert(records).execute()
+                    except Exception as e2:
+                        err_str2 = str(e2).lower()
+                        if "initial_conviction_level" in err_str2 or "conviction_score" in err_str2 or "pgrst204" in err_str2 or "column" in err_str2:
+                            records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False, include_verification=False)
+                            client.table("recommendations").insert(records).execute()
+                        else:
+                            raise
+                elif "initial_conviction_level" in err_str or "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
                     logger.warning(f"New columns not yet migrated: {e}. Falling back to baseline columns.")
-                    records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False)
+                    records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False, include_verification=False)
                     client.table("recommendations").insert(records).execute()
                 else:
                     raise
@@ -416,13 +434,25 @@ async def insert_recommendations(
     try:
         client = _get_client()
         try:
-            records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True)
+            records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True, include_verification=True)
             client.table("recommendations").insert(records).execute()
         except Exception as e:
             err_str = str(e).lower()
-            if "initial_conviction_level" in err_str or "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
+            if "target_price_verified" in err_str or "is_verified" in err_str:
+                logger.warning(f"Verification columns not yet migrated: {e}. Falling back without verification columns.")
+                try:
+                    records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True, include_verification=False)
+                    client.table("recommendations").insert(records).execute()
+                except Exception as e2:
+                    err_str2 = str(e2).lower()
+                    if "initial_conviction_level" in err_str2 or "conviction_score" in err_str2 or "pgrst204" in err_str2 or "column" in err_str2:
+                        records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False, include_verification=False)
+                        client.table("recommendations").insert(records).execute()
+                    else:
+                        raise
+            elif "initial_conviction_level" in err_str or "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
                 logger.warning(f"New columns not yet migrated: {e}. Falling back to baseline columns.")
-                records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False)
+                records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False, include_verification=False)
                 client.table("recommendations").insert(records).execute()
             else:
                 raise

@@ -22,6 +22,8 @@ interface Recommendation {
   stock_name: string | null
   sentiment: number
   target_price: number | null
+  target_price_verified?: boolean | null
+  is_verified?: boolean | null
   conviction_level: number | null
   catalyst_notes: string | null
   conviction_score?: number | null
@@ -93,6 +95,8 @@ export function RecommendationsTab() {
         stock_name,
         sentiment,
         target_price,
+        target_price_verified,
+        is_verified,
         conviction_level,
         initial_conviction_level,
         initial_sentiment,
@@ -166,6 +170,8 @@ export function RecommendationsTab() {
         stock_name: r.stock_name as string | null,
         sentiment: r.sentiment as number,
         target_price: r.target_price as number | null,
+        target_price_verified: r.target_price_verified as boolean | null | undefined,
+        is_verified: r.is_verified as boolean | null | undefined,
         conviction_level: r.conviction_level as number | null,
         initial_conviction_level: r.initial_conviction_level as number | null | undefined,
         initial_sentiment: r.initial_sentiment as number | null | undefined,
@@ -367,7 +373,7 @@ export function RecommendationsTab() {
               {/* Main row */}
               <div className="p-4 flex items-center gap-4">
                 {/* Ticker — massive mono */}
-                <div className="flex-shrink-0 w-20">
+                <div className="flex-shrink-0 min-w-20">
                   {isEditing ? (
                     <Input
                       value={editData.ticker || ''}
@@ -375,9 +381,19 @@ export function RecommendationsTab() {
                       className="h-8 text-lg font-mono font-bold bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9] px-2 uppercase w-full"
                     />
                   ) : (
-                    <span className="text-xl font-mono font-bold text-[#F1F5F9] tracking-wide">
-                      {rec.ticker}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xl font-mono font-bold text-[#F1F5F9] tracking-wide">
+                        {rec.ticker}
+                      </span>
+                      {rec.is_verified === false && (
+                        <span
+                          className="text-[9px] font-mono text-[#FF4D6A] bg-[#FF4D6A]/10 border border-[#FF4D6A]/20 px-1 py-0.5 rounded tracking-tight uppercase"
+                          title="Extraction rejected by Jev verification gate"
+                        >
+                          Rejected
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -498,9 +514,28 @@ export function RecommendationsTab() {
                           className="h-7 mt-1 text-sm font-mono bg-[#0A0F1A] border-[#1E293B] text-[#F1F5F9]"
                         />
                       ) : (
-                        <p className="text-sm font-mono mt-1 text-[#F1F5F9]">
-                          {rec.target_price ? `$${rec.target_price.toFixed(2)}` : '—'}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <p className="text-sm font-mono text-[#F1F5F9]">
+                            {rec.target_price ? `$${rec.target_price.toFixed(2)}` : '—'}
+                          </p>
+                          {rec.target_price !== null && rec.target_price !== undefined && (
+                            rec.target_price_verified ? (
+                              <span
+                                className="text-[9px] px-1 py-0.5 rounded border text-[#00D4AA] bg-[#00D4AA]/10 border-[#00D4AA]/20 font-mono tracking-tight"
+                                title="Target price verified against transcript"
+                              >
+                                ✓ Verified
+                              </span>
+                            ) : (
+                              <span
+                                className="text-[9px] px-1 py-0.5 rounded border text-[#8B95A8] bg-[#1E293B] border-[#1E293B] font-mono tracking-tight"
+                                title="Unverified target or pending transcript verification"
+                              >
+                                Unverified
+                              </span>
+                            )
+                          )}
+                        </div>
                       )}
                     </div>
 
