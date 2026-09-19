@@ -248,6 +248,12 @@ async def score_single_recommendation(
             model=model,
         )
 
+        # Archive initial baseline if not already captured
+        if rec.initial_conviction_level is None:
+            rec.initial_conviction_level = rec.conviction_level
+        if rec.initial_sentiment is None:
+            rec.initial_sentiment = rec.sentiment
+
         # Apply calibrated values
         rec.conviction_score = calibrated["conviction_score"]
         rec.conviction_confidence = calibrated["conviction_confidence"]

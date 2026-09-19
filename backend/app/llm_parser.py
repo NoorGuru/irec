@@ -256,6 +256,13 @@ async def parse_recommendations(
                 rec.stock_name = lookup_stock_name(rec.ticker)
             valid_recs.append(rec)
 
+    # Archive Claude baseline before Jev calibration
+    for rec in valid_recs:
+        if rec.initial_conviction_level is None:
+            rec.initial_conviction_level = rec.conviction_level
+        if rec.initial_sentiment is None:
+            rec.initial_sentiment = rec.sentiment
+
     # Calibrate recommendations using Jev System One
     from .typesafe_service import score_recommendations_batch
 

@@ -162,3 +162,33 @@ async def test_recalibrate_video_signals_with_youtube_id():
         assert result["recommendations"][0]["ticker"] == "AAPL"
         assert result["recommendations"][0]["conviction_score"] == 70.0
 
+
+@pytest.mark.anyio
+async def test_initial_baseline_preserved_on_score():
+    from app.typesafe_service import score_single_recommendation
+    rec = Recommendation(
+        ticker="NVDA",
+        stock_name="Nvidia",
+        sentiment=1,
+        conviction_level=8,
+        catalyst_notes="Leading GPU maker",
+        quote="Nvidia leads AI",
+    )
+    assert rec.initial_conviction_level is None
+    assert rec.initial_sentiment is None
+
+    with patch("app.typesafe_service.score_conviction_and_sentiment") as mock_score:
+        mock_score.return_value = {
+            "conviction_score": 85.0,
+            "conviction_confidence": 0.9,
+            "conviction_level": 9,
+            "sentiment_score": 1.5,
+            "sentiment_confidence": 0.8,
+            "sentiment": 2,
+        }
+        res = await score_single_recommendation(rec, "Nvidia leads AI", model="mock")
+        assert res.initial_conviction_level == 8
+        assert res.initial_sentiment == 1
+        assert res.conviction_level == 9
+        assert res.sentiment == 2
+

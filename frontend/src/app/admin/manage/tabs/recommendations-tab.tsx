@@ -28,6 +28,8 @@ interface Recommendation {
   conviction_confidence?: number | null
   sentiment_score?: number | null
   sentiment_confidence?: number | null
+  initial_conviction_level?: number | null
+  initial_sentiment?: number | null
   quote?: string | null
   video_title: string | null
   channel_name: string
@@ -92,6 +94,8 @@ export function RecommendationsTab() {
         sentiment,
         target_price,
         conviction_level,
+        initial_conviction_level,
+        initial_sentiment,
         catalyst_notes,
         conviction_score,
         conviction_confidence,
@@ -104,8 +108,33 @@ export function RecommendationsTab() {
       .limit(5000)
 
     if (error) {
-      // Fallback without calibrated columns if migration hasn't run yet
+      // Fallback without initial columns if migration hasn't run yet
       const fallback = await supabase
+        .from('recommendations')
+        .select(`
+          id,
+          ticker,
+          stock_name,
+          sentiment,
+          target_price,
+          conviction_level,
+          catalyst_notes,
+          conviction_score,
+          conviction_confidence,
+          sentiment_score,
+          sentiment_confidence,
+          quote,
+          videos!inner(title, extracted_at, channels!inner(channel_name))
+        `)
+        .order('id', { ascending: false })
+        .limit(5000)
+      data = fallback.data as any
+      error = fallback.error
+    }
+
+    if (error) {
+      // Fallback without calibrated columns at all
+      const fallbackBasic = await supabase
         .from('recommendations')
         .select(`
           id,
@@ -119,8 +148,8 @@ export function RecommendationsTab() {
         `)
         .order('id', { ascending: false })
         .limit(5000)
-      data = fallback.data as any
-      error = fallback.error
+      data = fallbackBasic.data as any
+      error = fallbackBasic.error
     }
 
     if (error) {
@@ -138,6 +167,8 @@ export function RecommendationsTab() {
         sentiment: r.sentiment as number,
         target_price: r.target_price as number | null,
         conviction_level: r.conviction_level as number | null,
+        initial_conviction_level: r.initial_conviction_level as number | null | undefined,
+        initial_sentiment: r.initial_sentiment as number | null | undefined,
         catalyst_notes: r.catalyst_notes as string | null,
         conviction_score: r.conviction_score as number | null | undefined,
         conviction_confidence: r.conviction_confidence as number | null | undefined,
@@ -517,6 +548,11 @@ export function RecommendationsTab() {
                                     : 'text-[#FF4D6A] bg-[#FF4D6A]/10 border-[#FF4D6A]/20'
                                 }`}>
                                   ✦ {rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100)}%
+                                </span>
+                              )}
+                              {rec.initial_conviction_level != null && (
+                                <span className="text-[9px] text-[#64748B] font-mono ml-1" title="Claude initial extraction baseline">
+                                  (raw: {rec.initial_conviction_level}/10)
                                 </span>
                               )}
                             </div>

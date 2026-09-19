@@ -320,6 +320,7 @@ def _build_recommendation_records(
     video_id: str,
     recommendations: list[Recommendation],
     include_calibrated: bool = True,
+    include_initial: bool = True,
 ) -> list[dict]:
     """Format recommendation records for database insertion."""
     records = []
@@ -333,6 +334,11 @@ def _build_recommendation_records(
             "conviction_level": rec.conviction_level,
             "catalyst_notes": rec.catalyst_notes,
         }
+        if include_initial:
+            if rec.initial_conviction_level is not None:
+                record["initial_conviction_level"] = rec.initial_conviction_level
+            if rec.initial_sentiment is not None:
+                record["initial_sentiment"] = rec.initial_sentiment
         if include_calibrated:
             if rec.conviction_score is not None:
                 record["conviction_score"] = rec.conviction_score
@@ -377,13 +383,13 @@ async def replace_recommendations(
         # Insert new recommendations
         if recommendations:
             try:
-                records = _build_recommendation_records(video_id, recommendations, include_calibrated=True)
+                records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True)
                 client.table("recommendations").insert(records).execute()
             except Exception as e:
                 err_str = str(e).lower()
-                if "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
-                    logger.warning(f"Calibrated columns not yet migrated: {e}. Falling back to baseline columns.")
-                    records = _build_recommendation_records(video_id, recommendations, include_calibrated=False)
+                if "initial_conviction_level" in err_str or "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
+                    logger.warning(f"New columns not yet migrated: {e}. Falling back to baseline columns.")
+                    records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False)
                     client.table("recommendations").insert(records).execute()
                 else:
                     raise
@@ -410,13 +416,13 @@ async def insert_recommendations(
     try:
         client = _get_client()
         try:
-            records = _build_recommendation_records(video_id, recommendations, include_calibrated=True)
+            records = _build_recommendation_records(video_id, recommendations, include_calibrated=True, include_initial=True)
             client.table("recommendations").insert(records).execute()
         except Exception as e:
             err_str = str(e).lower()
-            if "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
-                logger.warning(f"Calibrated columns not yet migrated: {e}. Falling back to baseline columns.")
-                records = _build_recommendation_records(video_id, recommendations, include_calibrated=False)
+            if "initial_conviction_level" in err_str or "conviction_score" in err_str or "pgrst204" in err_str or "column" in err_str:
+                logger.warning(f"New columns not yet migrated: {e}. Falling back to baseline columns.")
+                records = _build_recommendation_records(video_id, recommendations, include_calibrated=False, include_initial=False)
                 client.table("recommendations").insert(records).execute()
             else:
                 raise
