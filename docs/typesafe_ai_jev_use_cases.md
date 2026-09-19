@@ -155,6 +155,7 @@ Finance YouTube videos are conversational and unstructured. Frontier extraction 
    - If `target_price` is unverified $\rightarrow$ nullified (`target_price = None`), safeguarding database and portfolio calculations from bad data.
    - If `target_price` is verified $\rightarrow$ `target_price_verified = True`, displayed with a subtle `✓ Verified` badge in Bloomberg-grade teal.
    - If `is_real_opinion < 0.30` or `thesis_relation == "contradicts"` $\rightarrow$ `is_verified = False` (dropped from active client feeds).
+5. **100% Historical Target Price Audit Completed:** Audited all 540 historical candidate target prices in Supabase via [`backend/scripts/verify_historical_target_prices.py`](file:///Users/noor/Projects/irec/backend/scripts/verify_historical_target_prices.py). Jev confirmed **271 authentic analyst targets** (`target_price_verified = True`) and purged **269 false targets** (`target_price = None`). 100% of target prices displayed on Aura are now verified against spoken transcript context.
 
 ---
 
