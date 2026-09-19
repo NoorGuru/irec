@@ -53,7 +53,7 @@ async def main():
     logger.info("Fetching recommendations with non-null target_price...")
     query = (
         client.table("recommendations")
-        .select("id, video_id, ticker, target_price, quote, catalyst_notes")
+        .select("id, video_id, ticker, stock_name, target_price, quote, catalyst_notes")
         .not_.is_("target_price", "null")
     )
     if args.limit:
@@ -98,6 +98,8 @@ async def main():
             transcript=transcript,
             quote=rec.get("quote") or "",
             ticker=ticker,
+            stock_name=rec.get("stock_name") or "",
+            target_price=tp,
             window_chars=3500,
         )
 

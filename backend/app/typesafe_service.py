@@ -43,12 +43,16 @@ def slice_transcript_context(
     quote: str = "",
     ticker: str = "",
     stock_name: str = "",
+    target_price: float | None = None,
     window_chars: int = 3500,
 ) -> str:
     """Slice a relevant, boundary-safe context window from the full transcript.
 
-    Tries to locate verbatim quote first, then falls back to stock name or ticker,
-    and finally falls back to transcript header.
+    Prioritization:
+    1. Verbatim quote match
+    2. Candidate target_price occurrence located near the company/ticker
+    3. Stock company name or ticker appearance
+    4. Fallback to beginning of transcript
     """
     if not transcript:
         return ""
@@ -56,37 +60,73 @@ def slice_transcript_context(
     if len(transcript) <= window_chars:
         return transcript
 
+    clean_transcript = re.sub(r"\s+", " ", transcript)
+    clean_transcript_lower = clean_transcript.lower()
+
     # Strategy 1: Find verbatim quote (normalized)
     if quote and len(quote.strip()) >= 15:
         clean_quote = re.sub(r"\s+", " ", quote).strip().lower()
-        clean_transcript = re.sub(r"\s+", " ", transcript).lower()
-        idx = clean_transcript.find(clean_quote)
+        idx = clean_transcript_lower.find(clean_quote)
         if idx != -1:
             half = window_chars // 2
             start = max(0, idx - half)
-            end = min(len(transcript), idx + len(clean_quote) + half)
-            return transcript[start:end].strip()
+            end = min(len(clean_transcript), idx + len(clean_quote) + half)
+            return clean_transcript[start:end].strip()
 
-    # Strategy 2: Find stock name or ticker
-    search_terms = []
-    if stock_name and len(stock_name.strip()) >= 3:
-        search_terms.append(stock_name.strip())
+    # Build company name search tokens (e.g. "Microsoft Corp" -> ["Microsoft Corp", "Microsoft"])
+    company_tokens = []
+    if stock_name:
+        s_clean = re.sub(r"\b(inc|corp|corporation|ltd|holdings|co|company)\b\.?", "", stock_name, flags=re.IGNORECASE).strip()
+        if len(s_clean) >= 3:
+            company_tokens.append(s_clean.lower())
+        if stock_name.strip().lower() not in company_tokens:
+            company_tokens.append(stock_name.strip().lower())
     if ticker:
-        search_terms.append(ticker.strip())
+        company_tokens.append(ticker.strip().lower())
 
-    for term in search_terms:
-        # Match as whole word
+    # Strategy 2: If target_price is provided, locate occurrences of the price number
+    if target_price is not None and target_price > 0:
+        tp_num = int(target_price) if target_price == int(target_price) else target_price
+        # Match price number with word boundary or dollar sign
+        tp_pattern = re.compile(rf"(?:\$|\b){re.escape(str(tp_num))}(?:\.0+)?\b")
+        price_matches = list(tp_pattern.finditer(clean_transcript))
+
+        if price_matches:
+            # Score each price match by proximity to company_tokens
+            best_idx = None
+            best_dist = float("inf")
+            for m in price_matches:
+                m_pos = m.start()
+                # Check for company token in surrounding window
+                local_window = clean_transcript_lower[max(0, m_pos - 2000) : min(len(clean_transcript), m_pos + 2000)]
+                for tok in company_tokens:
+                    if tok in local_window:
+                        tok_pos = local_window.find(tok)
+                        dist = abs(tok_pos - 2000)
+                        if dist < best_dist:
+                            best_dist = dist
+                            best_idx = m_pos
+
+            # If an occurrence near company was found, or fall back to first occurrence
+            chosen_idx = best_idx if best_idx is not None else price_matches[0].start()
+            half = window_chars // 2
+            start = max(0, chosen_idx - half)
+            end = min(len(clean_transcript), chosen_idx + half)
+            return clean_transcript[start:end].strip()
+
+    # Strategy 3: Find stock name or ticker
+    for term in company_tokens:
         pattern = re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE)
-        match = pattern.search(transcript)
+        match = pattern.search(clean_transcript)
         if match:
             idx = match.start()
             half = window_chars // 2
             start = max(0, idx - half)
-            end = min(len(transcript), idx + len(term) + half)
-            return transcript[start:end].strip()
+            end = min(len(clean_transcript), idx + len(term) + half)
+            return clean_transcript[start:end].strip()
 
-    # Strategy 3: Fallback to beginning of transcript
-    return transcript[:window_chars].strip()
+    # Strategy 4: Fallback to beginning of transcript
+    return clean_transcript[:window_chars].strip()
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +376,7 @@ async def score_single_recommendation(
             quote=rec.quote,
             ticker=rec.ticker,
             stock_name=rec.stock_name,
+            target_price=rec.target_price,
             window_chars=3500,
         )
 
