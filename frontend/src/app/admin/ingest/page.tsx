@@ -675,22 +675,25 @@ function JobCard({
       {result && (
         <div className="mb-6 rounded-xl border border-[#00D4AA]/20 bg-[#00D4AA]/[0.03] p-5 space-y-4 relative z-10">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {result.tickers_extracted.map((ticker) => (
                 <Link key={ticker} href={`/ticker?s=${ticker}`} target="_blank" className="rounded-md bg-[#00D4AA]/10 px-2.5 py-1 text-xs font-bold text-[#00D4AA] hover:bg-[#00D4AA]/20">
                   {ticker}
                 </Link>
               ))}
               {result.tickers_extracted.length === 0 && <span className="text-xs text-[#8B95A8]">No tickers found.</span>}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#00D4AA]/10 text-[#00FFD0] border border-[#00D4AA]/20">
+                <CheckCircle2 className="w-3 h-3 text-[#00D4AA]" /> Calibrated (v2)
+              </span>
             </div>
             <button
               onClick={() => handleRecalibrateVideo(result.video_id)}
               disabled={isRecalibrating}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#00D4AA]/30 bg-[#00D4AA]/10 text-xs font-semibold text-[#00D4AA] hover:bg-[#00D4AA]/20 transition-colors disabled:opacity-50"
-              title="Recalibrate continuous scores (v2)"
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#ffffff]/10 bg-[#141B2D] text-xs font-medium text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#1E293B] hover:border-[#ffffff]/20 transition-colors disabled:opacity-50"
+              title="Audit continuous scoring breakdown or re-score signals"
             >
-              {isRecalibrating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-              ⚡ Recalibrate (v2)
+              {isRecalibrating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-[#00D4AA]" />}
+              Audit / Re-score
             </button>
           </div>
           <div className="flex gap-3 mt-3">
