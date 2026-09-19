@@ -66,6 +66,15 @@ export default function ExplorePage() {
   const [highDataOnly, setHighDataOnly] = useState(false)
   const [visibleCount, setVisibleCount] = useState(25)
   const [quickPeekStock, setQuickPeekStock] = useState<StockDirectoryItem | null>(null)
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)')
+    setIsDesktop(mql.matches)
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -509,15 +518,18 @@ export default function ExplorePage() {
                             <div className="flex flex-col justify-center min-w-[120px]">
                               <div className="flex items-baseline gap-2">
                                 <span 
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/ticker?s=${stock.ticker}`)
-                                  }}
-                                  className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] hover:underline transition-colors leading-none tracking-wide"
-                                  title="Go directly to Ticker terminal"
+                                  className="text-lg font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] group-hover:text-[#00D4AA] transition-colors leading-none tracking-wide"
                                 >
                                   {stock.ticker}
                                 </span>
+                                <Link
+                                  href={`/ticker?s=${stock.ticker}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title={`Go directly to ${stock.ticker} terminal`}
+                                  className="opacity-0 group-hover:opacity-100 text-[#64748B] hover:text-[#00D4AA] transition-all p-0.5"
+                                >
+                                  <ArrowRight className="w-3 h-3" />
+                                </Link>
                                 {stock.mention_count_30d > 0 && stock.mention_count_30d < 3 && (
                                   <span className="inline-flex items-center text-[8px] text-[#F59E0B]/80 bg-[#F59E0B]/10 px-1 py-0.5 rounded leading-none shrink-0 font-medium border border-[#F59E0B]/20">low data</span>
                                 )}
@@ -788,9 +800,9 @@ export default function ExplorePage() {
             )}
           </div>
 
-          {/* Desktop Persistent Side Workbench (xl: and above) */}
-          {quickPeekStock && (
-            <div className="hidden xl:block w-[420px] shrink-0 sticky top-24 z-30">
+          {/* Desktop Persistent Side Workbench (lg: and above) */}
+          {quickPeekStock && isDesktop && (
+            <div className="w-[360px] xl:w-[420px] shrink-0 sticky top-24 z-30">
               <ExploreQuickPeek
                 stock={quickPeekStock}
                 onClose={() => setQuickPeekStock(null)}
@@ -806,21 +818,19 @@ export default function ExplorePage() {
           )}
         </div>
 
-        {/* Responsive Overlay Quick Peek for Mobile & Tablet (< xl) */}
-        {quickPeekStock && (
-          <div className="xl:hidden">
-            <ExploreQuickPeek
-              stock={quickPeekStock}
-              onClose={() => setQuickPeekStock(null)}
-              onPrev={handlePrevStock}
-              onNext={handleNextStock}
-              hasPrev={hasPrevStock}
-              hasNext={hasNextStock}
-              currentIndex={quickPeekIndex}
-              totalCount={filteredAndSorted.length}
-              isInline={false}
-            />
-          </div>
+        {/* Responsive Overlay Quick Peek for Mobile & Tablet (< lg) */}
+        {quickPeekStock && !isDesktop && (
+          <ExploreQuickPeek
+            stock={quickPeekStock}
+            onClose={() => setQuickPeekStock(null)}
+            onPrev={handlePrevStock}
+            onNext={handleNextStock}
+            hasPrev={hasPrevStock}
+            hasNext={hasNextStock}
+            currentIndex={quickPeekIndex}
+            totalCount={filteredAndSorted.length}
+            isInline={false}
+          />
         )}
       </div>
     </main>

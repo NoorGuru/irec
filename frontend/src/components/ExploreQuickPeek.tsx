@@ -68,16 +68,6 @@ export default function ExploreQuickPeek({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // Prevent background body scroll when mobile/tablet overlay is active
-  useEffect(() => {
-    if (!stock || isInline) return
-    const originalOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = originalOverflow
-    }
-  }, [stock, isInline])
-
   // Fetch recent catalyst quotes whenever selected stock changes
   useEffect(() => {
     if (!stock) {
@@ -131,7 +121,7 @@ export default function ExploreQuickPeek({
     return () => {
       active = false
     }
-  }, [stock])
+  }, [stock?.ticker])
 
   if (!stock) return null
 
@@ -160,8 +150,12 @@ export default function ExploreQuickPeek({
     >
       {/* Mobile Drag Pill Indicator */}
       {!isInline && (
-        <div className="md:hidden flex justify-center pt-2.5 pb-1 bg-[#0A0F1A]/90 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-white/25" />
+        <div 
+          onClick={onClose}
+          className="md:hidden flex justify-center pt-2.5 pb-1 bg-[#0A0F1A]/90 shrink-0 cursor-pointer"
+          title="Dismiss"
+        >
+          <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/40 transition-colors" />
         </div>
       )}
 
@@ -395,19 +389,13 @@ export default function ExploreQuickPeek({
   if (!mounted) return null
 
   // Overlay Mode (for Mobile bottom-sheet & Tablet slide-dock)
-  // Portaled directly to document.body so it is never trapped by ancestor CSS transforms
+  // Portaled directly to document.body so it is never trapped by ancestor CSS transforms.
+  // pointer-events-none on the outer wrapper ensures all background tickers remain interactive and clickable.
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex flex-col justify-end md:flex-row md:items-center md:justify-end xl:hidden">
-      {/* Light Translucent Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200 cursor-pointer"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Responsive Slide-in Container: Bottom sheet on mobile, slide-dock on tablet */}
+    <div className="fixed inset-0 z-50 pointer-events-none flex flex-col justify-end sm:flex-row sm:items-end sm:justify-end">
+      {/* Responsive Slide-in Container: Bottom sheet on mobile, floating dock on tablet */}
       <div 
-        className="relative z-10 w-full md:w-[420px] max-h-[85vh] h-[85vh] md:h-[calc(100vh-6rem)] md:mr-6 flex flex-col overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-right duration-200"
+        className="pointer-events-auto relative z-10 w-full sm:max-w-[420px] max-h-[80vh] sm:max-h-[85vh] sm:mr-6 sm:mb-6 flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {content}
