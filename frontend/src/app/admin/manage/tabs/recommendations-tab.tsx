@@ -509,8 +509,14 @@ export function RecommendationsTab() {
                                 {Math.round(rec.conviction_score)}/100
                               </span>
                               {rec.conviction_confidence !== null && rec.conviction_confidence !== undefined && (
-                                <span className="text-[9px] text-[#00D4AA] px-1 py-0.5 rounded bg-[#00D4AA]/10 border border-[#00D4AA]/20">
-                                  ✦ {Math.round(rec.conviction_confidence * 100)}%
+                                <span className={`text-[9px] px-1 py-0.5 rounded border ${
+                                  (rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100)) >= 70
+                                    ? 'text-[#00D4AA] bg-[#00D4AA]/10 border-[#00D4AA]/20'
+                                    : (rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100)) >= 40
+                                    ? 'text-[#8B95A8] bg-[#1E293B] border-[#1E293B]'
+                                    : 'text-[#FF4D6A] bg-[#FF4D6A]/10 border-[#FF4D6A]/20'
+                                }`}>
+                                  ✦ {rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100)}%
                                 </span>
                               )}
                             </div>

@@ -518,14 +518,25 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                         {Math.round(rec.conviction_score ?? rec.conviction_level * 10)}
                         <span className="text-[10px] text-[#64748B] font-normal">/100</span>
                       </span>
-                      {rec.conviction_score !== undefined && rec.conviction_score !== null && (
-                        <span
-                          className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#00FFD0] bg-[#00D4AA]/10 border border-[#00D4AA]/20 px-1.5 py-0.5 rounded-full"
-                          title={rec.conviction_confidence ? `Signal Clarity: ${Math.round(rec.conviction_confidence * 100)}%` : 'Calibrated Signal'}
-                        >
-                          ✦ {rec.conviction_confidence ? `${Math.round(rec.conviction_confidence * 100)}%` : 'Calibrated'}
-                        </span>
-                      )}
+                      {rec.conviction_score !== undefined && rec.conviction_score !== null && (() => {
+                        const clarityVal = rec.conviction_confidence !== undefined && rec.conviction_confidence !== null
+                          ? (rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100))
+                          : null
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                              (clarityVal ?? 0) >= 70
+                                ? 'text-[#00FFD0] bg-[#00D4AA]/10 border-[#00D4AA]/20'
+                                : (clarityVal ?? 0) >= 40
+                                ? 'text-[#8B95A8] bg-[#1E293B] border-[#1E293B]'
+                                : 'text-[#FF4D6A] bg-[#FF4D6A]/10 border-[#FF4D6A]/20'
+                            }`}
+                            title={clarityVal !== null ? `Signal Clarity: ${clarityVal}% model certainty` : 'Calibrated Signal'}
+                          >
+                            ✦ {clarityVal !== null ? `${clarityVal}%` : 'Calibrated'}
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -670,14 +681,25 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                             {Math.round(rec.conviction_score ?? rec.conviction_level * 10)}
                           </span>
                           <span className="text-[10px] text-[#64748B]">/100</span>
-                          {rec.conviction_score !== undefined && rec.conviction_score !== null && (
-                            <span
-                              className="text-[9px] text-[#00FFD0] bg-[#00D4AA]/10 border border-[#00D4AA]/20 px-1 py-0.5 rounded leading-none"
-                              title={rec.conviction_confidence ? `Clarity: ${Math.round(rec.conviction_confidence * 100)}%` : 'Calibrated'}
-                            >
-                              ✦
-                            </span>
-                          )}
+                          {rec.conviction_score !== undefined && rec.conviction_score !== null && (() => {
+                            const clarityVal = rec.conviction_confidence !== undefined && rec.conviction_confidence !== null
+                              ? (rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100))
+                              : null
+                            return (
+                              <span
+                                className={`text-[9px] px-1 py-0.5 rounded leading-none border font-semibold ${
+                                  (clarityVal ?? 0) >= 70
+                                    ? 'text-[#00FFD0] bg-[#00D4AA]/10 border-[#00D4AA]/20'
+                                    : (clarityVal ?? 0) >= 40
+                                    ? 'text-[#8B95A8] bg-[#1E293B] border-[#1E293B]'
+                                    : 'text-[#FF4D6A] bg-[#FF4D6A]/10 border-[#FF4D6A]/20'
+                                }`}
+                                title={clarityVal !== null ? `Signal Clarity: ${clarityVal}% model certainty` : 'Calibrated Signal'}
+                              >
+                                ✦ {clarityVal !== null ? `${clarityVal}%` : ''}
+                              </span>
+                            )
+                          })()}
                         </div>
                       </td>
 

@@ -204,12 +204,25 @@ async def score_conviction_and_sentiment(
     # Legacy -2 to 2 integer scale
     sentiment_val = max(-2, min(2, round(sentiment_score_val)))
 
+    # Signal clarity: use Jev confidence if > 0, otherwise fallback to mode probability
+    conv_conf = conv_score.confidence
+    if conv_conf <= 0.0 and hasattr(conv_score, "probabilities") and conv_score.probabilities:
+        conv_conf = max(conv_score.probabilities.values())
+    elif conv_conf <= 0.0:
+        conv_conf = 0.20
+
+    sent_conf = sent_score.confidence
+    if sent_conf <= 0.0 and hasattr(sent_score, "probabilities") and sent_score.probabilities:
+        sent_conf = max(sent_score.probabilities.values())
+    elif sent_conf <= 0.0:
+        sent_conf = 0.20
+
     return {
         "conviction_score": conviction_score_val,
-        "conviction_confidence": round(conv_score.confidence, 2),
+        "conviction_confidence": round(conv_conf, 2),
         "conviction_level": conviction_level_val,
         "sentiment_score": sentiment_score_val,
-        "sentiment_confidence": round(sent_score.confidence, 2),
+        "sentiment_confidence": round(sent_conf, 2),
         "sentiment": sentiment_val,
     }
 
