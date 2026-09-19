@@ -66,11 +66,11 @@ async def main():
     if not recs:
         return
 
-    # Cache video transcripts
+    # Cache video transcripts in safe batch sizes of 50
     video_ids = list(set(r["video_id"] for r in recs if r.get("video_id")))
     transcripts = {}
-    for i in range(0, len(video_ids), 100):
-        batch_ids = video_ids[i : i + 100]
+    for i in range(0, len(video_ids), 50):
+        batch_ids = video_ids[i : i + 50]
         v_resp = client.table("videos").select("video_id, transcript").in_("video_id", batch_ids).execute()
         for v in v_resp.data or []:
             transcripts[v["video_id"]] = v.get("transcript") or ""
@@ -120,15 +120,19 @@ async def main():
                     stats["verified"] += 1
                     logger.info(f"[{ticker}] Target ${tp} VERIFIED (status={status}, conf={conf})")
                     if not args.dry_run:
-                        client.table("recommendations").update({"target_price_verified": True}).eq("id", rec["id"]).execute()
+                        await asyncio.to_thread(
+                            lambda: client.table("recommendations").update({"target_price_verified": True}).eq("id", rec["id"]).execute()
+                        )
                 else:
                     stats["stripped"] += 1
                     logger.info(f"[{ticker}] Target ${tp} STRIPPED ➔ NULL (status={status}, conf={conf})")
                     if not args.dry_run:
-                        client.table("recommendations").update({
-                            "target_price": None,
-                            "target_price_verified": False,
-                        }).eq("id", rec["id"]).execute()
+                        await asyncio.to_thread(
+                            lambda: client.table("recommendations").update({
+                                "target_price": None,
+                                "target_price_verified": False,
+                            }).eq("id", rec["id"]).execute()
+                        )
 
             except Exception as e:
                 stats["errors"] += 1
