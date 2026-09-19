@@ -67,11 +67,14 @@ The use cases are ranked from **highest impact (core data calibration & critical
 ### Use Case 1 (Priority #1): Calibrated Conviction & Sentiment Scoring via Jev `Score`
 
 * **Primitive:** [`Score`](https://docs.typesafe.ai/primitives/score.md)
-* **Status:** Ready to Implement
+* **Status:** ✅ **COMPLETED & DEPLOYED IN PRODUCTION** (100% of recommendations calibrated, live in backend pipeline & frontend UI)
 * **Target Files:**
   - [`backend/app/llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py)
+  - [`backend/app/typesafe_service.py`](file:///Users/noor/Projects/irec/backend/app/typesafe_service.py)
   - [`backend/app/schemas.py`](file:///Users/noor/Projects/irec/backend/app/schemas.py)
-  - [`backend/app/tier_ranking_service.py`](file:///Users/noor/Projects/irec/backend/app/tier_ranking_service.py)
+  - [`backend/app/admin_routes.py`](file:///Users/noor/Projects/irec/backend/app/admin_routes.py)
+  - [`frontend/src/app/admin/manage/tabs/recommendations-tab.tsx`](file:///Users/noor/Projects/irec/frontend/src/app/admin/manage/tabs/recommendations-tab.tsx)
+  - [`frontend/src/components/TickerSignalsLedger.tsx`](file:///Users/noor/Projects/irec/frontend/src/components/TickerSignalsLedger.tsx)
 
 #### Problem
 In [`schemas.py`](file:///Users/noor/Projects/irec/backend/app/schemas.py#L13-L15), conviction is defined as `int 1 to 10` and sentiment as `int -2 to 2`. Prompting Claude for raw integers produces subjective drift:
@@ -346,11 +349,11 @@ questions = {
 ## 4. Phased Implementation Roadmap
 
 ### Phase 1: Efficiency & Core Signal Calibration (Immediate Wins)
-1. **Implement Use Case 3 (Pre-Ingestion Triage):** Add `triage_video_transcript()` in [`backend/app/transcript.py`](file:///Users/noor/Projects/irec/backend/app/transcript.py). If $P(\text{has\_actionable\_recommendations}) < 0.20$, exit early.
-2. **Implement Use Case 1 (Calibrated Conviction & Sentiment):** Add post-extraction scoring in [`backend/app/llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py). Map Jev continuous scores into `conviction_level` and update [`tier_ranking_service.py`](file:///Users/noor/Projects/irec/backend/app/tier_ranking_service.py).
+1. **Use Case 1 (Calibrated Conviction & Sentiment):** ✅ **COMPLETED** — Post-extraction continuous 0–100 scoring in [`backend/app/typesafe_service.py`](file:///Users/noor/Projects/irec/backend/app/typesafe_service.py) & [`backend/app/llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py), fail-open database migrations, 100% database backfilled (0 uncalibrated signals), and UI updated.
+2. **Use Case 3 (Pre-Ingestion Triage):** Add `triage_video_transcript()` in [`backend/app/transcript.py`](file:///Users/noor/Projects/irec/backend/app/transcript.py). If $P(\text{has\_actionable\_recommendations}) < 0.20$, exit early.
 
 ### Phase 2: Quality Guardrails & Entity Disambiguation
-3. **Implement Use Case 2 (Verification Cascade):** Add `verify_recommendations()` in [`llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py). Route low-confidence/contradicted picks to the `/admin` moderation queue.
+3. **Use Case 2 (Verification Cascade & Price Target Guardrail):** 🟡 **NEXT UP** — Add `verify_recommendations()` in [`llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py). Verify thesis grounding, genuine analyst conviction, and validate price targets. Route low-confidence/contradicted picks to the `/admin` moderation queue.
 4. **Implement Use Case 5 (Ticker Disambiguation):** Integrate Jev `Choice` into [`ticker_validator.py`](file:///Users/noor/Projects/irec/backend/app/ticker_validator.py) when fuzzy matching yields multiple candidates.
 
 ### Phase 3: Metadata Enrichment & Radars
