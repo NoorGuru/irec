@@ -609,34 +609,31 @@ export default function ExplorePage() {
                             )}
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (isSelected) {
-                                  setQuickPeekStock(null)
-                                } else {
-                                  setQuickPeekStock(stock)
-                                }
-                              }}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all font-[family-name:var(--font-geist-mono)] cursor-pointer ${
-                                isSelected
-                                  ? 'bg-[#00D4AA] text-[#0A0F1A] font-bold shadow-sm'
-                                  : 'text-[#8B95A8] hover:text-[#00D4AA] bg-[#141B2D]/80 hover:bg-[#00D4AA]/10 border border-[#1E293B] hover:border-[#00D4AA]/40'
-                              }`}
-                            >
+                            <div className="flex items-center justify-end gap-1.5">
                               {isSelected ? (
-                                <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#0A0F1A] animate-ping" />
-                                  <span>Active</span>
-                                </>
+                                <Link
+                                  href={`/ticker?s=${stock.ticker}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#00D4AA] text-[#0A0F1A] hover:bg-[#00FFD0] transition-all font-[family-name:var(--font-geist-mono)] shadow-sm shadow-[#00D4AA]/20 cursor-pointer animate-in fade-in"
+                                  title={`Open full terminal for ${stock.ticker}`}
+                                >
+                                  <span>Open Terminal</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </Link>
                               ) : (
-                                <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setQuickPeekStock(stock)
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all font-[family-name:var(--font-geist-mono)] cursor-pointer text-[#8B95A8] hover:text-[#00D4AA] bg-[#141B2D]/80 hover:bg-[#00D4AA]/10 border border-[#1E293B] hover:border-[#00D4AA]/40"
+                                >
                                   <span>Inspect</span>
                                   <ArrowRight className="w-3 h-3" />
-                                </>
+                                </button>
                               )}
-                            </button>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -730,27 +727,38 @@ export default function ExplorePage() {
                     <div className="mt-3 pt-3 border-t border-[#1E293B]/60 flex items-center justify-between text-xs text-[#64748B]">
                       <span>{stock.last_mentioned_at ? formatRelativeTime(stock.last_mentioned_at) : 'No recency'}</span>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setQuickPeekStock(stock)
-                          }}
-                          className="text-[#00D4AA] hover:underline flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-[11px] cursor-pointer"
-                        >
-                          <span>Quick Intel</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                        <span className="text-[#334155]">•</span>
-                        <span 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            router.push(`/ticker?s=${stock.ticker}`)
-                          }}
-                          className="text-[#8B95A8] hover:text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] text-[11px] cursor-pointer"
-                        >
-                          Terminal →
-                        </span>
+                        {isSelected ? (
+                          <Link
+                            href={`/ticker?s=${stock.ticker}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#00D4AA] text-[#0A0F1A] font-bold text-[11px] font-[family-name:var(--font-geist-mono)] shadow-sm shadow-[#00D4AA]/20 animate-in fade-in"
+                          >
+                            <span>Open Full Terminal</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setQuickPeekStock(stock)
+                              }}
+                              className="text-[#00D4AA] hover:underline flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-[11px] cursor-pointer"
+                            >
+                              <span>Quick Intel</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                            <span className="text-[#334155]">•</span>
+                            <Link 
+                              href={`/ticker?s=${stock.ticker}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[#8B95A8] hover:text-[#F1F5F9] font-[family-name:var(--font-geist-mono)] text-[11px] cursor-pointer"
+                            >
+                              Terminal →
+                            </Link>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
