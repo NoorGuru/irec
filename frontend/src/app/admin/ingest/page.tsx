@@ -76,6 +76,7 @@ interface ExtractionResult {
   tickers_extracted: string[]
   recommendation_count: number
   video_summary?: string | null
+  calibration_failed?: boolean
 }
 
 interface FailedIngestion {
@@ -665,7 +666,7 @@ function JobCard({
               className="flex-1 rounded-lg border border-[#00D4AA]/30 bg-[#00D4AA]/15 py-2.5 text-xs font-semibold text-[#00FFD0] hover:bg-[#00D4AA]/25 flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
             >
               {isRecalibrating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-              ⚡ Recalibrate (v2)
+              ⚡ Recalibrate
             </button>
           </div>
         </div>
@@ -682,19 +683,27 @@ function JobCard({
                 </Link>
               ))}
               {result.tickers_extracted.length === 0 && <span className="text-xs text-[#8B95A8]">No tickers found.</span>}
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#00D4AA]/10 text-[#00FFD0] border border-[#00D4AA]/20">
-                <CheckCircle2 className="w-3 h-3 text-[#00D4AA]" /> Calibrated (v2)
-              </span>
+              {result.calibration_failed ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#FF4D6A]/10 text-[#FF4D6A] border border-[#FF4D6A]/20">
+                  <AlertTriangle className="w-3 h-3 text-[#FF4D6A]" /> Calibration Failed
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#00D4AA]/10 text-[#00FFD0] border border-[#00D4AA]/20">
+                  <CheckCircle2 className="w-3 h-3 text-[#00D4AA]" /> Calibrated
+                </span>
+              )}
             </div>
-            <button
-              onClick={() => handleRecalibrateVideo(result.video_id)}
-              disabled={isRecalibrating}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#ffffff]/10 bg-[#141B2D] text-xs font-medium text-[#8B95A8] hover:text-[#F1F5F9] hover:bg-[#1E293B] hover:border-[#ffffff]/20 transition-colors disabled:opacity-50"
-              title="Audit continuous scoring breakdown or re-score signals"
-            >
-              {isRecalibrating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-[#00D4AA]" />}
-              Audit / Re-score
-            </button>
+            {result.calibration_failed && (
+              <button
+                onClick={() => handleRecalibrateVideo(result.video_id)}
+                disabled={isRecalibrating}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#FF4D6A]/30 bg-[#FF4D6A]/10 text-xs font-semibold text-[#FF4D6A] hover:bg-[#FF4D6A]/20 transition-colors disabled:opacity-50"
+                title="Retry continuous signal calibration"
+              >
+                {isRecalibrating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-[#FF4D6A]" />}
+                ⚡ Recalibrate
+              </button>
+            )}
           </div>
           <div className="flex gap-3 mt-3">
             <Link href={`/video?id=${result.video_id}`} target="_blank" className="text-xs text-[#00D4AA] hover:underline">View Video →</Link>
@@ -716,7 +725,7 @@ function JobCard({
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-[#00D4AA]" />
               <span className="text-xs font-semibold text-[#F1F5F9] uppercase tracking-wider">
-                Calibrated Scoring Audit (v2)
+                Calibrated Scoring Audit
               </span>
             </div>
             <span className="text-[10px] font-mono text-[#8B95A8]">

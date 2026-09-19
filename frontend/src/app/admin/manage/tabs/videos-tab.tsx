@@ -262,7 +262,7 @@ export function VideosTab() {
     }
   }, [editingVideoId, editVideoTitle, editVideoPublishedAt])
 
-  // ─── Recalibrate (v2) ───
+  // ─── Recalibrate ───
 
   const handleRecalibrate = useCallback(async (videoId: string) => {
     setRecalibratingId(videoId)
@@ -277,7 +277,7 @@ export function VideosTab() {
         const data = await res.json()
         setRecalibrateNotice({
           type: 'success',
-          message: `Recalibrated ${data.recalibrated_count} signal(s) with continuous v2 scores.`,
+          message: `Recalibrated ${data.recalibrated_count} signal(s) with calibrated continuous scores.`,
         })
       } else {
         const err = await res.json().catch(() => null)
@@ -449,7 +449,7 @@ export function VideosTab() {
                 className="bg-[#00D4AA]/10 hover:bg-[#00D4AA]/20 text-[#00D4AA] border border-[#00D4AA]/30 font-medium"
               >
                 {bulkStatus === 'running' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
-                ⚡ Recalibrate v2 ({selected.size})
+                ⚡ Recalibrate ({selected.size})
               </Button>
               <Button
                 size="sm"
@@ -621,12 +621,12 @@ export function VideosTab() {
 
               {/* Actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                {/* Recalibrate (v2) */}
+                {/* Recalibrate */}
                 <button
                   onClick={() => handleRecalibrate(video.video_id)}
                   disabled={recalibratingId === video.video_id}
                   className="p-1.5 text-[#8B95A8] hover:text-[#00D4AA] hover:bg-[#00D4AA]/10 rounded transition-colors flex-shrink-0 disabled:opacity-50"
-                  title="⚡ Recalibrate (v2) — Continuous scoring"
+                  title="⚡ Recalibrate — Continuous scoring"
                 >
                   {recalibratingId === video.video_id ? (
                     <Loader2 className="w-4 h-4 animate-spin text-[#00D4AA]" />
@@ -696,7 +696,7 @@ export function VideosTab() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg text-[#F1F5F9]">
               <Zap className="w-5 h-5 text-[#00D4AA]" />
-              <span>Bulk Recalibrate Signals (v2)</span>
+              <span>Bulk Recalibrate Signals</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-[#8B95A8]">
               Continuous conviction scoring (0–100), sentiment (-2 to +2), clarity, and verbatim quotes.

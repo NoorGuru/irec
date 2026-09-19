@@ -411,6 +411,7 @@ async def extract_stream(
                     "tickers_extracted": tickers,
                     "recommendation_count": len(recommendations),
                     "video_summary": video_summary,
+                    "calibration_failed": any(rec.conviction_confidence is None for rec in recommendations) if recommendations else False,
                 },
             })
             return
@@ -627,6 +628,7 @@ async def extract_stream(
                 "tickers_extracted": tickers,
                 "recommendation_count": len(recommendations),
                 "video_summary": video_summary,
+                "calibration_failed": any(rec.conviction_confidence is None for rec in recommendations) if recommendations else False,
             },
         })
 
