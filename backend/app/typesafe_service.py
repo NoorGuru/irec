@@ -22,9 +22,13 @@ TYPESAFE_API_KEY = os.environ.get("TYPESAFE_API_KEY")
 DEFAULT_MODEL = "jev-latest"
 
 
+ENABLE_TYPESAFE_SCORING = os.environ.get("ENABLE_TYPESAFE_SCORING", "true").lower() == "true"
+
+
 def is_typesafe_configured() -> bool:
-    """Check if the TypeSafe API key is available in environment."""
-    return bool(os.environ.get("TYPESAFE_API_KEY"))
+    """Check if the TypeSafe API key is available and feature is enabled."""
+    enabled = os.environ.get("ENABLE_TYPESAFE_SCORING", "true").lower() == "true"
+    return enabled and bool(os.environ.get("TYPESAFE_API_KEY"))
 
 
 def _get_async_client() -> AsyncTypeSafeClient:
@@ -43,90 +47,121 @@ def slice_transcript_context(
     quote: str = "",
     ticker: str = "",
     stock_name: str = "",
+    catalyst_notes: str = "",
     target_price: float | None = None,
     window_chars: int = 3500,
 ) -> str:
     """Slice a relevant, boundary-safe context window from the full transcript.
 
-    Prioritization:
-    1. Verbatim quote match
-    2. Candidate target_price occurrence located near the company/ticker
-    3. Stock company name or ticker appearance
-    4. Fallback to beginning of transcript
+    Multi-Tier Grounding Strategy:
+    1. Normalized quote matching and sliding n-gram matching (8 down to 4 words).
+    2. Comprehensive corporate suffix stripping to isolate root brand names (e.g. Qualcomm, Micron, Marvell).
+    3. Thematic keyword-density clustering across all transcript occurrences to anchor onto the
+       actual in-depth discussion segment rather than passing intro hooks.
+    4. Proximity-anchored price target matching.
+    5. Safe ungrounded sentinel: returns empty string ("") instead of falling back to the sponsor pitch.
     """
     if not transcript:
         return ""
 
-    if len(transcript) <= window_chars:
-        return transcript
-
-    clean_transcript = re.sub(r"\s+", " ", transcript)
+    clean_transcript = re.sub(r"\s+", " ", transcript).strip()
     clean_transcript_lower = clean_transcript.lower()
 
-    # Strategy 1: Find verbatim quote (normalized)
-    if quote and len(quote.strip()) >= 15:
-        clean_quote = re.sub(r"\s+", " ", quote).strip().lower()
-        idx = clean_transcript_lower.find(clean_quote)
-        if idx != -1:
-            half = window_chars // 2
-            start = max(0, idx - half)
-            end = min(len(clean_transcript), idx + len(clean_quote) + half)
-            return clean_transcript[start:end].strip()
-
-    # Build company name search tokens (e.g. "Microsoft Corp" -> ["Microsoft Corp", "Microsoft"])
-    company_tokens = []
+    # Extract Brand and Company Search Tokens
+    tokens = set()
+    if ticker and len(ticker.strip()) >= 2:
+        tokens.add(ticker.strip().lower())
     if stock_name:
-        s_clean = re.sub(r"\b(inc|corp|corporation|ltd|holdings|co|company)\b\.?", "", stock_name, flags=re.IGNORECASE).strip()
-        if len(s_clean) >= 3:
-            company_tokens.append(s_clean.lower())
-        if stock_name.strip().lower() not in company_tokens:
-            company_tokens.append(stock_name.strip().lower())
-    if ticker:
-        company_tokens.append(ticker.strip().lower())
+        # Strip all standard corporate suffixes
+        cleaned_name = re.sub(
+            r"\b(inc|incorporated|corp|corporation|ltd|limited|holdings?|co|company|plc|n\.?v\.?|s\.?a\.?|ag|se|technolog(y|ies)|systems?|platforms?|enterprises?|group|therapeutics|pharmaceuticals?|laboratories|networks?|financial|services?|capital)\b\.?",
+            "",
+            stock_name,
+            flags=re.IGNORECASE,
+        ).strip()
+        for part in cleaned_name.split():
+            p = part.strip().lower()
+            if len(p) >= 3 and p not in {"the", "and", "for", "stock", "global"}:
+                tokens.add(p)
+        if cleaned_name.strip().lower():
+            tokens.add(cleaned_name.strip().lower())
 
-    # Strategy 2: If target_price is provided, locate occurrences of the price number
+    # If the transcript is shorter than window_chars, verify that the stock/quote is present
+    if len(clean_transcript) <= window_chars:
+        has_token = any(re.search(rf"\b{re.escape(t)}\b", clean_transcript_lower) for t in tokens)
+        has_quote = bool(quote and any(w in clean_transcript_lower for w in quote.lower().split() if len(w) > 3))
+        has_price = bool(target_price and str(int(target_price)) in clean_transcript)
+        if has_token or has_quote or has_price or (not tokens and not quote):
+            return clean_transcript
+        return ""
+
+    half = window_chars // 2
+
+    # Tier 1: Quote Grounding (handles ellipses, speech cleanups, and auto-caption differences)
+    if quote and len(quote.strip()) >= 10:
+        # Strip ellipses, brackets, and normalize punctuation
+        q_cleaned = re.sub(r"(\.\.\.+|…|\[.*?\])", " ", quote)
+        q_words = [w for w in re.sub(r"[^\w\s]", " ", q_cleaned).lower().split() if len(w) > 2]
+
+        # 1a. Full normalized quote match
+        norm_q = " ".join(q_words)
+        if norm_q and norm_q in clean_transcript_lower:
+            idx = clean_transcript_lower.find(norm_q)
+            return clean_transcript[max(0, idx - half) : min(len(clean_transcript), idx + len(norm_q) + half)].strip()
+
+        # 1b. Longest matching n-gram from quote (8 down to 4 words)
+        for n in range(min(8, len(q_words)), 3, -1):
+            for i in range(len(q_words) - n + 1):
+                phrase = " ".join(q_words[i : i + n])
+                idx = clean_transcript_lower.find(phrase)
+                if idx != -1:
+                    return clean_transcript[max(0, idx - half) : min(len(clean_transcript), idx + len(phrase) + half)].strip()
+
+    # Tier 3: Find All Candidate Positions and Cluster by Thematic Density
+    candidate_positions = []
+    for tok in tokens:
+        for m in re.finditer(rf"\b{re.escape(tok)}\b", clean_transcript_lower):
+            candidate_positions.append(m.start())
+
+    keywords = [w.lower() for w in re.findall(r"\b[a-zA-Z]{4,}\b", catalyst_notes)]
+    if quote:
+        keywords.extend([w.lower() for w in re.findall(r"\b[a-zA-Z]{4,}\b", quote)])
+
+    if candidate_positions:
+        # Score each candidate occurrence by keyword density in surrounding window
+        best_pos = candidate_positions[0]
+        best_score = -1
+        for pos in candidate_positions:
+            w_start = max(0, pos - 1500)
+            w_end = min(len(clean_transcript_lower), pos + 1500)
+            window_slice = clean_transcript_lower[w_start:w_end]
+            # Score = density of catalyst keywords + bonus for multiple company mentions
+            score = sum(1 for kw in keywords if kw in window_slice)
+            score += sum(2 for t in tokens if t in window_slice)
+            if score > best_score:
+                best_score = score
+                best_pos = pos
+
+        return clean_transcript[max(0, best_pos - half) : min(len(clean_transcript), best_pos + half)].strip()
+
+    # Tier 4: Target Price Grounding
     if target_price is not None and target_price > 0:
         tp_num = int(target_price) if target_price == int(target_price) else target_price
-        # Match price number with word boundary or dollar sign
-        tp_pattern = re.compile(rf"(?:\$|\b){re.escape(str(tp_num))}(?:\.0+)?\b")
-        price_matches = list(tp_pattern.finditer(clean_transcript))
-
+        price_matches = list(re.finditer(rf"(?:\$|\b){re.escape(str(tp_num))}(?:\.0+)?\b", clean_transcript))
         if price_matches:
-            # Score each price match by proximity to company_tokens
-            best_idx = None
-            best_dist = float("inf")
-            for m in price_matches:
-                m_pos = m.start()
-                # Check for company token in surrounding window
-                local_window = clean_transcript_lower[max(0, m_pos - 2000) : min(len(clean_transcript), m_pos + 2000)]
-                for tok in company_tokens:
-                    if tok in local_window:
-                        tok_pos = local_window.find(tok)
-                        dist = abs(tok_pos - 2000)
-                        if dist < best_dist:
-                            best_dist = dist
-                            best_idx = m_pos
+            best_idx = price_matches[0].start()
+            if tokens:
+                for m in price_matches:
+                    m_pos = m.start()
+                    local_window = clean_transcript_lower[max(0, m_pos - 1500) : min(len(clean_transcript), m_pos + 1500)]
+                    if any(tok in local_window for tok in tokens):
+                        best_idx = m_pos
+                        break
+            return clean_transcript[max(0, best_idx - half) : min(len(clean_transcript), best_idx + half)].strip()
 
-            # If an occurrence near company was found, or fall back to first occurrence
-            chosen_idx = best_idx if best_idx is not None else price_matches[0].start()
-            half = window_chars // 2
-            start = max(0, chosen_idx - half)
-            end = min(len(clean_transcript), chosen_idx + half)
-            return clean_transcript[start:end].strip()
-
-    # Strategy 3: Find stock name or ticker
-    for term in company_tokens:
-        pattern = re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE)
-        match = pattern.search(clean_transcript)
-        if match:
-            idx = match.start()
-            half = window_chars // 2
-            start = max(0, idx - half)
-            end = min(len(clean_transcript), idx + len(term) + half)
-            return clean_transcript[start:end].strip()
-
-    # Strategy 4: Fallback to beginning of transcript
-    return clean_transcript[:window_chars].strip()
+    # Tier 5: Safe Ungrounded Sentinel
+    # Return empty string instead of the sponsor read / video greeting
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -230,9 +265,9 @@ async def score_conviction_and_sentiment(
         ),
         "is_real_opinion": Noul(
             instructions=(
-                f"Does the speaker express an active, dedicated investment thesis or recommendation on {ticker} "
-                "(such as buying, holding, shorting, or accumulating a position), "
-                "rather than merely citing it in passing as a benchmark, competitor comparison, or macro example?"
+                f"Does the speaker express an active investment stance, directional opinion, or substantive thesis on {ticker} "
+                "(including buying, holding, accumulating, shorting, avoiding, or reviewing it as a stock proxy), "
+                "rather than merely mentioning the ticker symbol in passing without any commentary?"
             )
         ),
         "thesis_relation": Choice(
@@ -343,8 +378,9 @@ async def score_conviction_and_sentiment(
                 target_price_verified = False
 
         # Gate 1 & Gate 2 Verification
-        is_real = opinion_noul >= 0.30
         contradicts = bool(thesis_choice and thesis_choice.choice == "contradicts" and thesis_choice.confidence >= 0.70)
+        is_supported = bool(thesis_choice and thesis_choice.choice == "supports" and thesis_choice.confidence >= 0.60)
+        is_real = (opinion_noul >= 0.25) or is_supported
         is_verified = is_real and not contradicts
 
     return {
@@ -376,9 +412,27 @@ async def score_single_recommendation(
             quote=rec.quote,
             ticker=rec.ticker,
             stock_name=rec.stock_name,
+            catalyst_notes=rec.catalyst_notes,
             target_price=rec.target_price,
             window_chars=3500,
         )
+
+        # Fail-open if the stock could not be anchored in the transcript text
+        if not snippet:
+            logger.warning(
+                f"Could not anchor context for {rec.ticker} in transcript text. Failing open with Claude baseline."
+            )
+            if rec.initial_conviction_level is None:
+                rec.initial_conviction_level = rec.conviction_level
+            if rec.initial_sentiment is None:
+                rec.initial_sentiment = rec.sentiment
+            if rec.conviction_score is None and rec.conviction_level:
+                rec.conviction_score = float(rec.conviction_level * 10)
+            if rec.sentiment_score is None and rec.sentiment is not None:
+                rec.sentiment_score = float(rec.sentiment)
+            rec.is_verified = True
+            rec.target_price_verified = False
+            return rec
 
         calibrated = await score_conviction_and_sentiment(
             ticker=rec.ticker,
@@ -437,18 +491,23 @@ async def score_recommendations_batch(
     recs: list[Recommendation],
     transcript: str,
     model: str = DEFAULT_MODEL,
+    drop_unverified: bool = False,
 ) -> list[Recommendation]:
-    """Score and verify a batch of recommendations in parallel using Jev System One."""
+    """Score and verify a batch of recommendations in parallel using Jev System One.
+    
+    By default, drop_unverified is False to preserve all recommendations extracted
+    by Claude and persist them to the database with is_verified accurately flagged.
+    """
     if not recs:
         return recs
 
     if not is_typesafe_configured():
-        logger.warning("TYPESAFE_API_KEY not configured. Skipping calibrated scoring & verification.")
+        logger.warning("TypeSafe scoring disabled or unconfigured. Preserving Claude baseline.")
         # Ensure default conviction_score is populated from conviction_level for consistency
         for rec in recs:
-            if rec.conviction_score is None:
+            if rec.conviction_score is None and rec.conviction_level is not None:
                 rec.conviction_score = float(rec.conviction_level * 10)
-            if rec.sentiment_score is None:
+            if rec.sentiment_score is None and rec.sentiment is not None:
                 rec.sentiment_score = float(rec.sentiment)
             rec.is_verified = True
             rec.target_price_verified = False
@@ -470,15 +529,17 @@ async def score_recommendations_batch(
         else:
             scored_recs.append(res)
 
-    # Gate 1 & 2: Filter out dropped casual mentions or contradicted recommendations
-    verified_recs = []
-    for r in scored_recs:
-        if getattr(r, "is_verified", True) is False:
-            logger.info(f"[GUARD] Dropping unverified/casual mention of {r.ticker}")
-        else:
-            verified_recs.append(r)
+    # If explicitly requested, filter out unverified casual mentions
+    if drop_unverified:
+        verified_recs = []
+        for r in scored_recs:
+            if getattr(r, "is_verified", True) is False:
+                logger.info(f"[GUARD] Dropping unverified/casual mention of {r.ticker}")
+            else:
+                verified_recs.append(r)
+        return verified_recs
 
-    return verified_recs
+    return scored_recs
 
 
 # ---------------------------------------------------------------------------

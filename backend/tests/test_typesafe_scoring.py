@@ -192,3 +192,60 @@ async def test_initial_baseline_preserved_on_score():
         assert res.conviction_level == 9
         assert res.sentiment == 2
 
+
+def test_slice_transcript_context_ngram_with_ellipsis():
+    transcript = (
+        "Welcome to the channel. Today we analyze memory storage. "
+        "In its latest quarter, it kept 80 cents of every dollar. "
+        "And that is exactly what happens when everybody needs your product and only three companies can make it. "
+        "We are very bullish on this cycle."
+    )
+    # Quote with ellipsis and slight punctuation difference
+    quote = "In its latest quarter, it kept 80 cents... and only three companies can make it."
+    snippet = slice_transcript_context(transcript, quote=quote, ticker="MU", window_chars=250)
+    assert snippet != ""
+    assert "three companies" in snippet.lower()
+
+
+def test_slice_transcript_context_corporate_suffix_removal():
+    transcript = (
+        "Sponsor read for 2 minutes. "
+        "Now turning to our main semiconductor discussion. "
+        "Qualcomm has signed new smartphone IP licensing agreements and is expanding Snapdragon into PCs. "
+        "End of video."
+    )
+    # Stock name with 'Incorporated' which isn't spoken in the video
+    snippet = slice_transcript_context(
+        transcript,
+        ticker="QCOM",
+        stock_name="Qualcomm Incorporated",
+        catalyst_notes="Snapdragon PC expansion and licensing deals.",
+        window_chars=150,
+    )
+    assert "Qualcomm" in snippet
+    assert "Sponsor read" not in snippet
+
+
+@pytest.mark.anyio
+async def test_score_single_recommendation_ungrounded_fails_open():
+    rec = Recommendation(
+        ticker="XYZ",
+        stock_name="Completely Absent Company",
+        sentiment=1,
+        conviction_level=7,
+        catalyst_notes="Absent thesis",
+    )
+    transcript = "This transcript only discusses macroeconomic bonds and gold with zero stock picks."
+    res = await score_single_recommendation(rec, transcript)
+    # Must fail open with Claude baseline and NOT drop
+    assert res.is_verified is True
+    assert res.conviction_score == 70.0
+    assert res.sentiment_score == 1.0
+
+
+def test_feature_flag_disables_typesafe(monkeypatch):
+    from app.typesafe_service import is_typesafe_configured
+    monkeypatch.setenv("ENABLE_TYPESAFE_SCORING", "false")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "mock_key")
+    assert is_typesafe_configured() is False
+

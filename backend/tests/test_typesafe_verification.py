@@ -89,7 +89,7 @@ async def test_verification_genuine_recommendation_and_target_price():
 @pytest.mark.anyio
 async def test_verification_casual_mention_dropped():
     mock_resp = _build_mock_jev_response(
-        is_real_opinion=0.10,  # Below 0.30 threshold
+        is_real_opinion=0.10,  # Below threshold
         thesis_choice="unsupported",
     )
     mock_client = AsyncMock()
@@ -107,8 +107,14 @@ async def test_verification_casual_mention_dropped():
                 catalyst_notes="Passing negative comparison.",
             )
         ]
+        # By default, recommendations are preserved with is_verified=False for admin inspection
         result = await score_recommendations_batch(recs, "Unlike Intel which is struggling, AMD is soaring.")
-        assert len(result) == 0  # Dropped from batch
+        assert len(result) == 1
+        assert result[0].is_verified is False
+
+        # When drop_unverified is explicitly True, unverified recs are dropped
+        dropped = await score_recommendations_batch(recs, "Unlike Intel which is struggling, AMD is soaring.", drop_unverified=True)
+        assert len(dropped) == 0
 
 
 @pytest.mark.anyio
@@ -133,8 +139,14 @@ async def test_verification_contradicted_thesis_dropped():
                 catalyst_notes="Strong robotaxi rollout next month.",
             )
         ]
+        # Preserved with is_verified=False
         result = await score_recommendations_batch(recs, "Robotaxi is delayed indefinitely, I am short TSLA.")
-        assert len(result) == 0  # Contradicted thesis dropped
+        assert len(result) == 1
+        assert result[0].is_verified is False
+
+        # Dropped when drop_unverified=True
+        dropped = await score_recommendations_batch(recs, "Robotaxi is delayed indefinitely, I am short TSLA.", drop_unverified=True)
+        assert len(dropped) == 0
 
 
 @pytest.mark.anyio

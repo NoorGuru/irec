@@ -1,0 +1,674 @@
+{
+  "timestamp": 1790427236.026998,
+  "total_processed": 27,
+  "total_before_recs": 102,
+  "total_after_recs": 162,
+  "total_new_recs_recovered": 60,
+  "results": [
+    {
+      "yid": "icoRZgwZibI",
+      "title": "5 Best Stocks to Buy NOW | 25-Year Investor Reveals His Buys!",
+      "status": "success",
+      "before_count": 6,
+      "after_count": 6,
+      "before_tickers": [
+        "MU",
+        "TMUS",
+        "NFLX",
+        "NVDA",
+        "ISRG",
+        "CELH"
+      ],
+      "after_tickers": [
+        "NVDA",
+        "MU",
+        "CELH",
+        "NFLX",
+        "ISRG",
+        "TMUS"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "7lujKKtSvpY",
+      "title": "Get READY: These 3 Stocks Could be the Next NVIDIA Growth Story",
+      "status": "success",
+      "before_count": 3,
+      "after_count": 3,
+      "before_tickers": [
+        "CRDO",
+        "CLS",
+        "NU"
+      ],
+      "after_tickers": [
+        "CRDO",
+        "CLS",
+        "NU"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "kLpI5TKt_9o",
+      "title": "The Most Obvious Buys in This Market Right Now",
+      "status": "success",
+      "before_count": 4,
+      "after_count": 4,
+      "before_tickers": [
+        "META",
+        "AMZN",
+        "MELI",
+        "NVDA"
+      ],
+      "after_tickers": [
+        "META",
+        "AMZN",
+        "NVDA",
+        "MELI"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "gymSw4Urmzw",
+      "title": "Top 8 Stocks to BUY NOW (High Growth Stocks)",
+      "status": "success",
+      "before_count": 8,
+      "after_count": 8,
+      "before_tickers": [
+        "MRVL",
+        "NET",
+        "DDOG",
+        "CRWD",
+        "SOFI",
+        "NU",
+        "COHR",
+        "GOOGL"
+      ],
+      "after_tickers": [
+        "MRVL",
+        "NET",
+        "DDOG",
+        "CRWD",
+        "SOFI",
+        "NU",
+        "COHR",
+        "GOOGL"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "dc8QnzDLxK0",
+      "title": "Why Louie Ignored the SpaceX IPO and Bought These 2 Stocks Instead",
+      "status": "success",
+      "before_count": 6,
+      "after_count": 7,
+      "before_tickers": [
+        "NVDA",
+        "PLTR",
+        "MU",
+        "BE",
+        "MYRG",
+        "NESR"
+      ],
+      "after_tickers": [
+        "NVDA",
+        "PLTR",
+        "MU",
+        "BE",
+        "MYRG",
+        "NESR",
+        "RKLB"
+      ],
+      "added_tickers": [
+        "RKLB"
+      ]
+    },
+    {
+      "yid": "fmL9iJDVLik",
+      "title": "Is Microsoft Back Below $400 a MASSIVE Opportunity? | Microsoft (MSFT) Stock Analysis! |",
+      "status": "success",
+      "before_count": 2,
+      "after_count": 2,
+      "before_tickers": [
+        "GOOGL",
+        "MSFT"
+      ],
+      "after_tickers": [
+        "MSFT",
+        "GOOGL"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "9qt9SDZip1Y",
+      "title": "If You're Not Buying Stocks Right Now, You Will Miss History Being Made",
+      "status": "success",
+      "before_count": 3,
+      "after_count": 3,
+      "before_tickers": [
+        "CRWD",
+        "PLTR",
+        "SNOW"
+      ],
+      "after_tickers": [
+        "PLTR",
+        "CRWD",
+        "SNOW"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "YbXMhDgWMVU",
+      "title": "The Mag 7 Is Outdated \u2014 Here\u2019s Where To Invest Instead",
+      "status": "success",
+      "before_count": 8,
+      "after_count": 10,
+      "before_tickers": [
+        "NVDA",
+        "GOOGL",
+        "TSM",
+        "MU",
+        "DLR",
+        "VRT",
+        "AEP",
+        "TSLA"
+      ],
+      "after_tickers": [
+        "NVDA",
+        "GOOGL",
+        "TSM",
+        "MU",
+        "DLR",
+        "VRT",
+        "AEP",
+        "TSLA",
+        "GE",
+        "HWM"
+      ],
+      "added_tickers": [
+        "GE",
+        "HWM"
+      ]
+    },
+    {
+      "yid": "iOyUlIYGa1E",
+      "title": "This Critical Material Just Got a $1.6 Billion Bet (You'll Wish You Knew Sooner)",
+      "status": "success",
+      "before_count": 3,
+      "after_count": 2,
+      "before_tickers": [
+        "KAZR",
+        "ASPI",
+        "TURN"
+      ],
+      "after_tickers": [
+        "KAZR",
+        "ASPI"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "gCZFeVCQci8",
+      "title": "The Nvidia Signal That Screams Buy Right Now!",
+      "status": "success",
+      "before_count": 1,
+      "after_count": 1,
+      "before_tickers": [
+        "NVDA"
+      ],
+      "after_tickers": [
+        "NVDA"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "n2ZelmuhHhE",
+      "title": "If You Missed NVDA... Don't Miss These 2 Stocks",
+      "status": "success",
+      "before_count": 2,
+      "after_count": 3,
+      "before_tickers": [
+        "AMD",
+        "MRVL"
+      ],
+      "after_tickers": [
+        "AMD",
+        "MRVL",
+        "NVDA"
+      ],
+      "added_tickers": [
+        "NVDA"
+      ]
+    },
+    {
+      "yid": "pWnu1C8I6Xw",
+      "title": "Superinvestors are buying this stock I added $10,000+ last week",
+      "status": "success",
+      "before_count": 2,
+      "after_count": 2,
+      "before_tickers": [
+        "VST",
+        "BE"
+      ],
+      "after_tickers": [
+        "VST",
+        "BE"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "5k08TmLAvpw",
+      "title": "NVIDIA Just Changed the Economics of AI Data Centers",
+      "status": "success",
+      "before_count": 1,
+      "after_count": 3,
+      "before_tickers": [
+        "IREN"
+      ],
+      "after_tickers": [
+        "NVDA",
+        "IREN",
+        "PLTR"
+      ],
+      "added_tickers": [
+        "NVDA",
+        "PLTR"
+      ]
+    },
+    {
+      "yid": "lajOcXnUDc0",
+      "title": "The Nanalyze Verdict: Apple Stock",
+      "status": "success",
+      "before_count": 1,
+      "after_count": 1,
+      "before_tickers": [
+        "AAPL"
+      ],
+      "after_tickers": [
+        "AAPL"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "FXDiB6n-5RU",
+      "title": "Did You MISS Nvidia? The Next Winner Is Hiding in Plain Sight | Feat. Couch Investor",
+      "status": "success",
+      "before_count": 5,
+      "after_count": 12,
+      "before_tickers": [
+        "NVDA",
+        "SOFI",
+        "GOOGL",
+        "AMD",
+        "CRWV"
+      ],
+      "after_tickers": [
+        "NVDA",
+        "MU",
+        "META",
+        "AVGO",
+        "ORCL",
+        "NU",
+        "SOFI",
+        "NBIS",
+        "AMD",
+        "CRWV",
+        "AXON",
+        "DLO"
+      ],
+      "added_tickers": [
+        "MU",
+        "META",
+        "AVGO",
+        "ORCL",
+        "NU",
+        "NBIS",
+        "AXON",
+        "DLO"
+      ]
+    },
+    {
+      "yid": "_p9OTVGlzdQ",
+      "title": "Trump Is Betting Billions on These Stocks (You'll Regret Following)",
+      "status": "success",
+      "before_count": 5,
+      "after_count": 5,
+      "before_tickers": [
+        "MP",
+        "LAC",
+        "GEV",
+        "KEY",
+        "PUMP"
+      ],
+      "after_tickers": [
+        "MP",
+        "LAC",
+        "GEV",
+        "KEY",
+        "PUMP"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "0Vt1jyYt7sc",
+      "title": "3 Interesting Stocks Right Now",
+      "status": "success",
+      "before_count": 3,
+      "after_count": 3,
+      "before_tickers": [
+        "BKNG",
+        "ROL",
+        "SPGI"
+      ],
+      "after_tickers": [
+        "BKNG",
+        "ROL",
+        "SPGI"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "EXUivL-ARBE",
+      "title": "\u0623\u0641\u0636\u0644 4 \u0623\u0633\u0647\u0645 \u0630\u0643\u0627\u0621 \u0625\u0635\u0637\u0646\u0627\u0639\u064a \u0644\u0644\u0625\u0633\u062a\u062b\u0645\u0627\u0631 \u0627\u0644\u0622\u0646\u061f",
+      "status": "success",
+      "before_count": 4,
+      "after_count": 4,
+      "before_tickers": [
+        "NVDA",
+        "AMD",
+        "META",
+        "TSM"
+      ],
+      "after_tickers": [
+        "NVDA",
+        "AMD",
+        "META",
+        "TSM"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "BFJ4Khk8hHw",
+      "title": "Is the AI Bubble on the Verge of Collapse?",
+      "status": "success",
+      "before_count": 2,
+      "after_count": 4,
+      "before_tickers": [
+        "SNDK",
+        "SKHY"
+      ],
+      "after_tickers": [
+        "MU",
+        "SNDK",
+        "HXSCL",
+        "NVDA"
+      ],
+      "added_tickers": [
+        "MU",
+        "HXSCL",
+        "NVDA"
+      ]
+    },
+    {
+      "yid": "LhtTOk2EJ1Y",
+      "title": "History Is About to Be Made (Stocks Are Roaring Back)",
+      "status": "success",
+      "before_count": 13,
+      "after_count": 22,
+      "before_tickers": [
+        "AMD",
+        "MP",
+        "META",
+        "AON",
+        "PSKY",
+        "WBD",
+        "BWET",
+        "FPS",
+        "GRML",
+        "SLV",
+        "IONQ",
+        "NVTS",
+        "BE"
+      ],
+      "after_tickers": [
+        "AMD",
+        "MP",
+        "META",
+        "AON",
+        "BWE",
+        "FPS",
+        "NIO",
+        "PSKY",
+        "WBD",
+        "IMSR",
+        "BE",
+        "IBM",
+        "IONQ",
+        "GRML",
+        "SLV",
+        "GLND",
+        "ALOY",
+        "AEHR",
+        "NVTS",
+        "NVO",
+        "TSLA",
+        "RDW"
+      ],
+      "added_tickers": [
+        "BWE",
+        "NIO",
+        "IMSR",
+        "IBM",
+        "GLND",
+        "ALOY",
+        "AEHR",
+        "NVO",
+        "TSLA",
+        "RDW"
+      ]
+    },
+    {
+      "yid": "w45BZ8xdhqk",
+      "title": "Why I Doubled Down on Amazon Stock",
+      "status": "success",
+      "before_count": 1,
+      "after_count": 1,
+      "before_tickers": [
+        "AMZN"
+      ],
+      "after_tickers": [
+        "AMZN"
+      ],
+      "added_tickers": []
+    },
+    {
+      "yid": "jQhVyoqYcKc",
+      "title": "Expert Reveals Best Stocks to Buy Now for the AI Inference Shift",
+      "status": "success",
+      "before_count": 6,
+      "after_count": 19,
+      "before_tickers": [
+        "ALAB",
+        "COHR",
+        "KLAC",
+        "NOK",
+        "SNDK",
+        "ORCL"
+      ],
+      "after_tickers": [
+        "ALAB",
+        "MU",
+        "SNDK",
+        "LRCX",
+        "KLAC",
+        "AMAT",
+        "NET",
+        "ANET",
+        "COHR",
+        "LITE",
+        "AOI",
+        "GLW",
+        "RKLB",
+        "NOK",
+        "CIEN",
+        "CRWV",
+        "NBIS",
+        "ORCL",
+        "NVDA"
+      ],
+      "added_tickers": [
+        "MU",
+        "LRCX",
+        "AMAT",
+        "NET",
+        "ANET",
+        "LITE",
+        "AOI",
+        "GLW",
+        "RKLB",
+        "CIEN",
+        "CRWV",
+        "NBIS",
+        "NVDA"
+      ]
+    },
+    {
+      "yid": "59nt4X9NX6E",
+      "title": "Best Stocks to Buy Now? 2 Hated Names I'm Buying at These Levels!",
+      "status": "success",
+      "before_count": 2,
+      "after_count": 5,
+      "before_tickers": [
+        "AVGO",
+        "ORCL"
+      ],
+      "after_tickers": [
+        "AVGO",
+        "ORCL",
+        "NVDA",
+        "SMH",
+        "SOXX"
+      ],
+      "added_tickers": [
+        "NVDA",
+        "SMH",
+        "SOXX"
+      ]
+    },
+    {
+      "yid": "e7JZBqpqaVo",
+      "title": "I Rank the BEST Stocks to Buy from 9 Finance YouTubers",
+      "status": "success",
+      "before_count": 4,
+      "after_count": 9,
+      "before_tickers": [
+        "META",
+        "NBIS",
+        "ADBE",
+        "DUOL"
+      ],
+      "after_tickers": [
+        "META",
+        "NOW",
+        "ORCL",
+        "NBIS",
+        "ADBE",
+        "AMD",
+        "AMZN",
+        "DUOL",
+        "SOFI"
+      ],
+      "added_tickers": [
+        "NOW",
+        "ORCL",
+        "AMD",
+        "AMZN",
+        "SOFI"
+      ]
+    },
+    {
+      "yid": "TZkeaS_F5q4",
+      "title": "3 Incredible Stocks to Buy Right Now",
+      "status": "success",
+      "before_count": 3,
+      "after_count": 4,
+      "before_tickers": [
+        "SOFI",
+        "NVDA",
+        "AMD"
+      ],
+      "after_tickers": [
+        "SOFI",
+        "LLY",
+        "NVDA",
+        "AMD"
+      ],
+      "added_tickers": [
+        "LLY"
+      ]
+    },
+    {
+      "yid": "X-V-c6jmZ5E",
+      "title": "**TRUMP JUST PUT MILLIONS IN THIS!",
+      "status": "success",
+      "before_count": 1,
+      "after_count": 13,
+      "before_tickers": [
+        "MSTR"
+      ],
+      "after_tickers": [
+        "SPCX",
+        "TSLA",
+        "MSTR",
+        "SMCI",
+        "NVDA",
+        "PANW",
+        "CRWD",
+        "NOW",
+        "CRM",
+        "CHD",
+        "MRVL",
+        "INTU",
+        "NTRB"
+      ],
+      "added_tickers": [
+        "SPCX",
+        "TSLA",
+        "SMCI",
+        "NVDA",
+        "PANW",
+        "CRWD",
+        "NOW",
+        "CRM",
+        "CHD",
+        "MRVL",
+        "INTU",
+        "NTRB"
+      ]
+    },
+    {
+      "yid": "D2xXLuw74zc",
+      "title": "If You Missed Nvidia, This is Even Bigger",
+      "status": "success",
+      "before_count": 3,
+      "after_count": 6,
+      "before_tickers": [
+        "NOVT",
+        "ALGM",
+        "SYM"
+      ],
+      "after_tickers": [
+        "NOVT",
+        "ALGM",
+        "SYM",
+        "RRX",
+        "IBOT",
+        "ROBO"
+      ],
+      "added_tickers": [
+        "RRX",
+        "IBOT",
+        "ROBO"
+      ]
+    }
+  ]
+}
