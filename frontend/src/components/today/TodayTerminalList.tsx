@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Radio, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import TextScramble from '@/components/TextScramble'
+import { formatAura, formatConviction } from '@/lib/utils'
 
 export type SortOption = 'aura_score' | 'mentions' | 'conviction' | 'consensus_sentiment'
 
@@ -159,9 +160,11 @@ export default function TodayTerminalList({ plays, sortBy, activeTab }: TodayTer
                   className={`text-sm md:text-lg font-black font-[family-name:var(--font-geist-mono)] ${activeColorText} leading-none`}
                 >
                   {sortBy === 'conviction'
-                    ? `${metricValue.toFixed(1)}`
+                    ? formatConviction(metricValue)
                     : sortBy === 'mentions'
                     ? `${metricValue}x`
+                    : sortBy === 'aura_score'
+                    ? formatAura(metricValue)
                     : metricValue.toFixed(1).replace('.0', '')}
                 </span>
                 <div className="w-full h-1 md:h-1.5 bg-[#0A0F1A] rounded-full overflow-hidden border border-white/5 shadow-inner">

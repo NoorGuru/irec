@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
 import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 import Loading from '@/components/ui/loading'
-import { formatLocalTime, formatRelativeTime, formatMarketTime, formatConviction } from '@/lib/utils'
+import { formatLocalTime, formatRelativeTime, formatMarketTime, formatConviction, formatAura } from '@/lib/utils'
 import { ConvictionMini } from '@/components/TickerRow'
 import { TVMiniChart } from '@/components/TVWidgets'
 
@@ -215,7 +215,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                     Aura Score (30 days signal)
                   </div>
                   <div className="text-6xl md:text-8xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] tracking-tighter flex items-baseline gap-2">
-                    {radar.aura_score}
+                    {Math.round(radar.aura_score)}
                     <span className="text-xl text-[#64748B] font-medium tracking-normal">/100</span>
                   </div>
                 </div>
@@ -224,8 +224,9 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                   <div className="text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-2">
                     All-Time Omni Score
                   </div>
-                  <div className="text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#8B95A8] tracking-tighter">
-                    {radar.omni_score}
+                  <div className="text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#8B95A8] tracking-tighter flex items-baseline gap-1">
+                    {Math.round(radar.omni_score)}
+                    <span className="text-sm text-[#64748B] font-medium tracking-normal">/100</span>
                   </div>
                 </div>
 
@@ -301,7 +302,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                     <span>{p.ticker}</span>
                     <span className="text-[10px] opacity-70">
                       {isBull ? '+' : ''}
-                      {p.aura_score.toFixed(0)}
+                      {Math.round(p.aura_score)}
                     </span>
                   </Link>
                 )
@@ -406,7 +407,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                       Aura Score (30 days signal)
                     </div>
                     <div className="text-4xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-                      {play.aura_score}
+                      {formatAura(play.aura_score)}
                     </div>
                   </div>
 
@@ -415,7 +416,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                       Omni Score (All-Time)
                     </div>
                     <div className="text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-                      {play.omni_score}
+                      {formatAura(play.omni_score)}
                     </div>
                   </div>
                 </div>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Activity, RefreshCw, Pin, Search } from 'lucide-react'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, formatAura } from '@/lib/utils'
 
 interface StockMeta {
   ticker: string
@@ -180,9 +180,9 @@ export function StocksTab() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-24 h-1.5 bg-[#1E293B] rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-[#00D4AA]/50 to-[#00D4AA]" style={{ width: `${Math.min(100, s.priority_score * 100)}%` }} />
+                            <div className="h-full bg-gradient-to-r from-[#00D4AA]/50 to-[#00D4AA]" style={{ width: `${Math.min(100, s.priority_score <= 1 ? s.priority_score * 100 : s.priority_score)}%` }} />
                           </div>
-                          <span className="text-xs text-[#8B95A8] font-mono">{s.priority_score.toFixed(3)}</span>
+                          <span className="text-xs text-[#8B95A8] font-mono">{formatAura(s.priority_score)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-[#F1F5F9] font-mono">{s.mention_count_30d}</td>
@@ -240,9 +240,9 @@ export function StocksTab() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-24 h-1.5 bg-[#1E293B] rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-[#64748B]/50 to-[#64748B]" style={{ width: `${Math.min(100, s.priority_score * 100)}%` }} />
+                            <div className="h-full bg-gradient-to-r from-[#64748B]/50 to-[#64748B]" style={{ width: `${Math.min(100, s.priority_score <= 1 ? s.priority_score * 100 : s.priority_score)}%` }} />
                           </div>
-                          <span className="text-xs text-[#8B95A8] font-mono">{s.priority_score.toFixed(3)}</span>
+                          <span className="text-xs text-[#8B95A8] font-mono">{formatAura(s.priority_score)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-[#F1F5F9] font-mono">{s.mention_count_30d}</td>

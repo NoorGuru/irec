@@ -67,6 +67,7 @@ export default function TodayAuraReactor({ score, direction }: TodayAuraReactorP
       <div className="absolute flex flex-col items-center justify-center z-20">
         <span className="font-[family-name:var(--font-geist-mono)] text-xs font-black text-[#F1F5F9] leading-none">
           {score}
+          <span className="text-[8px] text-[#64748B] font-normal">/100</span>
         </span>
       </div>
     </div>

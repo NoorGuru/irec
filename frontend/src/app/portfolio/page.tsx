@@ -3,7 +3,7 @@
 import { Activity, ArrowLeft, TrendingUp, TrendingDown, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings, Search, PieChart, X, RotateCcw, BarChart3, ActivitySquare, Shield, Trophy, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar } from '@/components/TickerRow'
-import { normalizeAvgConviction100 } from '@/lib/utils'
+import { normalizeAvgConviction100, formatAura } from '@/lib/utils'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -297,7 +297,7 @@ export default function PortfolioPage() {
       if (suggestion) {
         insights.push({ 
           type: 'info', 
-          text: `Missing ${topMissing} exposure. Consider hedging with ${suggestion.ticker} (Aura Score: ${suggestion.overall_sentiment.toFixed(1)})` 
+          text: `Missing ${topMissing} exposure. Consider hedging with ${suggestion.ticker} (Aura: ${formatAura(suggestion.priority_score ?? 0)})` 
         });
       } else {
         insights.push({ type: 'info', text: `Consider diversifying into ${topMissing} to reduce risk.` });
@@ -802,7 +802,7 @@ export default function PortfolioPage() {
                           <span className="text-[9px] text-[#64748B] uppercase tracking-widest font-bold">Aura Score</span>
                           <div className="flex items-center gap-2">
                             <span className="font-[family-name:var(--font-geist-mono)] text-2xl font-black text-[#F1F5F9]">
-                              {play.aura_score}
+                              {formatAura(play.aura_score)}
                             </span>
                             <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#00D4AA] bg-[#00D4AA]/10 px-1.5 py-0.5 rounded">
                               +{play.consensus_sentiment.toFixed(1)} sent
@@ -888,7 +888,7 @@ export default function PortfolioPage() {
                     : 'bg-transparent border-[#1E293B] text-[#64748B] hover:text-[#8B95A8] hover:border-[#2D3A4F]'
                 }`}
               >
-                Aura Score
+                Consensus
               </button>
             </div>
           </div>
@@ -1072,7 +1072,7 @@ export default function PortfolioPage() {
                         {/* Block 3: Aura Conviction */}
                         <div className="flex flex-col gap-2">
                           <span className="text-[10px] text-[#64748B] uppercase tracking-widest font-bold flex items-center justify-between">
-                            Aura Score
+                            Consensus
                             {isLowConfidence && <span className="px-1.5 py-0.5 bg-[#F59E0B]/10 text-[#F59E0B] text-[8px] rounded">Low Data</span>}
                           </span>
                           <div className="flex flex-col gap-2 justify-center h-full pb-2">

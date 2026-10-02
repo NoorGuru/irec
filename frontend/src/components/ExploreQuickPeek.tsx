@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, formatAura } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 interface RecentCatalyst {
@@ -235,7 +235,7 @@ export default function ExploreQuickPeek({
               Aura Score
             </span>
             <span className="text-sm font-bold text-[#F1F5F9] font-[family-name:var(--font-geist-mono)]">
-              {stock.priority_score.toFixed(2)}
+              {formatAura(stock.priority_score)}
             </span>
           </div>
         </div>

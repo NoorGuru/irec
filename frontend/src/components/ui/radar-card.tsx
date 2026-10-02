@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
 import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 import { useMemo } from 'react'
+import { formatAura } from '@/lib/utils'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   crown: Crown,
@@ -184,7 +185,8 @@ export default function RadarCard({
                 <span className="truncate">Aura Score (30d Signal)</span>
               </div>
               <div className="text-4xl md:text-5xl font-black font-[family-name:var(--font-geist-mono)] text-[#F1F5F9] flex items-baseline gap-1">
-                {radar.aura_score}
+                {Math.round(radar.aura_score)}
+                <span className="text-sm text-[#64748B] font-medium">/100</span>
               </div>
             </div>
 
@@ -192,8 +194,9 @@ export default function RadarCard({
               <div className="text-[9px] md:text-[10px] text-[#64748B] uppercase tracking-widest font-[family-name:var(--font-geist-mono)] mb-1 whitespace-nowrap">
                 Omni (All-Time)
               </div>
-              <div className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-                {radar.omni_score}
+              <div className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-geist-mono)] text-[#8B95A8] flex items-baseline gap-1">
+                {Math.round(radar.omni_score)}
+                <span className="text-xs text-[#64748B] font-medium">/100</span>
               </div>
             </div>
           </div>
@@ -240,7 +243,7 @@ export default function RadarCard({
 
               {/* Score Badge */}
               <div className="relative shrink-0 text-xs md:text-sm font-bold text-[#00D4AA] font-[family-name:var(--font-geist-mono)] bg-[#00D4AA]/5 px-2.5 py-0.5 rounded-md border border-[#00D4AA]/20">
-                {topPlay.aura_score}
+                {formatAura(topPlay.aura_score)}
               </div>
             </div>
           </div>

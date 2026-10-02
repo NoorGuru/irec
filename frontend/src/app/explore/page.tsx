@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, ChevronDown, ChevronUp, Activity, BarChart2, ArrowUpDown, ArrowDown, ArrowUp, ArrowRight } from 'lucide-react'
-import { formatRelativeTime, formatLocalTime, normalizeAvgConviction100 } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, normalizeAvgConviction100, formatAura } from '@/lib/utils'
 import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import Loading from '@/components/ui/loading'
@@ -591,7 +591,7 @@ export default function ExplorePage() {
 
                           <td className="px-5 py-4">
                             <span className="font-[family-name:var(--font-geist-mono)] text-sm font-semibold text-[#F1F5F9]">
-                              {stock.priority_score.toFixed(2)}
+                              {formatAura(stock.priority_score)}
                             </span>
                           </td>
 
@@ -721,7 +721,7 @@ export default function ExplorePage() {
                       <div>
                         <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">AURA SCORE</span>
                         <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#00D4AA]">
-                          {stock.priority_score.toFixed(2)}
+                          {formatAura(stock.priority_score)}
                         </span>
                       </div>
                       <div>
