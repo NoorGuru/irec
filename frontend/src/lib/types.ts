@@ -31,15 +31,15 @@ export interface AggregatedTicker {
 
 export interface RadarTrendPoint {
   date: string
-  aura_score: number
+  aura_score: number // 0–100
 }
 
 export interface PlayResponse {
   ticker: string
   stock_name: string
   direction: string
-  aura_score: number
-  omni_score: number
+  aura_score: number // 0–100
+  omni_score: number // 0–100
   action_label: string
   consensus_sentiment: number
   avg_conviction: number // 0-100
@@ -59,8 +59,8 @@ export interface RadarResponse {
   icon: string
   category: string
   sentiment_pulse: number
-  aura_score: number
-  omni_score: number
+  aura_score: number // 0–100
+  omni_score: number // 0–100
   volume: number
   trend: RadarTrendPoint[]
   plays: PlayResponse[]
@@ -71,7 +71,7 @@ export interface StockDirectoryItem {
   stock_name: string | null
   tier: number
   is_pinned: boolean
-  priority_score: number
+  priority_score: number // 0–1 ranking weight; display via formatAura() as 0–100
   mention_count_30d: number
   analyst_count: number
   last_mentioned_at: string | null

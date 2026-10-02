@@ -33,6 +33,26 @@ export function formatConvictionOrDash(score: number | null | undefined): string
   return formatConviction(score)
 }
 
+/**
+ * Canonical public aura scale: 0–100.
+ * Legacy stock_meta.priority_score is 0–1; today/radar aura_score is already 0–100.
+ */
+export function normalizeAura100(value: number): number {
+  if (value > 0 && value <= 1) return value * 100
+  return Math.max(0, Math.min(100, value))
+}
+
+export function formatAura(score: number, digits = 0): string {
+  const normalized = normalizeAura100(score)
+  const n = digits > 0 ? normalized.toFixed(digits) : String(Math.round(normalized))
+  return `${n}/100`
+}
+
+export function formatAuraOrDash(score: number | null | undefined): string {
+  if (score == null) return '—'
+  return formatAura(score)
+}
+
 export function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString)
   const now = new Date()
