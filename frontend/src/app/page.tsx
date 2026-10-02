@@ -391,23 +391,25 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
 }
 
 export default function Home() {
-  const [aggregated, setAggregated] = useState<AggregatedTicker[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('aura_home_pulse_v2')
-        if (cached) {
-          const parsed = JSON.parse(cached)
-          if (parsed?.aggregated?.length > 0) return parsed.aggregated
-        }
-      } catch {}
-    }
-    return []
-  })
+  // Always start empty so SSR and the client's first paint match (no localStorage in useState).
+  const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
   const [pulseLoading, setPulseLoading] = useState(true)
   const [radarsLoading, setRadarsLoading] = useState(true)
 
   useEffect(() => {
+    // Hydrate from cache after mount — safe for SSR
+    try {
+      const cached = localStorage.getItem('aura_home_pulse_v2')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed?.aggregated?.length > 0) {
+          setAggregated(parsed.aggregated)
+          setPulseLoading(false)
+        }
+      }
+    } catch {}
+
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
     // Fetch pulse data independently

@@ -4,6 +4,22 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+/** Deterministic date string — avoids SSR/client toLocaleString mismatches (comma vs "at"). */
+function formatBuildDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const month = MONTHS[d.getUTCMonth()]
+  const day = d.getUTCDate()
+  const year = d.getUTCFullYear()
+  let hours = d.getUTCHours()
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0')
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  hours = hours % 12 || 12
+  return `${month} ${day}, ${year} ${String(hours).padStart(2, '0')}:${minutes} ${ampm} UTC`
+}
+
 export function Footer() {
   const currentYear = new Date().getFullYear()
   const [backendVersion, setBackendVersion] = useState<{ commit: string; build_date: string } | null>(null)
@@ -137,7 +153,7 @@ export function Footer() {
               >
                 fe:{frontendCommit}
                 {frontendBuildDate && (
-                  <> · {new Date(frontendBuildDate).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                  <> · {formatBuildDate(frontendBuildDate)}</>
                 )}
               </a>
               <span aria-hidden="true" className="text-[#1E293B]">·</span>
@@ -149,7 +165,7 @@ export function Footer() {
               >
                 be:{backendCommit!.slice(0, 7)}
                 {backendVersion?.build_date && (
-                  <> · {new Date(backendVersion.build_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                  <> · {formatBuildDate(backendVersion.build_date)}</>
                 )}
               </a>
             </span>
@@ -162,7 +178,7 @@ export function Footer() {
             >
               {frontendCommit}
               {frontendBuildDate && (
-                <> · {new Date(frontendBuildDate).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</>
+                <> · {formatBuildDate(frontendBuildDate)}</>
               )}
             </a>
           )}
