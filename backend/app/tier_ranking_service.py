@@ -61,11 +61,21 @@ class TierRankingService:
             norm_mentions = mention_count / max_mentions
             norm_analysts = analyst_count / max_analysts
             
-            convictions = [rec.get("conviction_level", 5) for rec in recs]
+            convictions = []
+            for rec in recs:
+                if rec.get("conviction_score") is not None:
+                    convictions.append(float(rec["conviction_score"]))
+                else:
+                    convictions.append(float(rec.get("conviction_level", 5)) * 10.0)
             avg_conviction = sum(convictions) / len(convictions)
-            norm_conviction = avg_conviction / 10.0
+            norm_conviction = avg_conviction / 100.0
             
-            sentiments = [rec.get("sentiment", 0) for rec in recs]
+            sentiments = []
+            for rec in recs:
+                if rec.get("sentiment_score") is not None:
+                    sentiments.append(float(rec["sentiment_score"]))
+                else:
+                    sentiments.append(float(rec.get("sentiment", 0) or 0))
             avg_sentiment = sum(sentiments) / len(sentiments)
             abs_sentiment = abs(avg_sentiment) / 2.0  # Sentiment is -2 to 2
             

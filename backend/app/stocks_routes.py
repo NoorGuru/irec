@@ -82,7 +82,7 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
         recs_data = []
         page_size = 1000
         for i in range(20): # handle up to 20,000 recommendations
-            res = client.table("recommendations").select("ticker, stock_name, sentiment, target_price, conviction_level, videos!inner(published_at, channels!inner(channel_name, trust_weight))").range(i * page_size, (i + 1) * page_size - 1).execute()
+            res = client.table("recommendations").select("ticker, stock_name, sentiment, sentiment_score, target_price, conviction_level, conviction_score, videos!inner(published_at, channels!inner(channel_name, trust_weight))").range(i * page_size, (i + 1) * page_size - 1).execute()
             if not res.data:
                 break
             recs_data.extend(res.data)
@@ -122,7 +122,9 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
                     analysts_map[t] = set()
                 analysts_map[t].add(cname)
             
-            s = r.get("sentiment")
+            s = r.get("sentiment_score")
+            if s is None:
+                s = r.get("sentiment")
             if s is not None:
                 tw = channels.get("trust_weight", 1.0) or 1.0
                 sentiment_map[t] = sentiment_map.get(t, 0) + s
@@ -135,10 +137,16 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
                 target_map[t] = target_map.get(t, 0) + tp
                 target_counts[t] = target_counts.get(t, 0) + 1
                 
-            cl = r.get("conviction_level")
-            if cl is not None:
-                conviction_map[t] = conviction_map.get(t, 0) + cl
+            # Prefer continuous 0-100 score, store as 1-10 scale for avg_conviction API field
+            cs = r.get("conviction_score")
+            if cs is not None:
+                conviction_map[t] = conviction_map.get(t, 0) + (float(cs) / 10.0)
                 conviction_counts[t] = conviction_counts.get(t, 0) + 1
+            else:
+                cl = r.get("conviction_level")
+                if cl is not None:
+                    conviction_map[t] = conviction_map.get(t, 0) + cl
+                    conviction_counts[t] = conviction_counts.get(t, 0) + 1
 
         # Assemble
         result_stocks = []
@@ -237,8 +245,10 @@ async def get_home_pulse(request: Request, response: Response):
                 ticker,
                 stock_name,
                 sentiment,
+                sentiment_score,
                 target_price,
                 conviction_level,
+                conviction_score,
                 videos!inner(
                     channel_id,
                     channels!inner(trust_weight)
@@ -272,7 +282,9 @@ async def get_home_pulse(request: Request, response: Response):
             if trust_weight is None:
                 trust_weight = 1.0 # fallback
             
-            sentiment = r.get("sentiment")
+            sentiment = r.get("sentiment_score")
+            if sentiment is None:
+                sentiment = r.get("sentiment")
             if sentiment is not None:
                 group["sentiments"].append({"value": sentiment, "weight": trust_weight})
                 
@@ -280,9 +292,13 @@ async def get_home_pulse(request: Request, response: Response):
             if tp is not None:
                 group["prices"].append(tp)
                 
-            cl = r.get("conviction_level")
-            if cl is not None:
-                group["convictions"].append(cl)
+            cs = r.get("conviction_score")
+            if cs is not None:
+                group["convictions"].append(float(cs) / 10.0)
+            else:
+                cl = r.get("conviction_level")
+                if cl is not None:
+                    group["convictions"].append(cl)
                 
             channel_id = video.get("channel_id")
             if channel_id:

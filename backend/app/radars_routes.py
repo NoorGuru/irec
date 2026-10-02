@@ -133,7 +133,7 @@ async def get_radar_plays_data() -> dict:
     for i in range(20):
         res = (
             client.table("recommendations")
-            .select("ticker, target_price, sentiment, conviction_level, catalyst_notes, videos!inner(published_at, channels!inner(channel_name, trust_weight))")
+            .select("ticker, target_price, sentiment, sentiment_score, conviction_level, conviction_score, catalyst_notes, videos!inner(published_at, channels!inner(channel_name, trust_weight))")
             .range(i * page_size, (i + 1) * page_size - 1)
             .execute()
         )
@@ -161,8 +161,16 @@ async def get_radar_plays_data() -> dict:
         
         analyst_count = len(set([(r.get("videos") or {}).get("channels", {}).get("channel_name", "Unknown") for r in all_recs]))
 
-        sentiments = [r.get("sentiment", 0) for r in all_recs]
-        convictions = [r.get("conviction_level", 5) for r in all_recs]
+        sentiments = [
+            (r.get("sentiment_score") if r.get("sentiment_score") is not None else r.get("sentiment", 0))
+            for r in all_recs
+        ]
+        convictions = []
+        for r in all_recs:
+            if r.get("conviction_score") is not None:
+                convictions.append(float(r["conviction_score"]) / 10.0)
+            else:
+                convictions.append(r.get("conviction_level", 5))
         target_prices = [float(r.get("target_price")) for r in all_recs if r.get("target_price") is not None]
 
         avg_conviction = sum(convictions) / len(convictions) if all_recs else 0.0
@@ -172,7 +180,9 @@ async def get_radar_plays_data() -> dict:
         total_weight = 0.0
         weighted_sentiment_sum = 0.0
         for rec in all_recs:
-            sentiment = rec.get("sentiment", 0)
+            sentiment = rec.get("sentiment_score")
+            if sentiment is None:
+                sentiment = rec.get("sentiment", 0)
             channel = (rec.get("videos") or {}).get("channels") or {}
             trust_weight = channel.get("trust_weight") or 1.0
             total_weight += trust_weight
@@ -188,7 +198,9 @@ async def get_radar_plays_data() -> dict:
             recent_weight = 0.0
             recent_sent_sum = 0.0
             for rec in recent_recs:
-                sentiment = rec.get("sentiment", 0)
+                sentiment = rec.get("sentiment_score")
+                if sentiment is None:
+                    sentiment = rec.get("sentiment", 0)
                 channel = (rec.get("videos") or {}).get("channels") or {}
                 trust_weight = channel.get("trust_weight") or 1.0
                 recent_weight += trust_weight
@@ -210,7 +222,14 @@ async def get_radar_plays_data() -> dict:
         else:
             action_label = "Buy" if direction == "BUY" else "Sell"
 
-        sorted_recs = sorted(all_recs, key=lambda x: x.get("conviction_level", 5), reverse=True)
+        sorted_recs = sorted(
+            all_recs,
+            key=lambda x: (
+                float(x["conviction_score"]) if x.get("conviction_score") is not None
+                else float(x.get("conviction_level", 5)) * 10.0
+            ),
+            reverse=True,
+        )
         top_catalyst = sorted_recs[0].get("catalyst_notes") if sorted_recs else None
         if not top_catalyst:
             top_catalyst = "No catalyst notes available."

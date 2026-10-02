@@ -81,17 +81,37 @@ def parse_iso_datetime(dt_str: str) -> datetime:
         logger.warning(f"Failed to parse datetime {dt_str}: {e}")
         return datetime.now(timezone.utc)
 
+
+def _rec_conviction_0_100(rec: Dict[str, Any]) -> float:
+    """Prefer continuous Jev conviction_score; fall back to integer level * 10."""
+    score = rec.get("conviction_score")
+    if score is not None:
+        return float(score)
+    level = rec.get("conviction_level")
+    if level is not None:
+        return float(level) * 10.0
+    return 50.0
+
+
+def _rec_sentiment_continuous(rec: Dict[str, Any]) -> float:
+    """Prefer continuous Jev sentiment_score; fall back to integer sentiment."""
+    score = rec.get("sentiment_score")
+    if score is not None:
+        return float(score)
+    return float(rec.get("sentiment", 0) or 0)
+
+
 def _compute_score_for_recs(recs: List[Dict[str, Any]], now: datetime, fallback_days: int) -> int:
     """Helper to compute action score (0-100) for a given list of recommendations."""
     if not recs: return 0
     total_weight = 0.0
     weighted_sentiment_sum = 0.0
     sentiments = []
-    convictions = []
+    convictions_0_100 = []
     for rec in recs:
-        sentiment = rec.get("sentiment", 0)
+        sentiment = _rec_sentiment_continuous(rec)
         sentiments.append(sentiment)
-        convictions.append(rec.get("conviction_level", 5))
+        convictions_0_100.append(_rec_conviction_0_100(rec))
         channel = (rec.get("videos") or {}).get("channels") or {}
         trust_weight = channel.get("trust_weight") or 1.0
         total_weight += trust_weight
@@ -99,7 +119,7 @@ def _compute_score_for_recs(recs: List[Dict[str, Any]], now: datetime, fallback_
         
     consensus_sentiment = (weighted_sentiment_sum / total_weight if total_weight > 0 else sum(sentiments) / len(sentiments))
     direction = "BUY" if consensus_sentiment >= 0 else "SELL"
-    avg_conviction = sum(convictions) / len(convictions)
+    avg_conviction_0_100 = sum(convictions_0_100) / len(convictions_0_100)
     stddev = statistics.pstdev(sentiments) if len(sentiments) > 1 else 0.0
     agreement_pct = int(max(0, min(1, 1.0 - (stddev / 2.0))) * 100)
     
@@ -115,9 +135,9 @@ def _compute_score_for_recs(recs: List[Dict[str, Any]], now: datetime, fallback_
             if latest_pub_date is None or pub_dt > latest_pub_date:
                 latest_pub_date = pub_dt
             if pub_dt >= seven_days_ago:
-                recent_sentiments.append(rec.get("sentiment", 0))
+                recent_sentiments.append(_rec_sentiment_continuous(rec))
             else:
-                older_sentiments.append(rec.get("sentiment", 0))
+                older_sentiments.append(_rec_sentiment_continuous(rec))
 
     if latest_pub_date is None:
         latest_pub_date = now - timedelta(days=fallback_days)
@@ -143,7 +163,7 @@ def _compute_score_for_recs(recs: List[Dict[str, Any]], now: datetime, fallback_
         sentiment_score = 75.0 + ((abs_sentiment - 1.0) * 25.0)
     sentiment_score = min(100.0, max(0.0, sentiment_score))
     
-    conviction_score = avg_conviction * 10.0
+    conviction_score = avg_conviction_0_100
     action_score_raw = (0.25 * sentiment_score + 0.20 * conviction_score + 0.20 * agreement_pct + 0.20 * recency_score + 0.15 * momentum_score)
     
     analyst_names = list(set([((rec.get("videos") or {}).get("channels") or {}).get("channel_name", "Unknown Analyst") for rec in recs]))
@@ -238,7 +258,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
     for i in range(20):
         res = (
             client.table("recommendations")
-            .select("ticker, stock_name, sentiment, conviction_level, target_price, catalyst_notes, videos!inner(youtube_video_id, published_at, channels(channel_name, trust_weight))")
+            .select("ticker, stock_name, sentiment, sentiment_score, conviction_level, conviction_score, target_price, catalyst_notes, videos!inner(youtube_video_id, published_at, channels(channel_name, trust_weight))")
             .range(i * page_size, (i + 1) * page_size - 1)
             .execute()
         )
@@ -285,10 +305,10 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
         target_prices = []
 
         for rec in recs:
-            sentiment = rec.get("sentiment", 0)
+            sentiment = _rec_sentiment_continuous(rec)
             sentiments.append(sentiment)
             
-            conviction = rec.get("conviction_level", 5)
+            conviction = _rec_conviction_0_100(rec) / 10.0  # keep 1-10 display scale
             convictions.append(conviction)
 
             t_price = rec.get("target_price")
@@ -357,9 +377,9 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             if pub_str:
                 pub_dt = parse_iso_datetime(pub_str)
                 if pub_dt >= seven_days_ago:
-                    recent_sentiments.append(rec.get("sentiment", 0))
+                    recent_sentiments.append(_rec_sentiment_continuous(rec))
                 else:
-                    older_sentiments.append(rec.get("sentiment", 0))
+                    older_sentiments.append(_rec_sentiment_continuous(rec))
 
         direction_sign = 1 if consensus_sentiment >= 0 else -1
         if recent_sentiments and older_sentiments:
@@ -386,7 +406,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             sentiment_score = 75.0 + ((abs_sentiment - 1.0) * 25.0)
         sentiment_score = min(100.0, max(0.0, sentiment_score))
         
-        conviction_score = avg_conviction * 10.0 # conviction level is 1-10
+        conviction_score = avg_conviction * 10.0  # avg_conviction already on 1-10 continuous scale
 
         action_score_raw = (
             0.25 * sentiment_score +
@@ -424,17 +444,16 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
         aura_score = int(0.85 * aura_score_raw + 0.15 * omni_score)
 
         # --- Dynamic Strategy Filtering ---
+        # Never hard-drop stocks from the feed for aura; demote via signal_tier instead.
         signal_tier = "strong" if aura_score >= 50 else "emerging"
-        if strategy == "aura_score":
-            if aura_score < 35:
-                continue
-        elif strategy == "conviction":
-            if avg_conviction < 7.5:
+        if strategy == "conviction":
+            # Continuous 1-10 scale; 5.5 ≈ top ~half after speech-act recalibration
+            if avg_conviction < 5.5:
                 continue
         elif strategy == "consensus_sentiment":
             if abs(consensus_sentiment) < 0.5:
                 continue
-        # Note: "mentions" strategy has no minimum score threshold
+        # Note: "aura_score" and "mentions" strategies keep all recent tickers (strong + emerging)
 
         # --- Determine Action Label ---
         if aura_score >= 80:
@@ -471,8 +490,8 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             why_bullets.append(f"Moderate conviction ({avg_conviction:.1f}/10)")
 
         # --- Catalysts list & Top Catalyst ---
-        # Sort recommendations by conviction descending to get the top opinions first
-        sorted_recs = sorted(recs, key=lambda x: (x.get("conviction_level", 0)), reverse=True)
+        # Sort recommendations by continuous conviction descending to get the top opinions first
+        sorted_recs = sorted(recs, key=lambda x: _rec_conviction_0_100(x), reverse=True)
         
         catalysts_list: List[CatalystOpinion] = []
         for r in sorted_recs:
@@ -483,8 +502,8 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             c_obj = v_obj.get("channels") or {}
             catalysts_list.append(CatalystOpinion(
                 channel_name=c_obj.get("channel_name", "Unknown Analyst"),
-                sentiment=r.get("sentiment", 0),
-                conviction=r.get("conviction_level", 5),
+                sentiment=int(round(_rec_sentiment_continuous(r))),
+                conviction=max(1, min(10, int(round(_rec_conviction_0_100(r) / 10.0)))),
                 notes=notes,
                 published_at=v_obj.get("published_at", ""),
                 youtube_video_id=v_obj.get("youtube_video_id", "")
