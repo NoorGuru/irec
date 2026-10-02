@@ -648,7 +648,7 @@ async def recalibrate_video_signals(
         if is_uuid:
             vid_resp = (
                 client.table("videos")
-                .select("video_id, youtube_video_id, transcript, title, video_summary")
+                .select("video_id, youtube_video_id, transcript, title, video_summary, channels(channel_name)")
                 .eq("video_id", video_id)
                 .limit(1)
                 .execute()
@@ -656,7 +656,7 @@ async def recalibrate_video_signals(
         else:
             vid_resp = (
                 client.table("videos")
-                .select("video_id, youtube_video_id, transcript, title, video_summary")
+                .select("video_id, youtube_video_id, transcript, title, video_summary, channels(channel_name)")
                 .eq("youtube_video_id", video_id)
                 .limit(1)
                 .execute()
@@ -666,7 +666,7 @@ async def recalibrate_video_signals(
         if is_uuid and not vid_resp.data:
             vid_resp = (
                 client.table("videos")
-                .select("video_id, youtube_video_id, transcript, title, video_summary")
+                .select("video_id, youtube_video_id, transcript, title, video_summary, channels(channel_name)")
                 .eq("youtube_video_id", video_id)
                 .limit(1)
                 .execute()
@@ -701,27 +701,41 @@ async def recalibrate_video_signals(
                 "recommendations": [],
             }
 
-        # Convert to Recommendation models
+        # Convert to Recommendation models — prefer archived Claude baselines to avoid ratchet-down
         recommendations: list[Recommendation] = []
         for r in raw_recs:
+            initial_conv = r.get("initial_conviction_level")
+            initial_sent = r.get("initial_sentiment")
+            # Use initial_* as the working baseline when present so recalibration
+            # does not re-score already-deflated Jev integers.
+            working_conv = initial_conv if initial_conv is not None else r.get("conviction_level", 5)
+            working_sent = initial_sent if initial_sent is not None else r.get("sentiment", 0)
             recommendations.append(
                 Recommendation(
                     ticker=r["ticker"],
                     stock_name=r.get("stock_name") or "",
-                    sentiment=r.get("sentiment", 0),
+                    sentiment=working_sent,
                     target_price=r.get("target_price"),
-                    conviction_level=r.get("conviction_level", 5),
+                    conviction_level=working_conv,
                     catalyst_notes=r.get("catalyst_notes") or "",
                     quote=r.get("quote") or "",
-                    initial_conviction_level=r.get("initial_conviction_level"),
-                    initial_sentiment=r.get("initial_sentiment"),
+                    initial_conviction_level=initial_conv,
+                    initial_sentiment=initial_sent,
                     target_price_verified=r.get("target_price_verified"),
                     is_verified=r.get("is_verified"),
                 )
             )
 
+        channels = video.get("channels") or {}
+        channel_name = (channels.get("channel_name") or "") if isinstance(channels, dict) else ""
+
         # Re-score via Jev System One
-        calibrated_recs = await score_recommendations_batch(recommendations, transcript)
+        calibrated_recs = await score_recommendations_batch(
+            recommendations,
+            transcript,
+            video_title=video.get("title") or "",
+            channel_name=channel_name,
+        )
 
         # Update database records
         await replace_recommendations(

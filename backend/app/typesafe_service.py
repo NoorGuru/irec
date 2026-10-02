@@ -22,9 +22,6 @@ TYPESAFE_API_KEY = os.environ.get("TYPESAFE_API_KEY")
 DEFAULT_MODEL = "jev-latest"
 
 
-ENABLE_TYPESAFE_SCORING = os.environ.get("ENABLE_TYPESAFE_SCORING", "true").lower() == "true"
-
-
 def is_typesafe_configured() -> bool:
     """Check if the TypeSafe API key is available and feature is enabled."""
     enabled = os.environ.get("ENABLE_TYPESAFE_SCORING", "true").lower() == "true"
@@ -37,6 +34,31 @@ def _get_async_client() -> AsyncTypeSafeClient:
     if not api_key:
         raise ValueError("TYPESAFE_API_KEY is not configured in environment or .env file.")
     return AsyncTypeSafeClient(api_key=api_key)
+
+
+def _half_up_int(value: float) -> int:
+    """Round half away from zero (avoids banker's rounding bias at *.5)."""
+    if value >= 0:
+        return int(value + 0.5)
+    return int(value - 0.5)
+
+
+def _archive_claude_baseline(rec: Recommendation) -> None:
+    """Preserve Claude's original integers before Jev overwrite."""
+    if rec.initial_conviction_level is None:
+        rec.initial_conviction_level = rec.conviction_level
+    if rec.initial_sentiment is None:
+        rec.initial_sentiment = rec.sentiment
+
+
+def _apply_claude_baseline_scores(rec: Recommendation) -> None:
+    """Populate continuous scores from Claude integers when Jev cannot run."""
+    baseline_level = rec.initial_conviction_level if rec.initial_conviction_level is not None else rec.conviction_level
+    baseline_sentiment = rec.initial_sentiment if rec.initial_sentiment is not None else rec.sentiment
+    if rec.conviction_score is None and baseline_level is not None:
+        rec.conviction_score = float(baseline_level * 10)
+    if rec.sentiment_score is None and baseline_sentiment is not None:
+        rec.sentiment_score = float(baseline_sentiment)
 
 
 # ---------------------------------------------------------------------------
@@ -220,12 +242,18 @@ async def score_conviction_and_sentiment(
     catalyst_notes: str,
     transcript_snippet: str,
     target_price: float | None = None,
+    stock_name: str = "",
+    quote: str = "",
+    video_title: str = "",
+    channel_name: str = "",
+    claude_conviction_level: int | None = None,
+    claude_sentiment: int | None = None,
     model: str = DEFAULT_MODEL,
 ) -> dict[str, Any]:
     """Score analyst conviction (0-100) and sentiment (-2 to +2), and verify candidate pick & target price via Jev System One.
 
     Unified single-call evaluation:
-    - Conviction: Continuous 0-100 expected value
+    - Conviction: Continuous 0-100 expected value (speech-act rubric, not portfolio %)
     - Sentiment: Continuous -2 to +2 expected value
     - Gate 1 (Opinion): Is it an active recommendation rather than a passing mention? (Noul)
     - Gate 2 (Thesis): Does the context support the catalyst thesis? (Choice)
@@ -233,6 +261,10 @@ async def score_conviction_and_sentiment(
     """
     state: dict[str, Any] = {
         "ticker": ticker,
+        "stock_name": stock_name or ticker,
+        "quote": quote or "",
+        "video_title": video_title or "",
+        "channel_name": channel_name or "",
         "catalyst_notes": catalyst_notes,
         "transcript_context": transcript_snippet,
     }
@@ -242,15 +274,19 @@ async def score_conviction_and_sentiment(
     questions: dict[str, Any] = {
         "conviction": Score(
             instructions=(
-                f"Rate the analyst's conviction level and portfolio capital commitment on {ticker} "
-                "based on the transcript context and stated catalyst."
+                f"Rate the verbal strength of the analyst's recommendation on {ticker} "
+                f"({state['stock_name']}) from the transcript context, quote, and stated catalyst. "
+                "Judge what the speaker actually says — conviction language, repetition, urgency, "
+                "and how forcefully they endorse or reject the idea. "
+                "Do NOT require stated portfolio weights or allocation percentages. "
+                "Boilerplate disclaimers like 'not financial advice' must not lower the score."
             ),
             criteria=[
-                "Passing mention, watch-list note, illustrative example, or hedge; no personal capital committed.",
-                "Speculative interest, exploratory swing trade, or small starter position (under 2% of portfolio).",
-                "Standard core portfolio holding (2% to 5%) backed by business fundamentals, valuation, or chart.",
-                "High conviction / overweight position (5% to 10%), top sector pick, or explicit price target.",
-                "Cornerstone flagship holding (over 10% of portfolio), maximum allocation, highest conviction idea.",
+                "Passing, comparative, or news mention with no actionable investment stance.",
+                "Soft interest: watchlist, worth watching, starter curiosity, or tentative lean.",
+                "Clear directional recommendation (buy/sell/hold/avoid) with a stated reason.",
+                "Emphatic pick: top idea, repeated endorsement, explicit price target, or stated accumulation.",
+                "Flagship language: strongest idea, biggest position, multi-year core bet, or maximum conviction.",
             ],
         ),
         "sentiment": Score(
@@ -311,10 +347,11 @@ async def score_conviction_and_sentiment(
             elif conv_conf <= 0.0:
                 conv_conf = 0.20
         else:
-            conviction_score_val = 50.0
+            # Fall back to Claude baseline — never invent a midpoint 50.0
+            conviction_score_val = float((claude_conviction_level or 5) * 10)
             conv_conf = 0.20
 
-        conviction_level_val = max(1, min(10, round(conviction_score_val / 10.0)))
+        conviction_level_val = max(1, min(10, _half_up_int(conviction_score_val / 10.0)))
 
         # Continuous -2.00 to +2.00 scale: (Jev Score - 2.0)
         if sent_score is not None:
@@ -325,10 +362,10 @@ async def score_conviction_and_sentiment(
             elif sent_conf <= 0.0:
                 sent_conf = 0.20
         else:
-            sentiment_score_val = 0.0
+            sentiment_score_val = float(claude_sentiment if claude_sentiment is not None else 0)
             sent_conf = 0.20
 
-        sentiment_val = max(-2, min(2, round(sentiment_score_val)))
+        sentiment_val = max(-2, min(2, _half_up_int(sentiment_score_val)))
 
         # Parse Verification Gates
         opinion_noul = 1.0
@@ -377,7 +414,7 @@ async def score_conviction_and_sentiment(
             else:
                 target_price_verified = False
 
-        # Gate 1 & Gate 2 Verification
+        # Gate 1 & Gate 2 Verification (badge only — never used to drop stocks)
         contradicts = bool(thesis_choice and thesis_choice.choice == "contradicts" and thesis_choice.confidence >= 0.70)
         is_supported = bool(thesis_choice and thesis_choice.choice == "supports" and thesis_choice.confidence >= 0.60)
         is_real = (opinion_noul >= 0.25) or is_supported
@@ -404,8 +441,14 @@ async def score_single_recommendation(
     rec: Recommendation,
     transcript: str,
     model: str = DEFAULT_MODEL,
+    video_title: str = "",
+    channel_name: str = "",
 ) -> Recommendation:
-    """Evaluate calibrated scores and verify recommendation & target price with fail-open fallback."""
+    """Evaluate calibrated scores and verify recommendation & target price with fail-open fallback.
+
+    Never drops the recommendation. Unverified picks are retained and flagged via is_verified.
+    Unverified target prices are nullified.
+    """
     try:
         snippet = slice_transcript_context(
             transcript=transcript,
@@ -420,33 +463,36 @@ async def score_single_recommendation(
         # Fail-open if the stock could not be anchored in the transcript text
         if not snippet:
             logger.warning(
-                f"Could not anchor context for {rec.ticker} in transcript text. Failing open with Claude baseline."
+                f"Could not anchor context for {rec.ticker} in transcript text. "
+                "Failing open with Claude baseline; marking unverified."
             )
-            if rec.initial_conviction_level is None:
-                rec.initial_conviction_level = rec.conviction_level
-            if rec.initial_sentiment is None:
-                rec.initial_sentiment = rec.sentiment
-            if rec.conviction_score is None and rec.conviction_level:
-                rec.conviction_score = float(rec.conviction_level * 10)
-            if rec.sentiment_score is None and rec.sentiment is not None:
-                rec.sentiment_score = float(rec.sentiment)
-            rec.is_verified = True
+            _archive_claude_baseline(rec)
+            _apply_claude_baseline_scores(rec)
+            rec.is_verified = False
             rec.target_price_verified = False
+            if rec.target_price is not None:
+                logger.info(
+                    f"[GUARD] Nullifying unverified target price ${rec.target_price} for {rec.ticker} "
+                    "(ungrounded context)"
+                )
+                rec.target_price = None
             return rec
+
+        _archive_claude_baseline(rec)
 
         calibrated = await score_conviction_and_sentiment(
             ticker=rec.ticker,
             catalyst_notes=rec.catalyst_notes,
             transcript_snippet=snippet,
             target_price=rec.target_price,
+            stock_name=rec.stock_name,
+            quote=rec.quote,
+            video_title=video_title,
+            channel_name=channel_name,
+            claude_conviction_level=rec.initial_conviction_level or rec.conviction_level,
+            claude_sentiment=rec.initial_sentiment if rec.initial_sentiment is not None else rec.sentiment,
             model=model,
         )
-
-        # Archive initial baseline if not already captured
-        if rec.initial_conviction_level is None:
-            rec.initial_conviction_level = rec.conviction_level
-        if rec.initial_sentiment is None:
-            rec.initial_sentiment = rec.sentiment
 
         # Apply calibrated values
         rec.conviction_score = calibrated["conviction_score"]
@@ -474,15 +520,19 @@ async def score_single_recommendation(
 
     except Exception as e:
         logger.warning(
-            f"TypeSafe scoring/verification failed for {rec.ticker}: {e}. Failing open with Claude baseline."
+            f"TypeSafe scoring/verification failed for {rec.ticker}: {e}. "
+            "Failing open with Claude baseline; marking unverified."
         )
-        # Fail-open: ensure baseline integer values remain intact
-        if rec.conviction_score is None and rec.conviction_level:
-            rec.conviction_score = float(rec.conviction_level * 10)
-        if rec.sentiment_score is None and rec.sentiment is not None:
-            rec.sentiment_score = float(rec.sentiment)
-        rec.is_verified = True
+        _archive_claude_baseline(rec)
+        _apply_claude_baseline_scores(rec)
+        rec.is_verified = False
         rec.target_price_verified = False
+        if rec.target_price is not None:
+            logger.info(
+                f"[GUARD] Nullifying unverified target price ${rec.target_price} for {rec.ticker} "
+                "(scoring exception)"
+            )
+            rec.target_price = None
 
     return rec
 
@@ -491,30 +541,35 @@ async def score_recommendations_batch(
     recs: list[Recommendation],
     transcript: str,
     model: str = DEFAULT_MODEL,
-    drop_unverified: bool = False,
+    video_title: str = "",
+    channel_name: str = "",
 ) -> list[Recommendation]:
     """Score and verify a batch of recommendations in parallel using Jev System One.
-    
-    By default, drop_unverified is False to preserve all recommendations extracted
-    by Claude and persist them to the database with is_verified accurately flagged.
+
+    Never drops recommendations. All Claude-extracted tickers are retained; is_verified
+    is a display badge only.
     """
     if not recs:
         return recs
 
     if not is_typesafe_configured():
         logger.warning("TypeSafe scoring disabled or unconfigured. Preserving Claude baseline.")
-        # Ensure default conviction_score is populated from conviction_level for consistency
         for rec in recs:
-            if rec.conviction_score is None and rec.conviction_level is not None:
-                rec.conviction_score = float(rec.conviction_level * 10)
-            if rec.sentiment_score is None and rec.sentiment is not None:
-                rec.sentiment_score = float(rec.sentiment)
+            _archive_claude_baseline(rec)
+            _apply_claude_baseline_scores(rec)
+            # Unconfigured scoring is not a verification failure — keep display neutral
             rec.is_verified = True
             rec.target_price_verified = False
         return recs
 
     tasks = [
-        score_single_recommendation(rec=rec, transcript=transcript, model=model)
+        score_single_recommendation(
+            rec=rec,
+            transcript=transcript,
+            model=model,
+            video_title=video_title,
+            channel_name=channel_name,
+        )
         for rec in recs
     ]
 
@@ -524,84 +579,15 @@ async def score_recommendations_batch(
     for idx, res in enumerate(results):
         if isinstance(res, Exception):
             logger.warning(f"Error scoring/verifying rec {recs[idx].ticker}: {res}")
-            recs[idx].is_verified = True
+            _archive_claude_baseline(recs[idx])
+            _apply_claude_baseline_scores(recs[idx])
+            recs[idx].is_verified = False
+            recs[idx].target_price_verified = False
+            if recs[idx].target_price is not None:
+                recs[idx].target_price = None
             scored_recs.append(recs[idx])
         else:
             scored_recs.append(res)
 
-    # If explicitly requested, filter out unverified casual mentions
-    if drop_unverified:
-        verified_recs = []
-        for r in scored_recs:
-            if getattr(r, "is_verified", True) is False:
-                logger.info(f"[GUARD] Dropping unverified/casual mention of {r.ticker}")
-            else:
-                verified_recs.append(r)
-        return verified_recs
-
     return scored_recs
 
-
-# ---------------------------------------------------------------------------
-# Use Case 2: Extraction Verification (Hallucination Guardrail)
-# ---------------------------------------------------------------------------
-async def verify_recommendation(
-    ticker: str,
-    catalyst_notes: str,
-    transcript_snippet: str,
-    target_price: float | None = None,
-    model: str = DEFAULT_MODEL,
-) -> dict[str, Any]:
-    """Verify an extracted recommendation against supporting transcript text.
-
-    Returns:
-        {
-            "is_verified": bool,
-            "catalyst_status": "supports" | "contradicts" | "unsupported",
-            "confidence": float,
-            "is_real_recommendation_prob": float
-        }
-    """
-    state = {
-        "ticker": ticker,
-        "catalyst_notes": catalyst_notes,
-        "transcript_context": transcript_snippet,
-        "target_price": target_price,
-    }
-
-    questions = {
-        "thesis_relation": Choice(
-            instructions=f"Does the transcript context support the extracted catalyst thesis for {ticker}?",
-            criteria={
-                "supports": "The speaker explicitly presents this thesis as their stance on this stock.",
-                "contradicts": "The speaker says the opposite or warns against this thesis.",
-                "unsupported": "The thesis is unmentioned, fabricated, or refers to a different company.",
-            },
-        ),
-        "is_real_opinion": Noul(
-            instructions=f"Does the speaker express an active investment or trading opinion on {ticker}?"
-        ),
-    }
-
-    async with _get_async_client() as client:
-        response = await client.system_one(
-            model=model,
-            state=state,
-            questions=questions,
-        )
-
-    thesis_choice = response.choices["thesis_relation"]
-    opinion_noul = response.nouls["is_real_opinion"]
-
-    is_verified = (
-        thesis_choice.choice == "supports"
-        and thesis_choice.confidence >= 0.70
-        and opinion_noul.noul >= 0.40
-    )
-
-    return {
-        "is_verified": is_verified,
-        "catalyst_status": thesis_choice.choice,
-        "catalyst_confidence": round(thesis_choice.confidence, 3),
-        "is_real_opinion_prob": round(opinion_noul.noul, 3),
-    }

@@ -87,7 +87,7 @@ async def test_verification_genuine_recommendation_and_target_price():
 
 
 @pytest.mark.anyio
-async def test_verification_casual_mention_dropped():
+async def test_verification_casual_mention_never_dropped():
     mock_resp = _build_mock_jev_response(
         is_real_opinion=0.10,  # Below threshold
         thesis_choice="unsupported",
@@ -97,7 +97,8 @@ async def test_verification_casual_mention_dropped():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("app.typesafe_service._get_async_client", return_value=mock_client):
+    with patch("app.typesafe_service.is_typesafe_configured", return_value=True), \
+         patch("app.typesafe_service._get_async_client", return_value=mock_client):
         recs = [
             Recommendation(
                 ticker="INTC",
@@ -105,20 +106,20 @@ async def test_verification_casual_mention_dropped():
                 sentiment=-1,
                 conviction_level=3,
                 catalyst_notes="Passing negative comparison.",
+                quote="Unlike Intel which is struggling",
             )
         ]
-        # By default, recommendations are preserved with is_verified=False for admin inspection
-        result = await score_recommendations_batch(recs, "Unlike Intel which is struggling, AMD is soaring.")
+        # Never-drop: recommendations are preserved with is_verified=False
+        result = await score_recommendations_batch(
+            recs, "Unlike Intel which is struggling, AMD is soaring."
+        )
         assert len(result) == 1
         assert result[0].is_verified is False
-
-        # When drop_unverified is explicitly True, unverified recs are dropped
-        dropped = await score_recommendations_batch(recs, "Unlike Intel which is struggling, AMD is soaring.", drop_unverified=True)
-        assert len(dropped) == 0
+        assert result[0].ticker == "INTC"
 
 
 @pytest.mark.anyio
-async def test_verification_contradicted_thesis_dropped():
+async def test_verification_contradicted_thesis_never_dropped():
     mock_resp = _build_mock_jev_response(
         is_real_opinion=0.85,
         thesis_choice="contradicts",
@@ -129,7 +130,8 @@ async def test_verification_contradicted_thesis_dropped():
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("app.typesafe_service._get_async_client", return_value=mock_client):
+    with patch("app.typesafe_service.is_typesafe_configured", return_value=True), \
+         patch("app.typesafe_service._get_async_client", return_value=mock_client):
         recs = [
             Recommendation(
                 ticker="TSLA",
@@ -137,16 +139,14 @@ async def test_verification_contradicted_thesis_dropped():
                 sentiment=2,
                 conviction_level=8,
                 catalyst_notes="Strong robotaxi rollout next month.",
+                quote="Robotaxi is delayed indefinitely, I am short TSLA.",
             )
         ]
-        # Preserved with is_verified=False
-        result = await score_recommendations_batch(recs, "Robotaxi is delayed indefinitely, I am short TSLA.")
+        result = await score_recommendations_batch(
+            recs, "Robotaxi is delayed indefinitely, I am short TSLA."
+        )
         assert len(result) == 1
         assert result[0].is_verified is False
-
-        # Dropped when drop_unverified=True
-        dropped = await score_recommendations_batch(recs, "Robotaxi is delayed indefinitely, I am short TSLA.", drop_unverified=True)
-        assert len(dropped) == 0
 
 
 @pytest.mark.anyio
@@ -170,6 +170,7 @@ async def test_verification_current_price_target_nullified():
             conviction_level=8,
             target_price=65.0,  # Actually the current price!
             catalyst_notes="Enterprise AIP growth.",
+            quote="Palantir is trading at 65 dollars today.",
         )
         scored = await score_single_recommendation(rec, "Palantir is trading at 65 dollars today.")
         assert scored.is_verified is True  # Recommendation kept
@@ -198,6 +199,7 @@ async def test_verification_third_party_target_nullified():
             conviction_level=8,
             target_price=35.0,  # Morgan Stanley's target, not the speaker's
             catalyst_notes="Enterprise AIP growth.",
+            quote="Morgan Stanley has a target of 35 dollars which is wrong.",
         )
         scored = await score_single_recommendation(rec, "Morgan Stanley has a target of 35 dollars which is wrong.")
         assert scored.is_verified is True
@@ -232,6 +234,7 @@ async def test_verification_adversarial_escalation_falsified():
             conviction_level=6,
             target_price=400.0,
             catalyst_notes="Viewer asked about Cathie Wood 400 target.",
+            quote="Viewer asked about 400, I am not buying.",
         )
         scored = await score_single_recommendation(rec, "Viewer asked about 400, I am not buying.")
         assert scored.target_price is None  # Falsified by adversarial check!
@@ -266,6 +269,7 @@ async def test_verification_adversarial_escalation_confirmed():
             conviction_level=9,
             target_price=250.0,
             catalyst_notes="AWS cloud acceleration.",
+            quote="My personal target is 250 dollars.",
         )
         scored = await score_single_recommendation(rec, "My personal target is 250 dollars.")
         assert scored.target_price == 250.0  # Confirmed!

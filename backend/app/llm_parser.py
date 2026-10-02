@@ -267,6 +267,11 @@ async def parse_recommendations(
     # Calibrate recommendations using Jev System One
     from .typesafe_service import score_recommendations_batch
 
-    calibrated_recs = await score_recommendations_batch(valid_recs, transcript)
+    calibrated_recs = await score_recommendations_batch(
+        valid_recs,
+        transcript,
+        video_title=metadata.title or "",
+        channel_name=metadata.channel_name or "",
+    )
 
     return calibrated_recs, parsed.video_summary

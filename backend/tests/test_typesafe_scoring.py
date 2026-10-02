@@ -8,7 +8,15 @@ from app.typesafe_service import (
     score_conviction_and_sentiment,
     score_recommendations_batch,
     score_single_recommendation,
+    _half_up_int,
 )
+
+
+def test_half_up_int_boundaries():
+    assert _half_up_int(2.5) == 3
+    assert _half_up_int(2.4) == 2
+    assert _half_up_int(-0.5) == -1
+    assert _half_up_int(0.5) == 1
 
 
 def test_slice_transcript_context_exact_quote():
@@ -105,6 +113,10 @@ async def test_score_conviction_and_sentiment_mocked():
             ticker="NVDA",
             catalyst_notes="High growth",
             transcript_snippet="NVDA is our top pick.",
+            stock_name="NVIDIA",
+            quote="NVDA is our top pick.",
+            video_title="AI Leaders",
+            channel_name="Test Channel",
         )
         assert res["conviction_score"] == 80.0
         assert res["conviction_level"] == 8
@@ -112,6 +124,74 @@ async def test_score_conviction_and_sentiment_mocked():
         assert res["sentiment_score"] == 1.5
         assert res["sentiment"] == 2
         assert res["sentiment_confidence"] == 0.87
+
+        call_kwargs = mock_client.system_one.call_args.kwargs
+        state = call_kwargs["state"]
+        assert state["stock_name"] == "NVIDIA"
+        assert state["quote"] == "NVDA is our top pick."
+        assert state["video_title"] == "AI Leaders"
+        assert state["channel_name"] == "Test Channel"
+        # Speech-act rubric — no portfolio % bands
+        conv_q = call_kwargs["questions"]["conviction"]
+        criteria_text = " ".join(str(c) for c in conv_q.criteria)
+        assert "portfolio" not in criteria_text.lower() or "%" not in criteria_text
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "jev_score,expected_100,expected_level",
+    [
+        (0.8, 20.0, 2),
+        (1.2, 30.0, 3),
+        (2.5, 62.5, 6),
+        (1.0, 25.0, 3),  # half-up: 25.0 / 10 -> 3, not banker's 2
+    ],
+)
+async def test_score_mapping_realistic_regime(jev_score, expected_100, expected_level):
+    mock_score_conv = MagicMock()
+    mock_score_conv.score = jev_score
+    mock_score_conv.confidence = 0.80
+    mock_score_sent = MagicMock()
+    mock_score_sent.score = 2.0
+    mock_score_sent.confidence = 0.80
+    mock_response = MagicMock()
+    mock_response.scores = {"conviction": mock_score_conv, "sentiment": mock_score_sent}
+
+    mock_client = AsyncMock()
+    mock_client.system_one = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("app.typesafe_service._get_async_client", return_value=mock_client):
+        res = await score_conviction_and_sentiment(
+            ticker="AMD",
+            catalyst_notes="notes",
+            transcript_snippet="AMD is interesting.",
+        )
+        assert res["conviction_score"] == expected_100
+        assert res["conviction_level"] == expected_level
+
+
+@pytest.mark.anyio
+async def test_missing_conviction_falls_back_to_claude_baseline():
+    mock_response = MagicMock()
+    mock_response.scores = {}
+    mock_client = AsyncMock()
+    mock_client.system_one = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("app.typesafe_service._get_async_client", return_value=mock_client):
+        res = await score_conviction_and_sentiment(
+            ticker="NVDA",
+            catalyst_notes="notes",
+            transcript_snippet="snippet",
+            claude_conviction_level=8,
+            claude_sentiment=1,
+        )
+        assert res["conviction_score"] == 80.0
+        assert res["conviction_level"] == 8
+        assert res["sentiment_score"] == 1.0
 
 
 @pytest.mark.anyio
@@ -130,6 +210,7 @@ async def test_recalibrate_video_signals_with_youtube_id():
                     "transcript": "AAPL is great",
                     "title": "Top Tech",
                     "video_summary": "Summary",
+                    "channels": {"channel_name": "Test Channel"},
                 }]
             )
             return t
@@ -143,6 +224,8 @@ async def test_recalibrate_video_signals_with_youtube_id():
                     "target_price": 250.0,
                     "catalyst_notes": "AI phones",
                     "quote": "AAPL is great",
+                    "initial_conviction_level": 8,
+                    "initial_sentiment": 2,
                 }]
             )
             t.delete.return_value.eq.return_value.execute.return_value = MagicMock()
@@ -155,17 +238,16 @@ async def test_recalibrate_video_signals_with_youtube_id():
     with patch("app.admin_routes._get_client", return_value=mock_client), \
          patch("app.database._get_client", return_value=mock_client), \
          patch("app.typesafe_service.is_typesafe_configured", return_value=False):
-        # Call with 11-character YouTube video ID (non-UUID)
         result = await recalibrate_video_signals(video_id="dQw4w9WgXcQ")
         assert result["status"] == "success"
         assert result["recalibrated_count"] == 1
         assert result["recommendations"][0]["ticker"] == "AAPL"
-        assert result["recommendations"][0]["conviction_score"] == 70.0
+        # Uses initial_* baseline (8), not already-calibrated level (7)
+        assert result["recommendations"][0]["conviction_score"] == 80.0
 
 
 @pytest.mark.anyio
 async def test_initial_baseline_preserved_on_score():
-    from app.typesafe_service import score_single_recommendation
     rec = Recommendation(
         ticker="NVDA",
         stock_name="Nvidia",
@@ -185,12 +267,17 @@ async def test_initial_baseline_preserved_on_score():
             "sentiment_score": 1.5,
             "sentiment_confidence": 0.8,
             "sentiment": 2,
+            "is_verified": True,
+            "target_price_verified": False,
         }
         res = await score_single_recommendation(rec, "Nvidia leads AI", model="mock")
         assert res.initial_conviction_level == 8
         assert res.initial_sentiment == 1
         assert res.conviction_level == 9
         assert res.sentiment == 2
+        # Enriched metadata forwarded
+        assert mock_score.call_args.kwargs.get("quote") == "Nvidia leads AI"
+        assert mock_score.call_args.kwargs.get("stock_name") == "Nvidia"
 
 
 def test_slice_transcript_context_ngram_with_ellipsis():
@@ -200,7 +287,6 @@ def test_slice_transcript_context_ngram_with_ellipsis():
         "And that is exactly what happens when everybody needs your product and only three companies can make it. "
         "We are very bullish on this cycle."
     )
-    # Quote with ellipsis and slight punctuation difference
     quote = "In its latest quarter, it kept 80 cents... and only three companies can make it."
     snippet = slice_transcript_context(transcript, quote=quote, ticker="MU", window_chars=250)
     assert snippet != ""
@@ -214,7 +300,6 @@ def test_slice_transcript_context_corporate_suffix_removal():
         "Qualcomm has signed new smartphone IP licensing agreements and is expanding Snapdragon into PCs. "
         "End of video."
     )
-    # Stock name with 'Incorporated' which isn't spoken in the video
     snippet = slice_transcript_context(
         transcript,
         ticker="QCOM",
@@ -227,20 +312,24 @@ def test_slice_transcript_context_corporate_suffix_removal():
 
 
 @pytest.mark.anyio
-async def test_score_single_recommendation_ungrounded_fails_open():
+async def test_score_single_recommendation_ungrounded_fails_open_unverified():
     rec = Recommendation(
         ticker="XYZ",
         stock_name="Completely Absent Company",
         sentiment=1,
         conviction_level=7,
         catalyst_notes="Absent thesis",
+        target_price=42.0,
     )
     transcript = "This transcript only discusses macroeconomic bonds and gold with zero stock picks."
     res = await score_single_recommendation(rec, transcript)
-    # Must fail open with Claude baseline and NOT drop
-    assert res.is_verified is True
+    # Must retain the stock, mark unverified, nullify target, keep Claude baseline scores
+    assert res.is_verified is False
+    assert res.target_price is None
+    assert res.target_price_verified is False
     assert res.conviction_score == 70.0
     assert res.sentiment_score == 1.0
+    assert res.initial_conviction_level == 7
 
 
 def test_feature_flag_disables_typesafe(monkeypatch):
@@ -248,4 +337,3 @@ def test_feature_flag_disables_typesafe(monkeypatch):
     monkeypatch.setenv("ENABLE_TYPESAFE_SCORING", "false")
     monkeypatch.setenv("TYPESAFE_API_KEY", "mock_key")
     assert is_typesafe_configured() is False
-
