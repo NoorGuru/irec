@@ -111,22 +111,24 @@ function SentimentArrow({ value }: { value: number }) {
 
 /* ─── Components ─── */
 
-function ConvictionBar({ level }: { level: number }) {
+function ConvictionBar({ score }: { score: number }) {
+  const clamped = Math.max(0, Math.min(100, Math.round(score)))
+  const filled = Math.max(0, Math.min(10, Math.round(clamped / 10)))
   return (
-    <div className="flex items-center gap-2" title={`Conviction: ${level}/10`}>
+    <div className="flex items-center gap-2" title={`Conviction: ${clamped}/100`}>
       <div className="flex gap-[3px]">
         {Array.from({ length: 10 }, (_, i) => (
           <div
             key={i}
             className={`w-[6px] h-4 rounded-sm transition-all duration-300 ${
-              i < level ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+              i < filled ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
             }`}
             style={{ animationDelay: `${i * 50}ms` }}
           />
         ))}
       </div>
-      <span className="font-[family-name:var(--font-geist-mono)] text-sm text-[#8B95A8]">
-        {level}<span className="text-[#475569]">/10</span>
+      <span className="font-[family-name:var(--font-geist-mono)] text-sm font-bold text-[#00D4AA]">
+        {clamped}<span className="text-[#475569] font-normal">/100</span>
       </span>
     </div>
   )
@@ -134,6 +136,7 @@ function ConvictionBar({ level }: { level: number }) {
 
 function TickerCard({ rec, index }: { rec: RecommendationRow; index: number }) {
   const staggerClass = `stagger-${Math.min(index + 3, 10)}`
+  const conviction100 = rec.conviction_score ?? rec.conviction_level * 10
 
   return (
     <Link
@@ -172,24 +175,10 @@ function TickerCard({ rec, index }: { rec: RecommendationRow; index: number }) {
         </div>
       </div>
 
-      {/* Conviction */}
+      {/* Conviction — single /100 metric (no /10 duplicate, no confidence %) */}
       <div className="pl-4 mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block">Conviction</span>
-          {rec.conviction_score !== undefined && rec.conviction_score !== null ? (
-            <div className="flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)]">
-              <span className="text-xs font-bold text-[#00D4AA]">{Math.round(rec.conviction_score)}/100</span>
-              {rec.conviction_confidence !== undefined && rec.conviction_confidence !== null && (
-                <span className="text-[9px] text-[#00FFD0] bg-[#00D4AA]/10 border border-[#00D4AA]/20 px-1 py-0.5 rounded leading-none">
-                  ✦ {Math.round(rec.conviction_confidence * 100)}%
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-[10px] font-bold text-[#8B95A8] font-[family-name:var(--font-geist-mono)]">{rec.conviction_level}/10</span>
-          )}
-        </div>
-        <ConvictionBar level={rec.conviction_level} />
+        <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block mb-2">Conviction</span>
+        <ConvictionBar score={conviction100} />
       </div>
 
       {/* Verbatim quote */}
@@ -217,7 +206,10 @@ function VideoSummaryStats({ recommendations }: { recommendations: Recommendatio
   if (recommendations.length === 0) return null
 
   const avgSentiment = recommendations.reduce((s, r) => s + r.sentiment, 0) / recommendations.length
-  const avgConviction = recommendations.reduce((s, r) => s + r.conviction_level, 0) / recommendations.length
+  const avgConviction = recommendations.reduce(
+    (s, r) => s + (r.conviction_score ?? r.conviction_level * 10),
+    0,
+  ) / recommendations.length
   const targets = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
   const bullish = recommendations.filter(r => r.sentiment >= 1).length
   const bearish = recommendations.filter(r => r.sentiment <= -1).length
@@ -252,9 +244,9 @@ function VideoSummaryStats({ recommendations }: { recommendations: Recommendatio
       <div className="rounded-xl border border-[#1E293B] bg-[#141B2D] p-4 md:p-5">
         <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block mb-2">Conviction</span>
         <span className="font-[family-name:var(--font-geist-mono)] text-3xl md:text-4xl font-bold text-[#F1F5F9]">
-          {avgConviction.toFixed(1)}
+          {Math.round(avgConviction)}
         </span>
-        <p className="text-[11px] text-[#475569] mt-1">avg out of 10</p>
+        <p className="text-[11px] text-[#475569] mt-1">avg out of 100</p>
       </div>
 
       {/* Price Targets */}
@@ -361,7 +353,9 @@ function VideoContent() {
 
   // Sort recommendations: highest conviction first, then sentiment
   const sortedRecs = [...recommendations].sort((a, b) => {
-    if (b.conviction_level !== a.conviction_level) return b.conviction_level - a.conviction_level
+    const convA = a.conviction_score ?? a.conviction_level * 10
+    const convB = b.conviction_score ?? b.conviction_level * 10
+    if (convB !== convA) return convB - convA
     return b.sentiment - a.sentiment
   })
 

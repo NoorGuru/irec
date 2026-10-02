@@ -120,24 +120,22 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
   const [visibleCount, setVisibleCount] = useState(6)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  // Compute facet statistics (only for verified recommendations)
-  const verifiedRecs = useMemo(() => {
-    return recommendations.filter((r) => r.is_verified !== false)
-  }, [recommendations])
+  // Show every extracted stock — never filter out by Jev verification
+  const allRecs = recommendations
 
   const counts = useMemo(() => {
     return {
-      all: verifiedRecs.length,
-      bullish: verifiedRecs.filter((r) => r.sentiment >= 0.5).length,
-      bearish: verifiedRecs.filter((r) => r.sentiment <= -0.5).length,
-      target: verifiedRecs.filter((r) => r.target_price !== null && r.target_price > 0).length,
-      highConviction: verifiedRecs.filter((r) => r.conviction_level >= 8).length,
+      all: allRecs.length,
+      bullish: allRecs.filter((r) => r.sentiment >= 0.5).length,
+      bearish: allRecs.filter((r) => r.sentiment <= -0.5).length,
+      target: allRecs.filter((r) => r.target_price !== null && r.target_price > 0).length,
+      highConviction: allRecs.filter((r) => (r.conviction_score ?? r.conviction_level * 10) >= 80).length,
     }
-  }, [verifiedRecs])
+  }, [allRecs])
 
   // Filter and Sort Pipeline
   const filteredAndSortedSignals = useMemo(() => {
-    let result = [...verifiedRecs]
+    let result = [...allRecs]
 
     // 1. Facet Filter
     if (filterType === 'bullish') {
@@ -147,7 +145,7 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
     } else if (filterType === 'target') {
       result = result.filter((r) => r.target_price !== null && r.target_price > 0)
     } else if (filterType === 'high_conviction') {
-      result = result.filter((r) => r.conviction_level >= 8)
+      result = result.filter((r) => (r.conviction_score ?? r.conviction_level * 10) >= 80)
     }
 
     // 2. Search Query Filter
@@ -173,7 +171,9 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
         return (a.target_price ?? Infinity) - (b.target_price ?? Infinity)
       }
       if (sortBy === 'conviction_high') {
-        return b.conviction_level - a.conviction_level
+        const cA = a.conviction_score ?? a.conviction_level * 10
+        const cB = b.conviction_score ?? b.conviction_level * 10
+        return cB - cA
       }
       if (sortBy === 'trust_high') {
         const tA = a.videos.channels.trust_weight || 1.0
@@ -184,7 +184,7 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
     })
 
     return result
-  }, [recommendations, filterType, searchQuery, sortBy])
+  }, [allRecs, filterType, searchQuery, sortBy])
 
   // Slice visible signals for progressive disclosure
   const displayedSignals = useMemo(() => {
@@ -492,6 +492,14 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                           <ShieldCheck size={10} />
                           Trust {trustWeight.toFixed(1)}x
                         </span>
+                        {rec.is_verified === false && (
+                          <span
+                            className="text-[9px] font-mono font-bold uppercase tracking-tight px-1.5 py-0.5 rounded text-[#FF4D6A] bg-[#FF4D6A]/10 border border-[#FF4D6A]/25"
+                            title="Jev could not verify this extraction against transcript context"
+                          >
+                            Unverified
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-[#64748B] mt-0.5 font-[family-name:var(--font-geist-mono)]">
                         <span>{formatDate(rec.videos.published_at)}</span>
@@ -533,8 +541,8 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                         <span className="text-[10px] text-[#64748B] font-normal">/100</span>
                       </span>
                       {rec.conviction_score !== undefined && rec.conviction_score !== null && (() => {
-                        const clarityVal = rec.conviction_confidence !== undefined && rec.conviction_confidence !== null
-                          ? (rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100))
+                        const clarityVal = rec.conviction_confidence != null
+                          ? Math.round(rec.conviction_confidence * 100)
                           : null
                         return (
                           <span
@@ -660,6 +668,14 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20 font-[family-name:var(--font-geist-mono)]">
                             {(rec.videos.channels.trust_weight || 1.0).toFixed(1)}x
                           </span>
+                          {rec.is_verified === false && (
+                            <span
+                              className="text-[9px] font-mono font-bold uppercase tracking-tight px-1 py-0.5 rounded text-[#FF4D6A] bg-[#FF4D6A]/10 border border-[#FF4D6A]/25"
+                              title="Jev could not verify this extraction against transcript context"
+                            >
+                              Unverified
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -706,8 +722,8 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                           </span>
                           <span className="text-[10px] text-[#64748B]">/100</span>
                           {rec.conviction_score !== undefined && rec.conviction_score !== null && (() => {
-                            const clarityVal = rec.conviction_confidence !== undefined && rec.conviction_confidence !== null
-                              ? (rec.conviction_confidence === 0 ? 20 : Math.round(rec.conviction_confidence * 100))
+                            const clarityVal = rec.conviction_confidence != null
+                              ? Math.round(rec.conviction_confidence * 100)
                               : null
                             return (
                               <span
