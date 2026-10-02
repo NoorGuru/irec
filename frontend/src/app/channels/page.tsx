@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Loading from '@/components/ui/loading'
+import { conviction100, normalizeAvgConviction100 } from '@/lib/utils'
+import { ConvictionMini } from '@/components/TickerRow'
 import {
   Search, LayoutGrid, List, ChevronRight
 } from 'lucide-react'
@@ -30,6 +32,7 @@ interface RecommendationData {
   ticker: string
   sentiment: number
   conviction_level: number
+  conviction_score?: number | null
   target_price: number | null
   video_id: string
 }
@@ -111,7 +114,7 @@ function buildProfiles(
       : 0
 
     const avgConviction = chRecs.length > 0
-      ? chRecs.reduce((s, r) => s + r.conviction_level, 0) / chRecs.length
+      ? chRecs.reduce((s, r) => s + conviction100(r), 0) / chRecs.length
       : 0
 
     const bullish = chRecs.filter((r) => r.sentiment >= 1).length
@@ -235,21 +238,23 @@ function ChannelAvatar({ profile, size = 48 }: { profile: ChannelProfile; size?:
 
 // ─── Mini Conviction Gauge ───
 
-function ConvictionDots({ level }: { level: number }) {
+function ConvictionDots({ score }: { score: number }) {
+  const clamped = Math.max(0, Math.min(100, normalizeAvgConviction100(score)))
   return (
-    <div className="flex items-center gap-1.5" title={`Avg Conviction: ${level.toFixed(1)}/10`}>
+    <div className="flex items-center gap-1.5" title={`Avg Conviction: ${Math.round(clamped)}/100`}>
       <div className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, i) => (
           <div
             key={i}
             className={`w-1 h-2.5 rounded-[1px] ${
-              i < Math.round(level / 2) ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+              i < Math.round(clamped / 20) ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
             }`}
           />
         ))}
       </div>
       <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9] font-bold">
-        {level.toFixed(1)}
+        {Math.round(clamped)}
+        <span className="text-[#64748B] font-normal">/100</span>
       </span>
     </div>
   )
@@ -328,9 +333,9 @@ function ChannelGridCard({ profile }: { profile: ChannelProfile }) {
             <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Calls</span>
             <span className="text-sm font-bold text-[#F1F5F9]">{profile.total_recommendations}</span>
           </div>
-          <div>
-            <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Conviction</span>
-            <span className="text-sm font-bold text-[#00D4AA]">{profile.avg_conviction.toFixed(1)}</span>
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] uppercase tracking-wider text-[#64748B] block mb-0.5">Conviction</span>
+            <ConvictionMini score={profile.avg_conviction} showSuffix={false} />
           </div>
           <div>
             <span className="text-[9px] uppercase tracking-wider text-[#64748B] block">Activity</span>
@@ -417,7 +422,7 @@ export default function ChannelsPage() {
       const [channelsRes, videosRes, recsRes] = await Promise.all([
         supabase.from('channels').select('channel_id, channel_name, trust_weight, created_at, channel_thumbnail_url, youtube_channel_id'),
         fetchAll<VideoData>('videos', 'video_id, channel_id, youtube_video_id, published_at', { column: 'published_at', ascending: false }),
-        fetchAll<RecommendationData>('recommendations', 'ticker, sentiment, conviction_level, target_price, video_id', { column: 'video_id', ascending: true }),
+        fetchAll<RecommendationData>('recommendations', 'ticker, sentiment, conviction_level, conviction_score, target_price, video_id', { column: 'video_id', ascending: true }),
       ])
 
       const channels = (channelsRes.data || []) as ChannelData[]
@@ -698,7 +703,7 @@ export default function ChannelsPage() {
                           </span>
                         </td>
                         <td className="py-4 px-4 whitespace-nowrap">
-                          <ConvictionDots level={profile.avg_conviction} />
+                          <ConvictionDots score={profile.avg_conviction} />
                         </td>
                         <td className="py-4 px-4 whitespace-nowrap font-bold text-[#F1F5F9]">
                           {profile.total_recommendations}

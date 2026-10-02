@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import Loading from '@/components/ui/loading'
+import { conviction100 as toConviction100 } from '@/lib/utils'
 
 /* ─── Types ─── */
 
@@ -136,7 +137,7 @@ function ConvictionBar({ score }: { score: number }) {
 
 function TickerCard({ rec, index }: { rec: RecommendationRow; index: number }) {
   const staggerClass = `stagger-${Math.min(index + 3, 10)}`
-  const conviction100 = rec.conviction_score ?? rec.conviction_level * 10
+  const conviction100 = toConviction100(rec)
 
   return (
     <Link
@@ -207,7 +208,7 @@ function VideoSummaryStats({ recommendations }: { recommendations: Recommendatio
 
   const avgSentiment = recommendations.reduce((s, r) => s + r.sentiment, 0) / recommendations.length
   const avgConviction = recommendations.reduce(
-    (s, r) => s + (r.conviction_score ?? r.conviction_level * 10),
+    (s, r) => s + toConviction100(r),
     0,
   ) / recommendations.length
   const targets = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
@@ -245,8 +246,8 @@ function VideoSummaryStats({ recommendations }: { recommendations: Recommendatio
         <span className="text-[10px] uppercase tracking-[0.15em] text-[#475569] block mb-2">Conviction</span>
         <span className="font-[family-name:var(--font-geist-mono)] text-3xl md:text-4xl font-bold text-[#F1F5F9]">
           {Math.round(avgConviction)}
+          <span className="text-lg text-[#475569] font-normal">/100</span>
         </span>
-        <p className="text-[11px] text-[#475569] mt-1">avg out of 100</p>
       </div>
 
       {/* Price Targets */}
@@ -353,8 +354,8 @@ function VideoContent() {
 
   // Sort recommendations: highest conviction first, then sentiment
   const sortedRecs = [...recommendations].sort((a, b) => {
-    const convA = a.conviction_score ?? a.conviction_level * 10
-    const convB = b.conviction_score ?? b.conviction_level * 10
+    const convA = toConviction100(a)
+    const convB = toConviction100(b)
     if (convB !== convA) return convB - convA
     return b.sentiment - a.sentiment
   })

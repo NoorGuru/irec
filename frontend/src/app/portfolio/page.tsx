@@ -2,7 +2,8 @@
 
 import { Activity, ArrowLeft, TrendingUp, TrendingDown, DollarSign, Briefcase, RefreshCw, Loader2, CheckCircle2, XCircle, Database, Settings, Search, PieChart, X, RotateCcw, BarChart3, ActivitySquare, Shield, Trophy, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
-import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
+import { getSentimentLabel, getSentimentBadgeClass, PulseBar } from '@/components/TickerRow'
+import { normalizeAvgConviction100 } from '@/lib/utils'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -86,7 +87,7 @@ export default function PortfolioPage() {
           stock_name: stock?.stock_name || null,
           consensus_sentiment: stock?.overall_sentiment || 0,
           avg_target_price: stock?.avg_target_price || null,
-          avg_conviction: stock?.avg_conviction || 0,
+          avg_conviction: stock?.avg_conviction != null ? normalizeAvgConviction100(stock.avg_conviction) : 0,
           mention_count: stock?.mention_count_30d || 0,
           analyst_count: stock?.analyst_count || 0
         }

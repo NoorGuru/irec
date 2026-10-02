@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, conviction100 } from '@/lib/utils'
 import {
   Search,
   X,
@@ -97,14 +97,15 @@ function SentimentArrow({ value }: { value: number }) {
   return null
 }
 
-function ConvictionDots({ level }: { level: number }) {
+function ConvictionDots({ score }: { score: number }) {
+  const filled = Math.round(Math.max(0, Math.min(100, score)) / 10)
   return (
-    <div className="flex items-center gap-0.5" title={`Conviction: ${level}/10`}>
+    <div className="flex items-center gap-0.5" title={`Conviction: ${Math.round(score)}/100`}>
       {Array.from({ length: 10 }, (_, i) => (
         <div
           key={i}
           className={`w-1.5 h-1.5 rounded-full transition-colors ${
-            i < level ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+            i < filled ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
           }`}
         />
       ))}
@@ -129,7 +130,7 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
       bullish: allRecs.filter((r) => r.sentiment >= 0.5).length,
       bearish: allRecs.filter((r) => r.sentiment <= -0.5).length,
       target: allRecs.filter((r) => r.target_price !== null && r.target_price > 0).length,
-      highConviction: allRecs.filter((r) => (r.conviction_score ?? r.conviction_level * 10) >= 80).length,
+      highConviction: allRecs.filter((r) => conviction100(r) >= 80).length,
     }
   }, [allRecs])
 
@@ -145,7 +146,7 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
     } else if (filterType === 'target') {
       result = result.filter((r) => r.target_price !== null && r.target_price > 0)
     } else if (filterType === 'high_conviction') {
-      result = result.filter((r) => (r.conviction_score ?? r.conviction_level * 10) >= 80)
+      result = result.filter((r) => conviction100(r) >= 80)
     }
 
     // 2. Search Query Filter
@@ -171,8 +172,8 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
         return (a.target_price ?? Infinity) - (b.target_price ?? Infinity)
       }
       if (sortBy === 'conviction_high') {
-        const cA = a.conviction_score ?? a.conviction_level * 10
-        const cB = b.conviction_score ?? b.conviction_level * 10
+        const cA = conviction100(a)
+        const cB = conviction100(b)
         return cB - cA
       }
       if (sortBy === 'trust_high') {
@@ -422,7 +423,7 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
               <option value="newest">Latest First (Freshness)</option>
               <option value="target_high">Highest Price Target</option>
               <option value="target_low">Lowest Price Target</option>
-              <option value="conviction_high">Highest Conviction (10/10)</option>
+              <option value="conviction_high">Highest Conviction (100/100)</option>
               <option value="trust_high">Channel Trust Weight</option>
             </select>
           </div>
@@ -531,13 +532,13 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0A0F1A] border border-[#1E293B]">
                       <span className="text-[10px] text-[#64748B]">Conviction</span>
                       <span className={`text-xs font-bold font-[family-name:var(--font-geist-mono)] ${
-                        (rec.conviction_score ?? rec.conviction_level * 10) >= 75
+                        conviction100(rec) >= 75
                           ? 'text-[#00D4AA]'
-                          : (rec.conviction_score ?? rec.conviction_level * 10) >= 50
+                          : conviction100(rec) >= 50
                           ? 'text-[#F1F5F9]'
                           : 'text-[#8B95A8]'
                       }`}>
-                        {Math.round(rec.conviction_score ?? rec.conviction_level * 10)}
+                        {Math.round(conviction100(rec))}
                         <span className="text-[10px] text-[#64748B] font-normal">/100</span>
                       </span>
                       {rec.conviction_score !== undefined && rec.conviction_score !== null && (() => {
@@ -712,13 +713,13 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 font-[family-name:var(--font-geist-mono)]">
                           <span className={`text-xs font-bold ${
-                            (rec.conviction_score ?? rec.conviction_level * 10) >= 75
+                            conviction100(rec) >= 75
                               ? 'text-[#00D4AA]'
-                              : (rec.conviction_score ?? rec.conviction_level * 10) >= 50
+                              : conviction100(rec) >= 50
                               ? 'text-[#F1F5F9]'
                               : 'text-[#8B95A8]'
                           }`}>
-                            {Math.round(rec.conviction_score ?? rec.conviction_level * 10)}
+                            {Math.round(conviction100(rec))}
                           </span>
                           <span className="text-[10px] text-[#64748B]">/100</span>
                           {rec.conviction_score !== undefined && rec.conviction_score !== null && (() => {
@@ -824,7 +825,7 @@ export default function TickerSignalsLedger({ recommendations, symbol }: TickerS
 
                     <div className="flex items-center gap-1 font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8]">
                       <span>Conv:</span>
-                      <span className="text-[#00D4AA] font-bold">{rec.conviction_level}/10</span>
+                      <span className="text-[#00D4AA] font-bold">{Math.round(conviction100(rec))}/100</span>
                     </div>
                   </div>
 

@@ -26,7 +26,14 @@ function YoutubeIcon({ className = "w-4 h-4" }: { className?: string }) {
 import HolographicCard from '@/components/HolographicCard'
 import TextScramble from '@/components/TextScramble'
 import PulseField from '@/components/PulseField'
-import { formatRelativeTime, formatLocalTime, formatMarketTime, formatDateTime } from '@/lib/utils'
+import {
+  formatRelativeTime,
+  formatLocalTime,
+  formatMarketTime,
+  formatDateTime,
+  normalizeAvgConviction100,
+  formatConviction,
+} from '@/lib/utils'
 import { TVMiniChart } from '@/components/TVWidgets'
 import TodayAuraReactor from '@/components/today/TodayAuraReactor'
 import TodayEarlyRadar from '@/components/today/TodayEarlyRadar'
@@ -179,9 +186,9 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
             : 'opacity-60 hover:opacity-80'
             }`}>
             <span className="block text-[7.5px] uppercase tracking-wider text-[#64748B] font-bold">Conviction</span>
-            <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{play.avg_conviction.toFixed(1)}/10</span>
+            <span className="text-[10px] font-black text-[#F1F5F9] mt-0.5">{formatConviction(play.avg_conviction)}</span>
             <div className="w-full bg-white/10 h-0.5 rounded-full mt-1 overflow-hidden">
-              <div className={`h-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} style={{ width: `${play.avg_conviction * 10}%` }} />
+              <div className={`h-full rounded-full ${isBuy ? 'bg-[#00D4AA]' : 'bg-[#FF4D6A]'}`} style={{ width: `${Math.min(100, normalizeAvgConviction100(play.avg_conviction))}%` }} />
             </div>
           </div>
 
@@ -230,7 +237,7 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
               {catalystAuthor}
             </Link>
             <span className="text-[#475569]">•</span>
-            <span>Conviction {catalystConviction}/10</span>
+            <span>{formatConviction(catalystConviction)}</span>
           </div>
         </div>
       </div>
@@ -396,7 +403,7 @@ function PulseStream({
                     }`}>
                     <span className="block text-[8px] uppercase tracking-wider text-[#94A3B8] font-bold">Conviction</span>
                     <span className="text-xs font-black text-[#F1F5F9] mt-1 block">
-                      {play.avg_conviction.toFixed(1)}/10
+                      {formatConviction(play.avg_conviction)}
                     </span>
                   </div>
                   <div className={`p-1.5 rounded-lg transition-all duration-300 ${sortBy === 'mentions'
@@ -437,7 +444,7 @@ function PulseStream({
                       {catalystAuthor}
                     </Link>
                     <span className="text-[#475569]">•</span>
-                    <span>Conviction {catalystConviction}/10</span>
+                    <span>{formatConviction(catalystConviction)}</span>
                   </div>
                 </div>
               </div>

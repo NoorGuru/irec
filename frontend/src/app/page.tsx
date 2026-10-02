@@ -6,10 +6,20 @@ import { Activity } from 'lucide-react'
 import PulseField from '@/components/PulseField'
 import RadarCard from '@/components/ui/radar-card'
 import { AggregatedTicker, RadarResponse } from '@/lib/types'
+import { normalizeAvgConviction100 } from '@/lib/utils'
 import { getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRow'
 import HomeTickerTape from '@/components/home/HomeTickerTape'
 import HomeLatestIntel from '@/components/home/HomeLatestIntel'
 import HomeMarketMovers from '@/components/home/HomeMarketMovers'
+
+const HOME_PULSE_CACHE_KEY = 'aura_home_pulse_v3'
+
+function normalizePulseAggregated(tickers: AggregatedTicker[]): AggregatedTicker[] {
+  return tickers.map((t) => ({
+    ...t,
+    avg_conviction: normalizeAvgConviction100(t.avg_conviction),
+  }))
+}
 
 function MarketPulseSkeleton() {
   return (
@@ -400,11 +410,11 @@ export default function Home() {
   useEffect(() => {
     // Hydrate from cache after mount — safe for SSR
     try {
-      const cached = localStorage.getItem('aura_home_pulse_v2')
+      const cached = localStorage.getItem(HOME_PULSE_CACHE_KEY)
       if (cached) {
         const parsed = JSON.parse(cached)
         if (parsed?.aggregated?.length > 0) {
-          setAggregated(parsed.aggregated)
+          setAggregated(normalizePulseAggregated(parsed.aggregated))
           setPulseLoading(false)
         }
       }
@@ -417,9 +427,10 @@ export default function Home() {
       .then(res => res.ok ? res.json() : { aggregated: [] })
       .then(data => {
         if (data?.aggregated?.length > 0) {
-          setAggregated(data.aggregated)
+          const normalized = normalizePulseAggregated(data.aggregated)
+          setAggregated(normalized)
           try {
-            localStorage.setItem('aura_home_pulse_v2', JSON.stringify(data))
+            localStorage.setItem(HOME_PULSE_CACHE_KEY, JSON.stringify({ ...data, aggregated: normalized }))
           } catch {}
         }
       })

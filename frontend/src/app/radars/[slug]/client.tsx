@@ -6,6 +6,7 @@ import { Activity } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { RadarConfig } from '@/lib/radars'
 import { AggregatedTicker, RecommendationRow } from '@/lib/types'
+import { conviction100 } from '@/lib/utils'
 
 // Reusing aggregations
 function aggregateRecommendations(recommendations: RecommendationRow[]): AggregatedTicker[] {
@@ -23,7 +24,7 @@ function aggregateRecommendations(recommendations: RecommendationRow[]): Aggrega
     const trustWeight = rec.videos.channels.trust_weight
     group.sentiments.push({ value: rec.sentiment, weight: trustWeight })
     if (rec.target_price !== null) group.prices.push(rec.target_price)
-    group.convictions.push(rec.conviction_level)
+    group.convictions.push(conviction100(rec))
     group.channels.add(rec.videos.channel_id)
     group.count++
     if (rec.stock_name && !group.stock_name) group.stock_name = rec.stock_name
@@ -93,6 +94,7 @@ export default function RadarDetailClient({ radar }: { radar: RadarConfig }) {
           sentiment,
           target_price,
           conviction_level,
+          conviction_score,
           videos!inner(
             channel_id,
             channels!inner(trust_weight)

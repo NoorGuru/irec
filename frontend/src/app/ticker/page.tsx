@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { RadarResponse } from '@/lib/types'
-import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, formatMarketTime, conviction100 } from '@/lib/utils'
 import { TVMiniChart, TVCompanyProfile, TVFundamentalData, ExpandableWidget } from '@/components/TVWidgets'
 import TargetCorridor from '@/components/TargetCorridor'
 import TickerAnalyticsDock from '@/components/TickerAnalyticsDock'
@@ -261,7 +261,7 @@ function TickerContent() {
 
   // Compute aggregate stats for this ticker
   const avgSentiment = recommendations.reduce((s, r) => s + r.sentiment, 0) / recommendations.length
-  const avgConviction = recommendations.reduce((s, r) => s + (r.conviction_score != null ? r.conviction_score : r.conviction_level * 10), 0) / (recommendations.length || 1)
+  const avgConviction = recommendations.reduce((s, r) => s + conviction100(r), 0) / (recommendations.length || 1)
   const prices = recommendations.filter(r => r.target_price !== null).map(r => r.target_price!)
   const rawAvgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null
   const avgPrice = rawAvgPrice !== null ? Math.round(rawAvgPrice) : null

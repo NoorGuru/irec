@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, ChevronDown, ChevronUp, Activity, BarChart2, ArrowUpDown, ArrowDown, ArrowUp, ArrowRight } from 'lucide-react'
-import { formatRelativeTime, formatLocalTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, normalizeAvgConviction100 } from '@/lib/utils'
 import { StockDirectoryItem } from '@/lib/types'
 import { getSentimentLabel, getSentimentBadgeClass, PulseBar, ConvictionMini } from '@/components/TickerRow'
 import Loading from '@/components/ui/loading'
@@ -35,6 +35,16 @@ interface RatingFilter {
   activeColor: string
   activeBg: string
   activeBorder: string
+}
+
+const STOCKS_CACHE_KEY = 'aura_stocks_directory_v8'
+
+function normalizeStocksDirectory(stocks: StockDirectoryItem[]): StockDirectoryItem[] {
+  return stocks.map((s) => ({
+    ...s,
+    avg_conviction:
+      s.avg_conviction != null ? normalizeAvgConviction100(s.avg_conviction) : null,
+  }))
 }
 
 const RATING_FILTERS: RatingFilter[] = [
@@ -81,14 +91,14 @@ export default function ExplorePage() {
 
     async function fetchStocks() {
       try {
-        const cached = localStorage.getItem('aura_stocks_directory_v7')
+        const cached = localStorage.getItem(STOCKS_CACHE_KEY)
         let localEtag = null
         if (cached) {
           try {
             const parsed = JSON.parse(cached)
             if (parsed && parsed.stocks) {
               if (active) {
-                setStocks(parsed.stocks)
+                setStocks(normalizeStocksDirectory(parsed.stocks))
                 setLoading(false)
                 localEtag = parsed.generated_at
               }
@@ -107,9 +117,10 @@ export default function ExplorePage() {
 
         const json = await res.json()
         if (active) {
-          setStocks(json.stocks)
+          const normalized = normalizeStocksDirectory(json.stocks)
+          setStocks(normalized)
           setError(null)
-          localStorage.setItem('aura_stocks_directory_v7', JSON.stringify(json))
+          localStorage.setItem(STOCKS_CACHE_KEY, JSON.stringify({ ...json, stocks: normalized }))
         }
       } catch (err: any) {
         if (active) {
@@ -572,12 +583,7 @@ export default function ExplorePage() {
 
                           <td className="px-5 py-4">
                             {stock.avg_conviction !== null ? (
-                              <div className="flex flex-col gap-1">
-                                <span className="font-[family-name:var(--font-geist-mono)] text-xs text-[#F1F5F9]">
-                                  {stock.avg_conviction.toFixed(1)}/10
-                                </span>
-                                <ConvictionMini level={stock.avg_conviction} />
-                              </div>
+                              <ConvictionMini score={stock.avg_conviction} showSuffix={false} />
                             ) : (
                               <span className="text-[#64748B] text-xs">—</span>
                             )}
@@ -706,9 +712,11 @@ export default function ExplorePage() {
                       </div>
                       <div>
                         <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">CONVICTION</span>
-                        <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#F1F5F9]">
-                          {stock.avg_conviction !== null ? `${stock.avg_conviction.toFixed(1)}/10` : '—'}
-                        </span>
+                        {stock.avg_conviction !== null ? (
+                          <ConvictionMini score={stock.avg_conviction} showSuffix={false} />
+                        ) : (
+                          <span className="font-[family-name:var(--font-geist-mono)] font-bold text-[#64748B]">—</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-[#64748B] block font-[family-name:var(--font-geist-mono)]">AURA SCORE</span>

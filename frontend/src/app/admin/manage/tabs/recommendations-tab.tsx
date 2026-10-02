@@ -563,17 +563,23 @@ export function RecommendationsTab() {
                               <div
                                 key={i}
                                 className={`w-2.5 h-5 rounded-sm ${
-                                  (rec.conviction_level || 0) > i ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+                                  Math.round((rec.conviction_score ?? (rec.conviction_level || 0) * 10) / 10) > i
+                                    ? 'bg-[#00D4AA]'
+                                    : 'bg-[#1E293B]'
                                 }`}
                               />
                             ))}
-                            <span className="text-xs font-mono text-[#8B95A8] ml-1.5">{rec.conviction_level || '—'}/10</span>
+                            <span className="text-xs font-mono text-[#8B95A8] ml-1.5">
+                              {rec.conviction_score != null
+                                ? Math.round(rec.conviction_score)
+                                : rec.conviction_level != null
+                                  ? Math.round(rec.conviction_level * 10)
+                                  : '—'}
+                              /100
+                            </span>
                           </div>
-                          {rec.conviction_score !== null && rec.conviction_score !== undefined && (
+                          {(rec.conviction_confidence != null || rec.initial_conviction_level != null) && (
                             <div className="flex items-center gap-1.5 mt-1.5 text-[11px] font-mono">
-                              <span className="text-[#00D4AA] font-bold">
-                                {Math.round(rec.conviction_score)}/100
-                              </span>
                               {rec.conviction_confidence !== null && rec.conviction_confidence !== undefined && (
                                 <span className={`text-[9px] px-1 py-0.5 rounded border ${
                                   Math.round(rec.conviction_confidence * 100) >= 70
@@ -587,7 +593,7 @@ export function RecommendationsTab() {
                               )}
                               {rec.initial_conviction_level != null && (
                                 <span className="text-[9px] text-[#64748B] font-mono ml-1" title="Claude initial extraction baseline">
-                                  (raw: {rec.initial_conviction_level}/10)
+                                  (raw: {Math.round(rec.initial_conviction_level * 10)}/100)
                                 </span>
                               )}
                             </div>

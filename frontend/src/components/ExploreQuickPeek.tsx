@@ -298,7 +298,7 @@ export default function ExploreQuickPeek({
             </div>
             <div className="mt-1">
               {stock.avg_conviction !== null ? (
-                <ConvictionMini level={stock.avg_conviction} />
+                <ConvictionMini score={stock.avg_conviction} showSuffix={false} />
               ) : (
                 <span className="text-xs text-[#64748B]">—</span>
               )}

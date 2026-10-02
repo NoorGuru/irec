@@ -67,14 +67,15 @@ function SentimentArrow({ value }: { value: number }) {
   return null
 }
 
-function ConvictionDots({ level }: { level: number }) {
+function ConvictionDots({ score }: { score: number }) {
+  const filled = Math.round(Math.max(0, Math.min(100, score)) / 10)
   return (
-    <div className="flex items-center gap-0.5" title={`Conviction: ${level}/10`}>
+    <div className="flex items-center gap-0.5" title={`Conviction: ${Math.round(score)}/100`}>
       {Array.from({ length: 10 }, (_, i) => (
         <div
           key={i}
           className={`w-1.5 h-1.5 rounded-full ${
-            i < level ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
+            i < filled ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'
           }`}
         />
       ))}
@@ -339,16 +340,16 @@ export default function TargetCorridor({
         <div className="p-4 rounded-xl bg-[#0A0F1A]/80 border border-[#1E293B] flex flex-col justify-between">
           <span className="text-xs text-[#64748B] mb-1 font-[family-name:var(--font-geist-sans)]">Avg Conviction</span>
           <p className="text-2xl font-bold font-[family-name:var(--font-geist-mono)] text-[#F1F5F9]">
-            {Math.round(avgConviction <= 10 ? avgConviction * 10 : avgConviction)}
+            {Math.round(avgConviction)}
             <span className="text-sm text-[#64748B] font-normal">/100</span>
           </p>
           <div className="mt-2 flex items-center gap-1.5">
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-              (avgConviction <= 10 ? avgConviction * 10 : avgConviction) >= 75
+              avgConviction >= 75
                 ? 'bg-[#00D4AA]/10 text-[#00FFD0] border border-[#00D4AA]/20'
                 : 'bg-[#1E293B] text-[#8B95A8]'
             }`}>
-              {(avgConviction <= 10 ? avgConviction * 10 : avgConviction) >= 75 ? '✦ High Conviction' : 'Standard Core'}
+              {avgConviction >= 75 ? '✦ High Conviction' : 'Standard Core'}
             </span>
           </div>
         </div>

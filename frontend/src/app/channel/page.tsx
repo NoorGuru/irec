@@ -10,7 +10,7 @@ import {
   Activity, Search, Copy, Check, LayoutGrid, List, Play,
   ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime, conviction100 } from '@/lib/utils'
 
 /* ─── Types ─── */
 
@@ -41,6 +41,7 @@ interface RecommendationRow {
   sentiment: number
   target_price: number | null
   conviction_level: number
+  conviction_score?: number | null
   catalyst_notes: string
 }
 
@@ -142,13 +143,14 @@ function getBiasDetails(avgSentiment: number, bullishPct: number): { label: stri
 
 /* ─── Subcomponents ─── */
 
-function ConvictionMeter({ level }: { level: number }) {
-  const normalized = Math.min(Math.max(Math.round(level), 1), 10)
+function ConvictionMeter({ score }: { score: number }) {
+  const clamped = Math.max(0, Math.min(100, score))
+  const filled = Math.round(clamped / 10)
   return (
     <div className="flex items-center gap-2">
-      <div className="flex gap-1" title={`Conviction: ${level.toFixed(1)}/10`}>
+      <div className="flex gap-1" title={`Conviction: ${Math.round(clamped)}/100`}>
         {Array.from({ length: 10 }, (_, i) => {
-          const active = i < normalized
+          const active = i < filled
           let color = 'bg-[#1E293B]'
           if (active) {
             if (i < 4) color = 'bg-[#00D4AA]/60'
@@ -164,18 +166,19 @@ function ConvictionMeter({ level }: { level: number }) {
         })}
       </div>
       <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#F1F5F9]">
-        {level.toFixed(1)}<span className="text-[#64748B] font-normal text-[10px]">/10</span>
+        {Math.round(clamped)}<span className="text-[#64748B] font-normal text-[10px]">/100</span>
       </span>
     </div>
   )
 }
 
-function MiniConvictionPill({ level }: { level: number }) {
+function MiniConvictionPill({ score }: { score: number }) {
+  const clamped = Math.max(0, Math.min(100, score))
   return (
     <div className="flex items-center gap-1">
       <div className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, i) => {
-          const filled = i < Math.round(level / 2)
+          const filled = i < Math.round(clamped / 20)
           return (
             <div
               key={i}
@@ -185,7 +188,8 @@ function MiniConvictionPill({ level }: { level: number }) {
         })}
       </div>
       <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#8B95A8]">
-        {level.toFixed(1)}
+        {Math.round(clamped)}
+        <span className="text-[#64748B]">/100</span>
       </span>
     </div>
   )
@@ -246,7 +250,7 @@ function ChannelContent() {
         const videoIds = vids.map(v => v.video_id)
         const { data: recs } = await supabase
           .from('recommendations')
-          .select('id, video_id, ticker, stock_name, sentiment, target_price, conviction_level, catalyst_notes')
+          .select('id, video_id, ticker, stock_name, sentiment, target_price, conviction_level, conviction_score, catalyst_notes')
           .in('video_id', videoIds)
 
         if (active) {
@@ -286,7 +290,7 @@ function ChannelContent() {
     : 0
 
   const avgConviction = allRecs.length > 0
-    ? allRecs.reduce((s, r) => s + r.conviction_level, 0) / allRecs.length
+    ? allRecs.reduce((s, r) => s + conviction100(r), 0) / allRecs.length
     : 0
 
   const priceTargets = allRecs.filter(r => r.target_price !== null && r.target_price > 0).map(r => r.target_price!)
@@ -311,7 +315,7 @@ function ChannelContent() {
       }
       const entry = map.get(rec.ticker)!
       entry.sentiments.push(rec.sentiment)
-      entry.convictions.push(rec.conviction_level)
+      entry.convictions.push(conviction100(rec))
       if (rec.stock_name && !entry.stock_name) entry.stock_name = rec.stock_name
       if (rec.target_price !== null) entry.prices.push(rec.target_price)
       if (rec.catalyst_notes) entry.catalysts.push(rec.catalyst_notes)
@@ -638,7 +642,7 @@ function ChannelContent() {
               Conviction Calibration
             </span>
             <div className="mb-2">
-              <ConvictionMeter level={avgConviction} />
+              <ConvictionMeter score={avgConviction} />
             </div>
             <p className="text-[11px] text-[#8B95A8] font-[family-name:var(--font-geist-mono)]">
               Average analyst confidence index
@@ -800,7 +804,7 @@ function ChannelContent() {
 
                   {/* Footer with conviction and sentiment history dots */}
                   <div className="pt-3 border-t border-[#1E293B]/60 mt-3 flex items-center justify-between">
-                    <MiniConvictionPill level={b.avg_conviction} />
+                    <MiniConvictionPill score={b.avg_conviction} />
 
                     {/* Historical trajectory dots */}
                     <div className="flex items-center gap-1" title="Call sentiment timeline">
@@ -1051,7 +1055,7 @@ function ChannelContent() {
 
                           <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs font-[family-name:var(--font-geist-mono)]">
                             <span className="text-[11px] text-[#64748B]">
-                              Conviction: <strong className="text-[#F1F5F9]">{rec.conviction_level}/10</strong>
+                              Conviction: <strong className="text-[#F1F5F9]">{Math.round(conviction100(rec))}/100</strong>
                             </span>
                             <button
                               onClick={() => router.push(`/ticker?s=${rec.ticker}`)}
@@ -1107,7 +1111,7 @@ function ChannelContent() {
                           {r.target_price !== null ? `$${r.target_price.toFixed(0)}` : '—'}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap text-[#8B95A8]">
-                          {r.conviction_level}/10
+                          {Math.round(conviction100(r))}/100
                         </td>
                         <td className="py-3 px-4 max-w-xs truncate text-[#8B95A8] font-sans" title={r.catalyst_notes}>
                           {r.catalyst_notes || '—'}

@@ -743,7 +743,9 @@ function JobCard({
                   <span className="font-mono font-bold text-sm text-[#F1F5F9]">{rec.ticker}</span>
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-[#8B95A8]">Initial:</span>
-                    <span className="font-mono text-[#8B95A8]">{rec.conviction_level ?? '—'}/10</span>
+                    <span className="font-mono text-[#8B95A8]">
+                      {rec.conviction_level != null ? `${Math.round(rec.conviction_level * 10)}/100` : '—'}
+                    </span>
                   </div>
                 </div>
 

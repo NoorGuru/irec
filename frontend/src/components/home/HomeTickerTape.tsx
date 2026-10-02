@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AggregatedTicker } from '@/lib/types'
+import { ConvictionMini } from '@/components/TickerRow'
 import { getSentimentBadgeClass, getSentimentLabel, PulseBar } from '@/components/TickerRow'
 import { ArrowUpRight, ArrowDownRight, Minus, Target, ArrowRight, X } from 'lucide-react'
 
@@ -309,9 +310,9 @@ export default function HomeTickerTape({ tickers, loading = false }: HomeTickerT
               <span className="text-[9px] text-[#64748B] font-[family-name:var(--font-geist-mono)] block uppercase">
                 Conviction
               </span>
-              <span className="font-[family-name:var(--font-geist-mono)] text-xs font-bold text-[#00D4AA]">
-                {activeTicker.avg_conviction.toFixed(1)}/10
-              </span>
+              <div className="mt-0.5">
+                <ConvictionMini score={activeTicker.avg_conviction} showSuffix={false} />
+              </div>
             </div>
             <div>
               <span className="text-[9px] text-[#64748B] font-[family-name:var(--font-geist-mono)] block uppercase">

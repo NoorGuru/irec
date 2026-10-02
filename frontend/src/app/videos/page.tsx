@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import Loading from '@/components/ui/loading'
+import { conviction100, formatConviction } from '@/lib/utils'
 
 /* ─── Types ─── */
 
@@ -31,6 +32,7 @@ interface RecommendationRow {
   sentiment: number
   target_price: number | null
   conviction_level: number
+  conviction_score?: number | null
 }
 
 type SortKey = 'newest' | 'oldest' | 'most-picks' | 'highest-conviction'
@@ -147,7 +149,7 @@ function enrichVideos(
         : 0
     const avgConviction =
       recs.length > 0
-        ? recs.reduce((s, r) => s + r.conviction_level, 0) / recs.length
+        ? recs.reduce((s, r) => s + conviction100(r), 0) / recs.length
         : 0
 
     return {
@@ -543,7 +545,7 @@ function VideoCard({ video, index }: { video: EnrichedVideo; index: number }) {
                     {getSentimentLabel(video.avg_sentiment)}
                   </span>
                   <span className="font-[family-name:var(--font-geist-mono)] text-[11px] text-[#475569]">
-                    Conv {video.avg_conviction.toFixed(1)}/10
+                    Conv {formatConviction(video.avg_conviction)}
                   </span>
                 </>
               ) : (
@@ -634,7 +636,7 @@ export default function VideosPage() {
           `,
           { column: 'published_at', ascending: false }
         ),
-        fetchAll('recommendations', 'id, video_id, ticker, stock_name, sentiment, target_price, conviction_level', { column: 'id', ascending: true })
+        fetchAll('recommendations', 'id, video_id, ticker, stock_name, sentiment, target_price, conviction_level, conviction_score', { column: 'id', ascending: true })
       ])
 
       const vids = (videosRes || []) as unknown as VideoRow[]

@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { RadarResponse } from '@/lib/types'
 import { Crown, Sparkles, Cpu, Dna, Bitcoin, Shield, Activity, ArrowLeft, Target, MessageCircle, Cloud, Sun, DollarSign, CreditCard, Globe, Lock, Satellite } from 'lucide-react'
 import Loading from '@/components/ui/loading'
-import { formatLocalTime, formatRelativeTime, formatMarketTime } from '@/lib/utils'
+import { formatLocalTime, formatRelativeTime, formatMarketTime, formatConviction } from '@/lib/utils'
+import { ConvictionMini } from '@/components/TickerRow'
 import { TVMiniChart } from '@/components/TVWidgets'
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -82,28 +83,6 @@ function LargeSparkline({ data, color }: { data: number[]; color: string }) {
         />
       )}
     </svg>
-  )
-}
-
-function ConvictionMini({ level }: { level: number }) {
-  const rounded = Math.round(level)
-  return (
-    <div className="flex items-center gap-1" title={`Conviction: ${level.toFixed(1)}/10`}>
-      <div className="flex gap-[2px]">
-        {Array.from({ length: 5 }, (_, i) => {
-          const filled = i < Math.round(rounded / 2)
-          return (
-            <div
-              key={i}
-              className={`w-1 h-3 rounded-[1px] ${filled ? 'bg-[#00D4AA]' : 'bg-[#1E293B]'}`}
-            />
-          )
-        })}
-      </div>
-      <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B]">
-        {level.toFixed(1)}
-      </span>
-    </div>
   )
 }
 
@@ -343,7 +322,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
               </div>
               <div className="p-3 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B]">
                 <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Theme Conviction</span>
-                <p className="text-lg font-bold text-[#F1F5F9] mt-1">{aggregateStats.avgConviction.toFixed(1)} / 10</p>
+                <p className="text-lg font-bold text-[#F1F5F9] mt-1">{formatConviction(aggregateStats.avgConviction)}</p>
               </div>
               <div className="p-3 rounded-xl bg-[#0A0F1A]/60 border border-[#1E293B]">
                 <span className="text-[9px] uppercase tracking-wider text-[#64748B]">Constituent Targets</span>
@@ -410,7 +389,7 @@ export default function RadarDetailClient({ slug }: { slug: string }) {
                       }
                     </div>
                     {play.recent_mentions > 0 && (
-                      <ConvictionMini level={play.avg_conviction} />
+                      <ConvictionMini score={play.avg_conviction} />
                     )}
                   </div>
 

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { AggregatedTicker } from '@/lib/types'
-import { formatRelativeTime, formatLocalTime, formatMarketTime } from '@/lib/utils'
+import { formatRelativeTime, formatLocalTime, formatMarketTime, normalizeAvgConviction100 } from '@/lib/utils'
 
 export function getSentimentLabel(value: number): string {
   if (value >= 1.5) return "Strong Buy"
@@ -40,13 +40,21 @@ export function PulseBar({ value, isTop }: { value: number; isTop: boolean }) {
   )
 }
 
-export function ConvictionMini({ level }: { level: number }) {
-  const rounded = Math.round(level)
+export function ConvictionMini({
+  score,
+  showSuffix = true,
+}: {
+  score: number
+  /** Set false when the parent already labels this as conviction (avoids repeating /100). */
+  showSuffix?: boolean
+}) {
+  const clamped = Math.max(0, Math.min(100, normalizeAvgConviction100(score)))
+  const display = Math.round(clamped)
   return (
-    <div className="flex items-center gap-1" title={`Conviction: ${level.toFixed(1)}/10`}>
+    <div className="flex items-center gap-1" title={`Conviction: ${display}/100`}>
       <div className="flex gap-[2px]">
         {Array.from({ length: 5 }, (_, i) => {
-          const filled = i < Math.round(rounded / 2)
+          const filled = i < Math.round(clamped / 20)
           return (
             <div
               key={i}
@@ -56,7 +64,8 @@ export function ConvictionMini({ level }: { level: number }) {
         })}
       </div>
       <span className="font-[family-name:var(--font-geist-mono)] text-[10px] text-[#64748B]">
-        {level.toFixed(1)}
+        {display}
+        {showSuffix && <span className="text-[#475569]">/100</span>}
       </span>
     </div>
   )
@@ -130,7 +139,7 @@ export function TickerRow({
               </div>
 
               <div className="flex flex-col justify-center gap-1.5 border-l border-[#1E293B]/60 pl-4 h-full">
-                <ConvictionMini level={row.avg_conviction} />
+                <ConvictionMini score={row.avg_conviction} />
                 <div className="flex items-center gap-1 text-[10px] text-[#8B95A8]">
                   <span className="font-[family-name:var(--font-geist-mono)] font-semibold text-[#F1F5F9]">{row.mention_count}</span>
                   <span>{row.mention_count === 1 ? 'mention' : 'mentions'}</span>
@@ -182,7 +191,7 @@ export function TickerRow({
               </div>
 
               <div className="flex flex-col justify-center gap-1.5 border-l border-[#1E293B]/60 pl-6 h-full">
-                <ConvictionMini level={row.avg_conviction} />
+                <ConvictionMini score={row.avg_conviction} />
                 {row.avg_target_price !== null ? (
                   <div className="flex items-baseline gap-1">
                     <span className="text-[10px] text-[#64748B] uppercase tracking-wider">PT</span>
@@ -227,7 +236,7 @@ export function TickerRow({
                     ${row.avg_target_price.toFixed(0)}
                   </div>
                 )}
-                <ConvictionMini level={row.avg_conviction} />
+                <ConvictionMini score={row.avg_conviction} />
               </div>
             </div>
 

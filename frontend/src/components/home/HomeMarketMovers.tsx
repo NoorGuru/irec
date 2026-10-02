@@ -209,7 +209,7 @@ export default function HomeMarketMovers({
                     CONVICTION
                   </span>
                   <div className="mt-0.5">
-                    <ConvictionMini level={ticker.avg_conviction} />
+                    <ConvictionMini score={ticker.avg_conviction} showSuffix={false} />
                   </div>
                 </div>
 
