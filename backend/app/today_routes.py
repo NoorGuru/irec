@@ -46,7 +46,7 @@ class PlayResponse(BaseModel):
     signal_tier: str  # "strong" or "emerging"
     action_label: str  # "Strong Buy", "Buy", "Sell", "Strong Sell"
     consensus_sentiment: float
-    avg_conviction: float
+    avg_conviction: float  # 0 to 100
     avg_target_price: Optional[float] = None
     recent_mentions: int
     analyst_count: int
@@ -308,8 +308,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             sentiment = _rec_sentiment_continuous(rec)
             sentiments.append(sentiment)
             
-            conviction = _rec_conviction_0_100(rec) / 10.0  # keep 1-10 display scale
-            convictions.append(conviction)
+            convictions.append(_rec_conviction_0_100(rec))
 
             t_price = rec.get("target_price")
             if t_price is not None:
@@ -406,7 +405,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             sentiment_score = 75.0 + ((abs_sentiment - 1.0) * 25.0)
         sentiment_score = min(100.0, max(0.0, sentiment_score))
         
-        conviction_score = avg_conviction * 10.0  # avg_conviction already on 1-10 continuous scale
+        conviction_score = avg_conviction  # already 0-100
 
         action_score_raw = (
             0.25 * sentiment_score +
@@ -447,8 +446,8 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
         # Never hard-drop stocks from the feed for aura; demote via signal_tier instead.
         signal_tier = "strong" if aura_score >= 50 else "emerging"
         if strategy == "conviction":
-            # Continuous 1-10 scale; 5.5 ≈ top ~half after speech-act recalibration
-            if avg_conviction < 5.5:
+            # Continuous 0-100 scale; 55 ≈ top ~half after speech-act recalibration
+            if avg_conviction < 55.0:
                 continue
         elif strategy == "consensus_sentiment":
             if abs(consensus_sentiment) < 0.5:
@@ -481,13 +480,13 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
         else:
             why_bullets.append(f"{analyst_count} independent analyst{'s' if analyst_count > 1 else ''} tracked")
 
-        # Bullet 3: Conviction
-        if avg_conviction >= 8.0:
-            why_bullets.append(f"Very high average conviction ({avg_conviction:.1f}/10)")
-        elif avg_conviction >= 6.5:
-            why_bullets.append(f"Strong conviction ({avg_conviction:.1f}/10)")
+        # Bullet 3: Conviction (0-100)
+        if avg_conviction >= 80.0:
+            why_bullets.append(f"Very high average conviction ({avg_conviction:.0f}/100)")
+        elif avg_conviction >= 65.0:
+            why_bullets.append(f"Strong conviction ({avg_conviction:.0f}/100)")
         else:
-            why_bullets.append(f"Moderate conviction ({avg_conviction:.1f}/10)")
+            why_bullets.append(f"Moderate conviction ({avg_conviction:.0f}/100)")
 
         # --- Catalysts list & Top Catalyst ---
         # Sort recommendations by continuous conviction descending to get the top opinions first
@@ -503,7 +502,7 @@ async def calculate_today_plays(days: int, strategy: str = "aura_score", limit: 
             catalysts_list.append(CatalystOpinion(
                 channel_name=c_obj.get("channel_name", "Unknown Analyst"),
                 sentiment=int(round(_rec_sentiment_continuous(r))),
-                conviction=max(1, min(10, int(round(_rec_conviction_0_100(r) / 10.0)))),
+                conviction=max(0, min(100, int(round(_rec_conviction_0_100(r))))),
                 notes=notes,
                 published_at=v_obj.get("published_at", ""),
                 youtube_video_id=v_obj.get("youtube_video_id", "")

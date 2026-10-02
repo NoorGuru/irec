@@ -168,9 +168,9 @@ async def get_radar_plays_data() -> dict:
         convictions = []
         for r in all_recs:
             if r.get("conviction_score") is not None:
-                convictions.append(float(r["conviction_score"]) / 10.0)
+                convictions.append(float(r["conviction_score"]))
             else:
-                convictions.append(r.get("conviction_level", 5))
+                convictions.append(float(r.get("conviction_level", 5)) * 10.0)
         target_prices = [float(r.get("target_price")) for r in all_recs if r.get("target_price") is not None]
 
         avg_conviction = sum(convictions) / len(convictions) if all_recs else 0.0

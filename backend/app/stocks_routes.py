@@ -27,7 +27,7 @@ class StockDirectoryItem(BaseModel):
 
     overall_sentiment: float | None = None
     avg_target_price: float | None = None
-    avg_conviction: float | None = None
+    avg_conviction: float | None = None  # 0-100
 
 class StocksDirectoryResponse(BaseModel):
     stocks: List[StockDirectoryItem]
@@ -38,7 +38,7 @@ class AggregatedTickerResponse(BaseModel):
     stock_name: str
     consensus_sentiment: float
     avg_target_price: float | None = None
-    avg_conviction: float
+    avg_conviction: float  # 0-100
     mention_count: int
     analyst_count: int
 
@@ -50,7 +50,7 @@ class HomePulseResponse(BaseModel):
 async def get_stocks_directory(request: Request, response: Response, fresh: bool = False):
     """Fetch public directory of all tracked stocks with their latest prices and unified aggregated metrics."""
     try:
-        cache_key = "stocks_directory_v7"
+        cache_key = "stocks_directory_v8"
         cached_data = await get_cache(cache_key)
         latest_extraction = await get_latest_extraction_time()
         
@@ -137,15 +137,15 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
                 target_map[t] = target_map.get(t, 0) + tp
                 target_counts[t] = target_counts.get(t, 0) + 1
                 
-            # Prefer continuous 0-100 score, store as 1-10 scale for avg_conviction API field
+            # Prefer continuous 0-100 score; fall back to level * 10
             cs = r.get("conviction_score")
             if cs is not None:
-                conviction_map[t] = conviction_map.get(t, 0) + (float(cs) / 10.0)
+                conviction_map[t] = conviction_map.get(t, 0) + float(cs)
                 conviction_counts[t] = conviction_counts.get(t, 0) + 1
             else:
                 cl = r.get("conviction_level")
                 if cl is not None:
-                    conviction_map[t] = conviction_map.get(t, 0) + cl
+                    conviction_map[t] = conviction_map.get(t, 0) + float(cl) * 10.0
                     conviction_counts[t] = conviction_counts.get(t, 0) + 1
 
         # Assemble
@@ -216,7 +216,7 @@ async def get_stocks_directory(request: Request, response: Response, fresh: bool
 async def get_home_pulse(request: Request, response: Response):
     """Fetch trust-weighted aggregated metrics for all tracked stocks for the homepage Market Pulse."""
     try:
-        cache_key = "home_pulse_v1"
+        cache_key = "home_pulse_v2"
         cached_data = await get_cache(cache_key)
         latest_extraction = await get_latest_extraction_time()
         
@@ -294,11 +294,11 @@ async def get_home_pulse(request: Request, response: Response):
                 
             cs = r.get("conviction_score")
             if cs is not None:
-                group["convictions"].append(float(cs) / 10.0)
+                group["convictions"].append(float(cs))
             else:
                 cl = r.get("conviction_level")
                 if cl is not None:
-                    group["convictions"].append(cl)
+                    group["convictions"].append(float(cl) * 10.0)
                 
             channel_id = video.get("channel_id")
             if channel_id:

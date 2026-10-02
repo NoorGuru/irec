@@ -388,6 +388,10 @@ async def update_recommendation(rec_id: str, body: RecommendationUpdate):
     if "ticker" in update_data:
         update_data["ticker"] = update_data["ticker"].upper().strip()
 
+    # Keep continuous score in sync when admin edits the 1-10 bucket
+    if "conviction_level" in update_data and "conviction_score" not in update_data:
+        update_data["conviction_score"] = float(update_data["conviction_level"]) * 10.0
+
     try:
         client = _get_client()
         response = (
