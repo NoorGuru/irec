@@ -242,4 +242,5 @@ async def test_parse_recommendations_uses_correct_model(metadata, valid_response
         await parse_recommendations("transcript", metadata)
 
     call_kwargs = mock_client.messages.create.call_args.kwargs
-    assert call_kwargs["model"] == "claude-sonnet-5"
+    assert call_kwargs["model"] == "claude-sonnet-5-5"
+    assert call_kwargs["output_config"] == {"effort": "high"}

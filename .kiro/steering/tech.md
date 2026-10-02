@@ -6,7 +6,7 @@
 - **Framework**: FastAPI (0.115)
 - **Server**: Uvicorn
 - **Database client**: supabase-py (2.13)
-- **LLM**: Anthropic SDK (claude-sonnet-4-6)
+- **LLM**: Anthropic SDK (claude-sonnet-5-5)
 - **Auth**: python-jose for JWT validation
 - **Validation**: Pydantic v2
 - **YouTube**: youtube-transcript-api, google-api-python-client

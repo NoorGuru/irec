@@ -25,7 +25,7 @@ class LLMParseError(Exception):
         self.raw_response = raw_response
         super().__init__(detail)
 
-MODEL = "claude-sonnet-5"
+MODEL = "claude-sonnet-5-5"
 
 # Type for an optional async retry callback: (attempt, max_retries, reason, delay) -> None
 AsyncRetryCallback = Callable[[int, int, str, float], None] | None
@@ -133,12 +133,13 @@ async def _call_anthropic(client: anthropic.AsyncAnthropic, transcript: str, met
         max_tokens=16384,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
+        output_config={"effort": "high"},
     )
 
-    # Extract text from response content blocks
+    # Extract text from response content blocks (skip thinking blocks)
     response_text = ""
     for block in message.content:
-        if hasattr(block, "text"):
+        if getattr(block, "type", None) == "text":
             response_text += block.text
 
     # Detect truncation: if the model hit the token limit, the JSON is incomplete

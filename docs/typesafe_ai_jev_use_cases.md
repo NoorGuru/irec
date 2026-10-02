@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Architectural Overview
 
-Aura's platform mission is **"Every stock analyst. One clear signal."** To deliver institutional-grade conviction signals from YouTube finance channels, Aura currently relies on Claude Sonnet (`claude-sonnet-5`) in [`backend/app/llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py) for full-video transcript extraction.
+Aura's platform mission is **"Every stock analyst. One clear signal."** To deliver institutional-grade conviction signals from YouTube finance channels, Aura currently relies on Claude Sonnet (`claude-sonnet-5-5`) in [`backend/app/llm_parser.py`](file:///Users/noor/Projects/irec/backend/app/llm_parser.py) for full-video transcript extraction.
 
 While generative LLMs excel at free-form synthesis (e.g. `video_summary`), using them for numerical ratings, boolean triage, and strict schema validation introduces:
 1. **Generative Drift & Calibration Loss:** Asking a generative model for an integer conviction level (`1..10`) or sentiment (`-2..2`) produces inconsistent, arbitrary values that lack mathematical calibration across channels.
