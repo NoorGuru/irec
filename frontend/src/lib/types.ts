@@ -24,7 +24,7 @@ export interface AggregatedTicker {
   stock_name: string
   consensus_sentiment: number
   avg_target_price: number | null
-  avg_conviction: number
+  avg_conviction: number // 0-100
   mention_count: number
   analyst_count: number
 }
@@ -42,7 +42,7 @@ export interface PlayResponse {
   omni_score: number
   action_label: string
   consensus_sentiment: number
-  avg_conviction: number
+  avg_conviction: number // 0-100
   avg_target_price: number | null
   recent_mentions: number
   analyst_count: number
@@ -78,5 +78,5 @@ export interface StockDirectoryItem {
   overall_sentiment: number | null
   raw_sentiment?: number | null
   avg_target_price: number | null
-  avg_conviction: number | null
+  avg_conviction: number | null // 0-100
 }

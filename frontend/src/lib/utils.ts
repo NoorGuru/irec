@@ -5,6 +5,34 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Canonical public conviction scale: 0–100. Prefer continuous score; fall back to level × 10. */
+export function conviction100(rec: {
+  conviction_score?: number | null
+  conviction_level?: number | null
+}): number {
+  if (rec.conviction_score != null) return Number(rec.conviction_score)
+  if (rec.conviction_level != null) return Number(rec.conviction_level) * 10
+  return 50
+}
+
+/** Map legacy API/cache avg_conviction (1–10) to public 0–100 scale. */
+export function normalizeAvgConviction100(value: number): number {
+  if (value > 0 && value <= 10) return value * 10
+  return value
+}
+
+export function formatConviction(score: number, digits = 0): string {
+  const normalized = normalizeAvgConviction100(score)
+  const n = digits > 0 ? normalized.toFixed(digits) : String(Math.round(normalized))
+  return `${n}/100`
+}
+
+/** Single-line conviction for tables/cards (no duplicate mini + text). */
+export function formatConvictionOrDash(score: number | null | undefined): string {
+  if (score == null) return '—'
+  return formatConviction(score)
+}
+
 export function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString)
   const now = new Date()
