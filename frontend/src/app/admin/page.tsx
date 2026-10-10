@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { getRandomQuote } from '@/lib/quotes'
+import { getRandomQuote, quotes, type Quote } from '@/lib/quotes'
 import {
   LogOut,
   Zap,
@@ -475,15 +475,28 @@ export default function AdminHubPage() {
             />
 
             {/* Main greeting — oversized, gradient, alive */}
-            <h1 className="relative text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight">
-              <span className="greeting-wave inline-block">{getGreeting()}</span>
-              {displayName && (
-                <>
-                  <span className="text-[#475569]">, </span>
-                  <span className="greeting-name-gradient">{displayName}</span>
-                </>
-              )}
-            </h1>
+            {(() => {
+              const greeting = getGreeting()
+              return (
+                <h1 className="relative text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight flex items-baseline flex-wrap gap-x-3 gap-y-1">
+                  <span className="greeting-wave inline-flex items-baseline gap-2.5 sm:gap-3.5">
+                    <span>{greeting.text}</span>
+                    <span
+                      className="text-3xl sm:text-4xl md:text-5xl select-none inline-block drop-shadow-sm"
+                      aria-hidden="true"
+                    >
+                      {greeting.emoji}
+                    </span>
+                  </span>
+                  {displayName && (
+                    <>
+                      <span className="text-[#475569]">,</span>
+                      <span className="greeting-name-gradient">{displayName}</span>
+                    </>
+                  )}
+                </h1>
+              )
+            })()}
 
             {/* Daily quote — personal & rotating */}
             <QuoteCard />
@@ -892,35 +905,81 @@ export default function AdminHubPage() {
 // ─── Quote Card Component ───
 
 function QuoteCard() {
-  const [quote, setQuote] = useState<{ text: string; author?: string } | null>(null)
+  const [quote, setQuote] = useState<Quote | null>(null)
+  const [isFading, setIsFading] = useState(false)
 
   useEffect(() => {
     setQuote(getRandomQuote())
   }, [])
 
+  const handleNextQuote = () => {
+    if (isFading) return
+    setIsFading(true)
+    setTimeout(() => {
+      let next = getRandomQuote()
+      if (quotes.length > 1 && quote) {
+        while (next.text === quote.text) {
+          next = getRandomQuote()
+        }
+      }
+      setQuote(next)
+      setIsFading(false)
+    }, 180)
+  }
+
   if (!quote) return null
 
   return (
     <div className="greeting-stagger-2 mt-5">
-      <p className="text-base sm:text-lg text-[#8B95A8] font-light leading-relaxed">
-        {quote.text}
-        {quote.author && (
-          <span className="ml-2 text-[13px] text-[#475569] font-[family-name:var(--font-geist-mono)]">
-            — {quote.author}
+      <button
+        onClick={handleNextQuote}
+        type="button"
+        title="Click for another spark of inspiration ✨"
+        className="group text-left cursor-pointer transition-all duration-300 rounded-xl p-2 -ml-2 hover:bg-[#141B2D]/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#00D4AA]/40"
+      >
+        <p
+          className={`text-base sm:text-lg text-[#8B95A8] group-hover:text-[#CBD5E1] font-light leading-relaxed flex items-baseline gap-2 flex-wrap transition-all duration-200 ${
+            isFading ? 'opacity-0 translate-y-1' : 'opacity-100 translate-y-0'
+          }`}
+        >
+          {quote.emoji && (
+            <span
+              className="text-base sm:text-lg select-none transition-transform duration-300 group-hover:scale-125 inline-block"
+              aria-hidden="true"
+            >
+              {quote.emoji}
+            </span>
+          )}
+          <span>{quote.text}</span>
+          {quote.author && (
+            <span className="text-[13px] text-[#475569] group-hover:text-[#64748B] font-[family-name:var(--font-geist-mono)] transition-colors">
+              — {quote.author}
+            </span>
+          )}
+          <span
+            className="opacity-0 group-hover:opacity-100 text-xs text-[#00D4AA]/80 transition-opacity duration-200 ml-1 font-[family-name:var(--font-geist-mono)] select-none"
+            aria-hidden="true"
+          >
+            ↻
           </span>
-        )}
-      </p>
+        </p>
+      </button>
     </div>
   )
 }
 
 // ─── Greeting helpers ───
 
-function getGreeting(): string {
+interface GreetingInfo {
+  text: string
+  emoji: string
+}
+
+function getGreeting(): GreetingInfo {
   const hour = new Date().getHours()
-  if (hour < 6) return 'Night owl'
-  if (hour < 12) return 'Morning'
-  if (hour < 17) return 'Afternoon'
-  if (hour < 21) return 'Evening'
-  return 'Late one'
+  if (hour < 6) return { text: 'Night owl', emoji: '🌙' }
+  if (hour < 12) return { text: 'Good morning', emoji: '☀️' }
+  if (hour < 17) return { text: 'Good afternoon', emoji: '🌤️' }
+  if (hour < 21) return { text: 'Good evening', emoji: '✨' }
+  return { text: 'Late night glow', emoji: '💫' }
 }
