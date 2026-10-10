@@ -1,276 +1,136 @@
 /**
- * Vibrant, empowering quotes, affirmations, and wisdom for the admin greeting.
- * Infused with energetic, lovely, and feminine energy.
- * Each entry is paired with a signature aesthetic emoji.
+ * Personal quotes, motivations, and sayings for the admin greeting.
+ * Each entry is shown randomly when the admin hub loads.
+ * Add, remove, or edit freely — this is your personal corner.
  */
 
 export interface Quote {
   text: string
   /** Optional attribution — leave empty for personal/original sayings */
   author?: string
-  /** Signature lovely emoji */
-  emoji?: string
-  /** Optional tag for categorization */
-  tag?: 'radiance' | 'ambition' | 'wealth' | 'builder' | 'wisdom' | 'energy'
+  /** Optional tag for filtering in the future */
+  tag?: 'motivation' | 'markets' | 'personal' | 'wisdom' | 'builder'
 }
 
 export const quotes: Quote[] = [
-  // ─── Radiance, Energy & Spark ───
+  // ─── Markets & Investing ───
   {
-    text: "Energy is your greatest currency. Spend it where it glows.",
-    emoji: "✨",
-    tag: "radiance",
+    text: "The stock market is a device for transferring money from the impatient to the patient.",
+    author: "Warren Buffett",
+    tag: "markets",
   },
   {
-    text: "The most alluring thing a woman can have is confidence.",
-    author: "Beyoncé",
-    emoji: "💖",
-    tag: "radiance",
+    text: "In investing, what is comfortable is rarely profitable.",
+    author: "Robert Arnott",
+    tag: "markets",
   },
   {
-    text: "Own your sparkle. The world will adjust its eyes.",
-    emoji: "🪄",
-    tag: "radiance",
+    text: "The goal isn't more money. The goal is living life on your terms.",
+    tag: "markets",
   },
   {
-    text: "Be a first-rate version of yourself, not a second-rate version of someone else.",
-    author: "Judy Garland",
-    emoji: "🌸",
-    tag: "radiance",
+    text: "Risk comes from not knowing what you're doing.",
+    author: "Warren Buffett",
+    tag: "markets",
   },
   {
-    text: "Walk in like you own the room, and build it like you own the future.",
-    emoji: "💅",
-    tag: "energy",
+    text: "Buy when there's blood in the streets, even if the blood is your own.",
+    author: "Baron Rothschild",
+    tag: "markets",
   },
   {
-    text: "There is no limit to what we, as women, can accomplish.",
-    author: "Michelle Obama",
-    emoji: "🌟",
-    tag: "energy",
-  },
-  {
-    text: "Bring your full, brilliant self to everything you touch today.",
-    emoji: "💫",
-    tag: "energy",
-  },
-  {
-    text: "A girl should be two things: who and what she wants.",
-    author: "Coco Chanel",
-    emoji: "🎀",
-    tag: "radiance",
-  },
-  {
-    text: "Electrify your focus. The results will speak louder than any noise.",
-    emoji: "⚡",
-    tag: "energy",
-  },
-  {
-    text: "Radiate warmth, lead with strength, and execute with absolute clarity.",
-    emoji: "☀️",
-    tag: "energy",
+    text: "The market can stay irrational longer than you can stay solvent.",
+    author: "John Maynard Keynes",
+    tag: "markets",
   },
 
-  // ─── Feminine Ambition & Fearless Vision ───
+  // ─── Builder & Craft ───
   {
-    text: "I didn't get there by wishing for it or hoping for it, but by working for it.",
-    author: "Estée Lauder",
-    emoji: "👑",
-    tag: "ambition",
-  },
-  {
-    text: "Doubt is a killer. You just have to know who you are and what you stand for.",
-    author: "Jennifer Lopez",
-    emoji: "🔥",
-    tag: "ambition",
-  },
-  {
-    text: "I always did something I was a little not ready to do. That’s how you grow.",
-    author: "Marissa Mayer",
-    emoji: "🦋",
-    tag: "ambition",
-  },
-  {
-    text: "Define success on your own terms, achieve it by your own rules, and build a life you're proud to live.",
-    author: "Anne Sweeney",
-    emoji: "🎯",
-    tag: "ambition",
-  },
-  {
-    text: "Don't be afraid to take up space. You were meant to expand.",
-    emoji: "🌺",
-    tag: "ambition",
-  },
-  {
-    text: "I wanted to be a woman who designs her own destiny.",
-    author: "Diane von Furstenberg",
-    emoji: "💃",
-    tag: "ambition",
-  },
-  {
-    text: "Think like a queen. A queen is not afraid to fail. Failure is another steppingstone to greatness.",
-    author: "Oprah Winfrey",
-    emoji: "👑",
-    tag: "ambition",
-  },
-  {
-    text: "Never dim your light just because it's shining in someone else's eyes.",
-    emoji: "🔮",
-    tag: "ambition",
-  },
-  {
-    text: "Courage is like a muscle. We strengthen it by use.",
-    author: "Ruth Gordon",
-    emoji: "💪",
-    tag: "ambition",
-  },
-  {
-    text: "Dreaming, after all, is a form of planning.",
-    author: "Gloria Steinem",
-    emoji: "🌙",
-    tag: "ambition",
-  },
-
-  // ─── Intuition, Abundance & Wealth ───
-  {
-    text: "True abundance is doing what you love with effortless grace and unapologetic excellence.",
-    emoji: "💎",
-    tag: "wealth",
-  },
-  {
-    text: "Your intuition is your highest alpha. Trust the pattern recognition you've built.",
-    emoji: "🕊️",
-    tag: "wealth",
-  },
-  {
-    text: "Money looks best when it’s working silently for you while you build what matters.",
-    emoji: "🥂",
-    tag: "wealth",
-  },
-  {
-    text: "Don't sit down and wait for the opportunities to come. Get up and make them.",
-    author: "Madam C.J. Walker",
-    emoji: "🚀",
-    tag: "wealth",
-  },
-  {
-    text: "High conviction, graceful patience, and decisive timing. That’s the entire game.",
-    emoji: "🦢",
-    tag: "wealth",
-  },
-  {
-    text: "The market rewards clarity of mind over chaos of action.",
-    emoji: "🌿",
-    tag: "wealth",
-  },
-  {
-    text: "Invest in your vision, compound your knowledge, and let the numbers follow.",
-    emoji: "📈",
-    tag: "wealth",
-  },
-  {
-    text: "Financial freedom is the luxury of saying yes only to what sets your soul on fire.",
-    emoji: "🌷",
-    tag: "wealth",
-  },
-
-  // ─── Builder, Precision & Craft ───
-  {
-    text: "Beauty in code and clarity in architecture — make everything you build feel like art.",
-    emoji: "🎨",
+    text: "Ship it. Learn from it. Ship again.",
     tag: "builder",
   },
   {
-    text: "The most dangerous phrase in the language is: 'We’ve always done it this way.'",
-    author: "Grace Hopper",
-    emoji: "⚡",
+    text: "You don't rise to the level of your goals. You fall to the level of your systems.",
+    author: "James Clear",
     tag: "builder",
   },
   {
-    text: "Architecture is really about well-being. It's about creating spaces where people feel inspired.",
-    author: "Zaha Hadid",
-    emoji: "🏛️",
+    text: "The best time to plant a tree was 20 years ago. The second best time is now.",
     tag: "builder",
   },
   {
-    text: "Ship it with pride, polish it with care, and never compromise on elegance.",
-    emoji: "🪞",
+    text: "Make it work, make it right, make it fast.",
+    author: "Kent Beck",
     tag: "builder",
   },
   {
-    text: "If you don't take risks, you'll have a wasted soul.",
-    author: "Drew Barrymore",
-    emoji: "💌",
+    text: "Done is better than perfect.",
     tag: "builder",
   },
   {
-    text: "Simplicity is the keynote of all true elegance.",
-    author: "Coco Chanel",
-    emoji: "🕊️",
-    tag: "builder",
-  },
-  {
-    text: "You can create something out of nothing if you have the vision and the taste to refine it.",
-    author: "Sara Blakely",
-    emoji: "💫",
-    tag: "builder",
-  },
-  {
-    text: "Craft is love made visible in the smallest UI details.",
-    emoji: "🎀",
+    text: "First, solve the problem. Then, write the code.",
+    author: "John Johnson",
     tag: "builder",
   },
 
-  // ─── Poise, Self-Love & Inner Wisdom ───
+  // ─── Personal & Wisdom ───
   {
-    text: "My mission in life is not merely to survive, but to thrive; and to do so with some passion, some compassion, some humor, and some style.",
-    author: "Maya Angelou",
-    emoji: "🌺",
+    text: "Your edge is consistency. Everyone else gives up.",
+    tag: "personal",
+  },
+  {
+    text: "Discipline is choosing between what you want now and what you want most.",
+    author: "Abraham Lincoln",
     tag: "wisdom",
   },
   {
-    text: "Elegance is when the inside is as beautiful as the outside.",
-    author: "Coco Chanel",
-    emoji: "🌸",
-    tag: "wisdom",
+    text: "Small daily improvements over time lead to stunning results.",
+    tag: "personal",
   },
   {
-    text: "You are the author of your own story. Make it a masterpiece.",
-    emoji: "📖",
-    tag: "wisdom",
+    text: "The compound effect is real — in money, code, and habits.",
+    tag: "personal",
   },
   {
-    text: "Above all, be the heroine of your life, not the victim.",
-    author: "Nora Ephron",
-    emoji: "👑",
-    tag: "wisdom",
+    text: "Trust the process. The signals are there if you're patient.",
+    tag: "personal",
   },
   {
-    text: "Protect your peace, honor your momentum, and celebrate how far you've come.",
-    emoji: "☕",
-    tag: "wisdom",
+    text: "You built this. Remember that on the hard days.",
+    tag: "personal",
   },
   {
-    text: "Nothing is impossible, the word itself says 'I'm possible!'",
-    author: "Audrey Hepburn",
-    emoji: "💖",
-    tag: "wisdom",
+    text: "Stay hungry, stay foolish.",
+    author: "Steve Jobs",
+    tag: "motivation",
+  },
+
+  // ─── Motivation ───
+  {
+    text: "The only way to do great work is to love what you do.",
+    author: "Steve Jobs",
+    tag: "motivation",
   },
   {
-    text: "Grace under pressure isn't just a virtue — it's an undeniable superpower.",
-    emoji: "🦢",
-    tag: "wisdom",
+    text: "Every expert was once a beginner.",
+    tag: "motivation",
   },
   {
-    text: "Tell me, what is it you plan to do with your one wild and precious life?",
-    author: "Mary Oliver",
-    emoji: "✨",
-    tag: "wisdom",
+    text: "Hard choices, easy life. Easy choices, hard life.",
+    author: "Jerzy Gregorek",
+    tag: "motivation",
   },
   {
-    text: "You don't need permission to be extraordinary. You already are.",
-    emoji: "🪄",
-    tag: "wisdom",
+    text: "What you do today can improve all your tomorrows.",
+    tag: "motivation",
+  },
+  {
+    text: "The pain you feel today is the strength you feel tomorrow.",
+    tag: "motivation",
+  },
+  {
+    text: "Opportunities don't happen. You create them.",
+    tag: "motivation",
   },
 ]
 
