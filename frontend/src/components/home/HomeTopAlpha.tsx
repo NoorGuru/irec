@@ -61,6 +61,12 @@ export default function HomeTopAlpha({ plays, loading = false }: HomeTopAlphaPro
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Filter top buys using deterministic quantitative engine
+  const allQualified = useMemo(() => {
+    return filterTopBuyPlays(plays, 100, selectedArchetype)
+  }, [plays, selectedArchetype])
+
+  const totalQualified = allQualified.length
+
   const topBuys = useMemo(() => {
     return filterTopBuyPlays(plays, limit, selectedArchetype)
   }, [plays, limit, selectedArchetype])
@@ -107,9 +113,20 @@ export default function HomeTopAlpha({ plays, loading = false }: HomeTopAlphaPro
               Filtered by strict multi-channel consensus &amp; conviction
             </span>
           </div>
+
+          {/* Institutional Conviction Gate Callout */}
+          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00D4AA]/10 border border-[#00D4AA]/25 text-[11px] font-bold text-[#00D4AA] font-[family-name:var(--font-geist-mono)]">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#00D4AA]" />
+              <span>{totalQualified} of {plays.length} plays passed Strict Conviction Gate</span>
+            </span>
+            <span className="text-[11px] text-[#64748B] hidden sm:inline">
+              (≥2 top channels, ≥75% agreement, ≥50 Aura)
+            </span>
+          </div>
         </div>
 
-        {/* View Controls: Archetype Filter Pills & 5 vs 10 Toggle */}
+        {/* View Controls: Archetype Filter Pills & Dynamic Switcher */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Archetype Pills */}
           <div className="flex items-center p-1 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl overflow-x-auto hide-scrollbar">
@@ -134,31 +151,33 @@ export default function HomeTopAlpha({ plays, loading = false }: HomeTopAlphaPro
             })}
           </div>
 
-          {/* 5 vs 10 Switcher */}
-          <div className="flex items-center p-1 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl font-[family-name:var(--font-geist-mono)] text-xs">
-            <button
-              type="button"
-              onClick={() => setLimit(5)}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-200 ${
-                limit === 5
-                  ? 'bg-[#00D4AA]/15 text-[#00D4AA] border border-[#00D4AA]/30'
-                  : 'text-[#8B95A8] hover:text-[#F1F5F9]'
-              }`}
-            >
-              Top 5
-            </button>
-            <button
-              type="button"
-              onClick={() => setLimit(10)}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-200 ${
-                limit === 10
-                  ? 'bg-[#00D4AA]/15 text-[#00D4AA] border border-[#00D4AA]/30'
-                  : 'text-[#8B95A8] hover:text-[#F1F5F9]'
-              }`}
-            >
-              Top 10
-            </button>
-          </div>
+          {/* Dynamic Limit Switcher (Top 5 vs All Qualified) */}
+          {totalQualified > 5 && (
+            <div className="flex items-center p-1 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-xl font-[family-name:var(--font-geist-mono)] text-xs">
+              <button
+                type="button"
+                onClick={() => setLimit(5)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-200 ${
+                  limit === 5
+                    ? 'bg-[#00D4AA]/15 text-[#00D4AA] border border-[#00D4AA]/30'
+                    : 'text-[#8B95A8] hover:text-[#F1F5F9]'
+                }`}
+              >
+                Top 5
+              </button>
+              <button
+                type="button"
+                onClick={() => setLimit(totalQualified)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all duration-200 ${
+                  limit > 5
+                    ? 'bg-[#00D4AA]/15 text-[#00D4AA] border border-[#00D4AA]/30'
+                    : 'text-[#8B95A8] hover:text-[#F1F5F9]'
+                }`}
+              >
+                {totalQualified >= 10 ? 'Top 10' : `All (${totalQualified})`}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -294,18 +313,18 @@ export default function HomeTopAlpha({ plays, loading = false }: HomeTopAlphaPro
         <div className="flex items-center gap-2 text-xs text-[#8B95A8]">
           <Activity className="w-3.5 h-3.5 text-[#00D4AA]" />
           <span>
-            Showing top {topBuys.length} ranked buys out of <strong>{plays.length}</strong> active 30-day plays.
+            Showing {topBuys.length} of <strong className="text-[#F1F5F9]">{totalQualified}</strong> qualified buys ({plays.length} total 30-day plays).
           </span>
         </div>
 
         <div className="flex items-center gap-3">
-          {limit === 5 && (
+          {limit === 5 && totalQualified > 5 && (
             <button
               type="button"
-              onClick={() => setLimit(10)}
-              className="text-xs text-[#8B95A8] hover:text-[#F1F5F9] font-bold font-[family-name:var(--font-geist-mono)] transition-colors"
+              onClick={() => setLimit(totalQualified)}
+              className="text-xs text-[#8B95A8] hover:text-[#00D4AA] font-bold font-[family-name:var(--font-geist-mono)] transition-colors"
             >
-              Expand to Top 10 →
+              Expand to All {totalQualified} →
             </button>
           )}
 

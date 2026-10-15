@@ -538,7 +538,7 @@ export default function Home() {
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#00D4AA]/15 hover:bg-[#00D4AA]/25 border border-[#00D4AA]/40 text-xs font-bold text-[#00D4AA] hover:text-[#00FFD0] transition-all duration-300 shadow-[0_0_15px_rgba(0,212,170,0.15)] group/pill-topbuys"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
-                <span>🔥 Top 10 Buys Now</span>
+                <span>⚡ Top Buys Now</span>
               </a>
               <Link
                 href="/today"

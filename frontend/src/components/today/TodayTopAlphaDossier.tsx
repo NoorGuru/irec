@@ -26,7 +26,7 @@ export interface TodayTopAlphaDossierProps {
 }
 
 const ARCHETYPES: { key: InvestorArchetype; label: string; icon: React.ElementType; color: string }[] = [
-  { key: 'all', label: 'All Top 10', icon: Sparkles, color: 'text-[#00D4AA]' },
+  { key: 'all', label: 'All Top Picks', icon: Sparkles, color: 'text-[#00D4AA]' },
   { key: 'core', label: 'Core Pillars', icon: ShieldCheck, color: 'text-[#00D4AA]' },
   { key: 'growth', label: 'Growth Momentum', icon: Flame, color: 'text-[#F59E0B]' },
   { key: 'value', label: 'Target Upside', icon: Target, color: 'text-[#38BDF8]' },
@@ -73,7 +73,7 @@ export default function TodayTopAlphaDossier({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-[#00D4AA]" />
-            <span>⚡ The Aura 10 (Executive Brief)</span>
+            <span>⚡ {topBuys.length >= 10 ? 'The Aura 10' : 'The Aura Brief'} ({topBuys.length} High-Conviction Buys)</span>
           </button>
 
           <button
@@ -139,8 +139,10 @@ export default function TodayTopAlphaDossier({
               })}
             </div>
 
-            <div className="text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
-              Showing <span className="text-[#00D4AA] font-bold">{topBuys.length}</span> highest-conviction plays
+            <div className="flex items-center gap-1.5 text-xs font-[family-name:var(--font-geist-mono)] text-[#8B95A8]">
+              <span>Strict Conviction Gate:</span>
+              <span className="text-[#00D4AA] font-bold">{topBuys.length}</span>
+              <span>of {plays.length} qualified (≥2 channels, ≥75% consensus)</span>
             </div>
           </div>
 
@@ -265,7 +267,7 @@ export default function TodayTopAlphaDossier({
           {/* Footer Notice to Switch to Screener */}
           <div className="relative z-10 mt-6 pt-5 border-t border-[#1E293B]/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <span className="text-xs text-[#8B95A8]">
-              Want to screen all 156 active plays, sell warnings, and emerging signals?
+              Want to screen all {plays.length} active plays, sell warnings, and emerging signals?
             </span>
 
             <button
