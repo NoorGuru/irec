@@ -59,7 +59,7 @@ export default function TodayTopAlphaDossier({
   }, [topBuys])
 
   return (
-    <div className="mb-8">
+    <div id="today-executive-dossier" className="mb-8">
       {/* View Mode Segmented Control Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-[#0A0F1A]/80 border border-[#1E293B] rounded-2xl mb-6">
         <div className="flex items-center gap-1.5 p-1 bg-[#141B2D]/80 rounded-xl font-[family-name:var(--font-geist-mono)] text-xs">
