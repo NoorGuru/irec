@@ -485,7 +485,7 @@ export default function Home() {
               <div className="aura-glow-inner" />
             </div>
 
-            <h1 className="relative text-8xl md:text-9xl lg:text-[11rem] font-extralight tracking-[0.2em] md:tracking-[0.25em] logo-sweep leading-none">
+            <h1 className="relative text-6xl sm:text-8xl md:text-9xl lg:text-[11rem] font-extralight tracking-[0.16em] sm:tracking-[0.2em] md:tracking-[0.25em] logo-sweep leading-none">
               {'aura'.split('').map((letter, i) => (
                 <span
                   key={i}
@@ -527,8 +527,8 @@ export default function Home() {
               <span className="text-[#F1F5F9] font-bold">1,400+ signals</span>
               <span className="text-[#334155]">•</span>
               <span className="text-[#8B95A8]">50+ channels</span>
-              <span className="text-[#334155]">•</span>
-              <span className="text-[#00D4AA] font-bold">Live YouTube consensus</span>
+              <span className="text-[#334155] hidden sm:inline">•</span>
+              <span className="text-[#00D4AA] font-bold hidden sm:inline">Live YouTube consensus</span>
             </div>
 
             {/* Quick Navigation Pills (All Hubs + Top Buys Anchor) */}

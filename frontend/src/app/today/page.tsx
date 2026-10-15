@@ -37,58 +37,9 @@ import { TVMiniChart } from '@/components/TVWidgets'
 import TodayAuraReactor from '@/components/today/TodayAuraReactor'
 import TodayEarlyRadar from '@/components/today/TodayEarlyRadar'
 import TodayTerminalList, { SortOption, sortLabel } from '@/components/today/TodayTerminalList'
-import TodayTopAlphaDossier from '@/components/today/TodayTopAlphaDossier'
-
-
-
-// --- Types ---
-
-interface VideoSummaryInfo {
-  youtube_video_id: string
-  channel_name: string
-  published_at: string
-}
-
-interface CatalystOpinion {
-  channel_name: string
-  sentiment: number
-  conviction: number
-  notes: string
-  published_at: string
-  youtube_video_id: string
-}
-
-interface Play {
-  ticker: string
-  stock_name: string
-  direction: 'BUY' | 'SELL'
-  aura_score: number
-  omni_score: number
-  signal_tier: string
-  action_label: string
-  consensus_sentiment: number
-  avg_conviction: number
-  avg_target_price: number | null
-  recent_mentions: number
-  analyst_count: number
-  agreement_pct: number
-  top_catalyst: string
-  catalysts?: CatalystOpinion[]
-  why_bullets: string[]
-  latest_video: VideoSummaryInfo
-}
-
-interface MarketMood {
-  buy_plays: number
-  sell_plays: number
-  overall: 'Bullish' | 'Bearish' | 'Neutral'
-}
-
-interface TodayPlaysData {
-  generated_at: string
-  plays: Play[]
-  market_mood: MarketMood
-}
+import TopAlphaSection from '@/components/alpha/TopAlphaSection'
+import { useTodayPlays } from '@/lib/hooks/useTodayPlays'
+import { Play, TodayPlaysData, CatalystOpinion, VideoSummaryInfo } from '@/lib/types'
 
 // AuraReactor is imported from @/components/today/TodayAuraReactor
 const AuraReactor = TodayAuraReactor
@@ -110,13 +61,13 @@ function PlayCard({ play, index, activeSortBy }: { play: Play; index: number; ac
   const catalystMatch = play.catalysts?.find(c => c.notes === play.top_catalyst)
   const catalystAuthor = catalystMatch
     ? catalystMatch.channel_name
-    : (play.catalysts?.[0]?.channel_name || play.latest_video.channel_name)
+    : (play.catalysts?.[0]?.channel_name || play.latest_video?.channel_name || '')
   const catalystConviction = catalystMatch
     ? catalystMatch.conviction
     : (play.catalysts?.[0]?.conviction || play.avg_conviction)
   const catalystVideoId = catalystMatch
     ? catalystMatch.youtube_video_id
-    : (play.catalysts?.[0]?.youtube_video_id || play.latest_video.youtube_video_id)
+    : (play.catalysts?.[0]?.youtube_video_id || play.latest_video?.youtube_video_id || '')
 
   return (
     <HolographicCard
@@ -320,13 +271,13 @@ function PulseStream({
   const catalystMatch = play.catalysts?.find(c => c.notes === play.top_catalyst)
   const catalystAuthor = catalystMatch
     ? catalystMatch.channel_name
-    : (play.catalysts?.[0]?.channel_name || play.latest_video.channel_name)
+    : (play.catalysts?.[0]?.channel_name || play.latest_video?.channel_name || '')
   const catalystConviction = catalystMatch
     ? catalystMatch.conviction
     : (play.catalysts?.[0]?.conviction || play.avg_conviction)
   const catalystVideoId = catalystMatch
     ? catalystMatch.youtube_video_id
-    : (play.catalysts?.[0]?.youtube_video_id || play.latest_video.youtube_video_id)
+    : (play.catalysts?.[0]?.youtube_video_id || play.latest_video?.youtube_video_id || '')
 
   return (
     <div id="pulse-stream-container" className="w-full max-w-2xl mx-auto flex flex-col items-center px-2 animate-fade-up">
@@ -518,23 +469,15 @@ const TerminalList = TodayTerminalList
 type SignalTierFilter = 'all' | 'strong' | 'emerging'
 
 export default function TodayPlaysPage() {
-  const [data, setData] = useState<TodayPlaysData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, loading, error } = useTodayPlays(30)
   const [sortBy, setSortBy] = useState<SortOption>('aura_score')
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
   const [viewMode, setViewMode] = useState<'grid' | 'stream' | 'terminal'>('grid')
   const [tierFilter, setTierFilter] = useState<SignalTierFilter>('all')
-  const [alphaView, setAlphaView] = useState<'executive' | 'screener'>('executive')
   const [showExplainer, setShowExplainer] = useState(false)
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
-
-  const handleAlphaViewChange = (view: 'executive' | 'screener') => {
-    setAlphaView(view)
-    sessionStorage.setItem('today_alphaView', view)
-  }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const el = headerRef.current
@@ -562,7 +505,6 @@ export default function TodayPlaysPage() {
       sessionStorage.removeItem('today_activeTab')
       sessionStorage.removeItem('today_viewMode')
       sessionStorage.removeItem('today_streamIndex')
-      sessionStorage.removeItem('today_alphaView')
       savedViewMode = null
     }
 
@@ -578,11 +520,9 @@ export default function TodayPlaysPage() {
     const savedSortBy = sessionStorage.getItem('today_sortBy') as SortOption
     const savedActiveTab = sessionStorage.getItem('today_activeTab') as 'BUY' | 'SELL'
     const savedStreamIndex = sessionStorage.getItem('today_streamIndex')
-    const savedAlphaView = sessionStorage.getItem('today_alphaView') as 'executive' | 'screener' | null
 
     if (savedSortBy) setSortBy(savedSortBy)
     if (savedActiveTab) setActiveTab(savedActiveTab)
-    if (savedAlphaView) setAlphaView(savedAlphaView)
     if (savedStreamIndex) {
       const parsed = parseInt(savedStreamIndex, 10)
       if (!isNaN(parsed)) setStreamIndex(parsed)
@@ -590,7 +530,6 @@ export default function TodayPlaysPage() {
 
     setSessionRestored(true)
   }, [])
-
 
   // Sync state changes back to sessionStorage
   useEffect(() => {
@@ -612,96 +551,6 @@ export default function TodayPlaysPage() {
     if (!sessionRestored) return
     sessionStorage.setItem('today_streamIndex', streamIndex.toString())
   }, [streamIndex, sessionRestored])
-
-  useEffect(() => {
-    if (!sessionRestored) return
-
-    let active = true
-
-    async function fetchPlays() {
-      const cacheKey = `aura_today_plays_${sortBy}`
-      let hasCache = false
-      let localEtag: string | null = null
-
-      try {
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
-          const parsed = JSON.parse(cached)
-          if (parsed && parsed.plays && parsed.plays.length > 0) {
-            if (active) {
-              setData(parsed)
-              setLoading(false)
-              hasCache = true
-              if (parsed.generated_at) {
-                localEtag = parsed.generated_at
-              }
-            }
-          } else {
-            // Cached data has zero plays — treat it as stale and remove it
-            localStorage.removeItem(cacheKey)
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to read from cache:', e)
-      }
-
-      if (!hasCache) {
-        if (active) {
-          setData(null)
-          setLoading(true)
-        }
-      }
-
-      try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
-
-        const headers: HeadersInit = {}
-        if (localEtag) {
-          headers['If-None-Match'] = `W/"${localEtag}"`
-        }
-
-        const res = await fetch(`${backendUrl}/api/v1/today?strategy=${sortBy}`, { headers })
-
-        if (res.status === 304) {
-          return // Cache is perfectly fresh, no need to parse or update
-        }
-
-        if (!res.ok) {
-          throw new Error(`Server status ${res.status}`)
-        }
-
-        const json = await res.json()
-
-        if (active) {
-          setData(json)
-          setError(null)
-
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify(json))
-          } catch (e) {
-            console.warn('Failed to save cache:', e)
-          }
-        }
-      } catch (err: any) {
-        if (active) {
-          logger.error('Failed to fetch plays:', err)
-          if (!hasCache) {
-            setError(err.message || 'Unable to connect to the backend server.')
-          }
-        }
-      } finally {
-        if (active) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchPlays()
-
-    return () => {
-      active = false
-    }
-  }, [sortBy, sessionRestored])
 
   const sortPlays = (playsList: Play[]) => {
     return [...playsList].sort((a, b) => {
@@ -830,7 +679,7 @@ export default function TodayPlaysPage() {
   )
 
   return (
-    <main className="flex-1 w-full mx-auto relative min-h-screen pb-20 md:pb-8">
+    <main className="flex-1 w-full mx-auto relative min-h-screen pb-40 md:pb-8">
       {/* Premium SVG Noise Texture Overlay */}
       <div
         className="fixed inset-0 pointer-events-none z-50 opacity-[0.015] mix-blend-overlay"
@@ -996,17 +845,19 @@ export default function TodayPlaysPage() {
           </div>
         </section>
 
-        {/* Pinned Executive Alpha Dossier & Mode Switcher */}
-        {!loading && !error && data && (
-          <TodayTopAlphaDossier
-            plays={data.plays}
-            activeView={alphaView}
-            onViewChange={handleAlphaViewChange}
-          />
+        {/* Pinned Executive Alpha Section */}
+        {!error && (
+          <div className="mb-8">
+            <TopAlphaSection
+              plays={data?.plays || []}
+              loading={loading}
+              showScreenerLink={false}
+            />
+          </div>
         )}
 
-        {/* HUD Sort Controls (Visible only in Screener Mode) */}
-        {!loading && !error && data && alphaView === 'screener' && (
+        {/* HUD Sort Controls */}
+        {!loading && !error && data && (
           <div className="hidden md:flex flex-col gap-3 mb-6">
 
 
@@ -1493,7 +1344,7 @@ export default function TodayPlaysPage() {
       </div>
 
       {/* 📱 MOBILE FLOATING DOCK 📱 */}
-      {!loading && !error && data && alphaView === 'screener' && (
+      {!loading && !error && data && (
         <div className="md:hidden fixed bottom-16 left-4 right-4 z-30 bg-[#0A0F1A]/90 backdrop-blur-xl border border-[#1E293B] shadow-2xl rounded-2xl overflow-hidden select-none">
 
           {/* Top row: Stream navigation — only visible in stream mode */}
@@ -1601,8 +1452,3 @@ export default function TodayPlaysPage() {
   )
 }
 
-const logger = {
-  error: (msg: string, ...args: any[]) => {
-    console.error(msg, ...args)
-  }
-}
