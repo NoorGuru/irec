@@ -26,6 +26,8 @@ export function useTodayPlays(days = 30) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const isMounted = useRef(true)
+  const dataRef = useRef<TodayPlaysData | null>(null)
+  dataRef.current = data
 
   // Fetch from network with ETag validation
   const fetchPlays = useCallback(async () => {
@@ -78,13 +80,13 @@ export function useTodayPlays(days = 30) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load plays'
         console.warn('Network fetch for today plays encountered an issue:', errorMsg)
         // Only set error if we don't already have cached data
-        if (!data) {
+        if (!dataRef.current) {
           setError(errorMsg)
         }
         setLoading(false)
       }
     }
-  }, [days, data])
+  }, [days])
 
   useEffect(() => {
     isMounted.current = true
