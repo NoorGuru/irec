@@ -39,6 +39,9 @@
     - **Shared SWR Caching:** Both Home and Today consume the shared hook `useTodayPlays` (`aura_today_plays_v3` in localStorage with ETag 304 revalidation) to ensure 0ms instant page transitions and zero duplicate network requests.
 - **Backend & Cloud Infrastructure:** FastAPI (Python 3.12+), Uvicorn, Supabase (PostgreSQL), Google Cloud Run.
   - *Cloud Storage & CLI Constraint:* Always use `gcloud storage` commands for any Google Cloud Storage operations. Never use legacy `gsutil` (deprecated by Google, removed from default CLI bundles after March 2027).
+- **Git & PR Workflow:**
+  - *Direct Push Access:* Direct contributor push access is granted to `NoorGuru/irec`. Always verify direct repo permissions (`gh api /repos/NoorGuru/irec --jq .permissions.push`) before creating or using a fork.
+  - *Zero-Binary PR Diffs:* Never commit screenshot PNG/JPG binaries into feature branches. Always host visual proof on the dedicated orphan branch `pr-assets` on `NoorGuru/irec`.
 
 ## 5. Agent Instructions for Updating This File
 As the project evolves, the AI agent (Gemini) is responsible for automatically coming back to this `GEMINI.md` file and updating it with new core directives, architectural shifts, and newly discovered constraints. This file must always represent the single source of truth for AI context.
