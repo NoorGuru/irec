@@ -11,6 +11,9 @@ import { getSentimentBadgeClass, getSentimentLabel } from '@/components/TickerRo
 import HomeTickerTape from '@/components/home/HomeTickerTape'
 import HomeLatestIntel from '@/components/home/HomeLatestIntel'
 import HomeMarketMovers from '@/components/home/HomeMarketMovers'
+import HomeTopAlpha, { HomeTopAlphaSkeleton } from '@/components/home/HomeTopAlpha'
+import { useTodayPlays } from '@/lib/hooks/useTodayPlays'
+
 
 const HOME_PULSE_CACHE_KEY = 'aura_home_pulse_v3'
 
@@ -401,6 +404,8 @@ function TrendingRadars({ radars }: { radars: RadarResponse[] }) {
 }
 
 export default function Home() {
+  const { plays: todayPlays, loading: todayPlaysLoading } = useTodayPlays()
+
   // Always start empty so SSR and the client's first paint match (no localStorage in useState).
   const [aggregated, setAggregated] = useState<AggregatedTicker[]>([])
   const [radars, setRadars] = useState<RadarResponse[]>([])
@@ -526,13 +531,20 @@ export default function Home() {
               <span className="text-[#00D4AA] font-bold">Live YouTube consensus</span>
             </div>
 
-            {/* Quick Navigation Pills (All 5 Hubs) */}
+            {/* Quick Navigation Pills (All Hubs + Top Buys Anchor) */}
             <div className="flex flex-wrap justify-center gap-2.5 pt-1">
+              <a
+                href="#top-buys-now"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#00D4AA]/15 hover:bg-[#00D4AA]/25 border border-[#00D4AA]/40 text-xs font-bold text-[#00D4AA] hover:text-[#00FFD0] transition-all duration-300 shadow-[0_0_15px_rgba(0,212,170,0.15)] group/pill-topbuys"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
+                <span>🔥 Top 10 Buys Now</span>
+              </a>
               <Link
                 href="/today"
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#141B2D]/60 hover:bg-[#1E293B]/80 border border-[#1E293B] hover:border-[#00D4AA]/40 text-xs font-semibold text-[#8B95A8] hover:text-[#00D4AA] transition-all duration-300 shadow-inner group/pill-today"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA]" />
                 <span>Today&apos;s Plays</span>
               </Link>
               <Link
@@ -588,16 +600,9 @@ export default function Home() {
           </div>
         ) : null}
 
-        {/* Spotlight Cards Section */}
-        {pulseLoading && aggregated.length === 0 ? (
-          <div className="mb-6">
-            <SpotlightCardsSkeleton />
-          </div>
-        ) : aggregated.length > 0 ? (
-          <div className="mb-6">
-            <SpotlightCards aggregated={aggregated} />
-          </div>
-        ) : null}
+        {/* Executive Top Conviction Buys (The Aura 10) */}
+        <HomeTopAlpha plays={todayPlays} loading={todayPlaysLoading} />
+
 
         {/* Fresh Video Intel Drops (3-Column Grid) */}
         <HomeLatestIntel />
