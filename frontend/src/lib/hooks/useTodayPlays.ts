@@ -27,15 +27,19 @@ export function useTodayPlays(days = 30) {
   const [error, setError] = useState<string | null>(null)
   const isMounted = useRef(true)
   const dataRef = useRef<TodayPlaysData | null>(null)
-  dataRef.current = data
+
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
 
   // Fetch from network with ETag validation
   const fetchPlays = useCallback(async () => {
     try {
-      const backendUrl =
+      const backendUrl = (
         process.env.NEXT_PUBLIC_BACKEND_URL ||
         process.env.NEXT_PUBLIC_API_URL ||
-        'http://localhost:8000'
+        'https://irec-backend-f5xyrqhyjq-uc.a.run.app'
+      ).replace(/\/$/, '')
 
       const storedEtag = typeof window !== 'undefined' ? localStorage.getItem(TODAY_PLAYS_ETAG_KEY) : null
       const headers: HeadersInit = {}
@@ -108,12 +112,16 @@ export function useTodayPlays(days = 30) {
       }
     } catch {}
 
-
     // Step 2: Background network revalidation
-    fetchPlays()
+    const timerId = setTimeout(() => {
+      if (isMounted.current) {
+        void fetchPlays()
+      }
+    }, 0)
 
     return () => {
       isMounted.current = false
+      clearTimeout(timerId)
     }
   }, [fetchPlays])
 

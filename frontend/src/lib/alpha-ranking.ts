@@ -1,72 +1,70 @@
 import { Play, TopAlphaPlay, InvestorArchetype } from './types'
 import { normalizeAvgConviction100 } from './utils'
 
+export const ALPHA_GATE_CRITERIA = {
+  MIN_CHANNELS: 2,
+  MIN_AGREEMENT_PCT: 75,
+  MIN_CONVICTION: 55.0,
+  MIN_AURA_SCORE: 60,
+} as const
+
 /**
  * Synthesizes a clean 1-sentence executive thesis for an alpha play.
- * Avoids verbose transcript fragments by extracting the core premise
- * and joining with consensus proof.
+ * Extracts the core premise without destructive regex splitting
+ * and joins with verifiable consensus proof.
  */
 export function synthesizeExecutiveThesis(play: Play): string {
-  let premise = ''
-  if (play.top_catalyst && play.top_catalyst.trim().length > 0) {
-    // Split on first period, semicolon, or em-dash
-    const parts = play.top_catalyst.split(/[.;—]/)
-    const firstClean = parts[0]?.trim() || ''
-    if (firstClean.length >= 15) {
-      premise = firstClean
+  const conviction = Math.round(normalizeAvgConviction100(play.avg_conviction))
+  const isUnanimous = play.agreement_pct >= 95
+
+  // Clean catalyst note: ignore placeholder strings
+  let cleanCatalyst = (play.top_catalyst || '').trim()
+  if (
+    cleanCatalyst.toLowerCase().includes('no catalyst notes') ||
+    cleanCatalyst.length < 15
+  ) {
+    cleanCatalyst = ''
+  } else {
+    // Trim trailing punctuation cleanly
+    cleanCatalyst = cleanCatalyst.replace(/[,;—\s]+$/, '')
+    if (!cleanCatalyst.endsWith('.')) {
+      cleanCatalyst += '.'
     }
   }
 
-  if (!premise && play.why_bullets && play.why_bullets.length > 0) {
-    premise = play.why_bullets[0]
+  // Consensus proof suffix
+  const proof = isUnanimous
+    ? `Backed by unanimous buy consensus across ${play.analyst_count} independent channels (${conviction}/100 conviction).`
+    : `Backed by ${play.agreement_pct}% bullish consensus across ${play.analyst_count} channels (${conviction}/100 conviction).`
+
+  if (cleanCatalyst) {
+    return `${cleanCatalyst} ${proof}`
   }
 
-  if (!premise) {
-    premise = `${play.stock_name} shows strong bullish institutional and creator momentum`
+  if (play.why_bullets && play.why_bullets.length > 0) {
+    const bullet = play.why_bullets[0].trim().replace(/[,;—\s]+$/, '')
+    return `${bullet}. ${proof}`
   }
 
-  // Ensure premise ends cleanly
-  premise = premise.replace(/[,;—\s]+$/, '')
-
-  // Contextual consensus proof
-  let consensusSuffix = ''
-  if (play.analyst_count >= 4 && play.agreement_pct >= 88) {
-    consensusSuffix = `backed by unanimous consensus across ${play.analyst_count} top channels.`
-  } else if (play.analyst_count >= 2) {
-    consensusSuffix = `with ${play.agreement_pct}% consensus across ${play.analyst_count} channels.`
-  } else {
-    consensusSuffix = `with strong ${Math.round(normalizeAvgConviction100(play.avg_conviction))}/100 conviction.`
-  }
-
-  return `${premise} ${consensusSuffix}`
+  return `High-conviction bullish consensus across ${play.analyst_count} creator channels with ${play.agreement_pct}% agreement and ${conviction}/100 conviction.`
 }
 
 /**
  * Classify a play into an investor archetype based on quantitative signals.
  */
 export function classifyArchetype(play: Play): { archetype: 'core' | 'growth' | 'value'; label: string } {
-  const conviction = normalizeAvgConviction100(play.avg_conviction)
-
-  // 1. Core Heavyweights: High multi-channel consensus pillars
-  if (play.analyst_count >= 5 && play.agreement_pct >= 85 && play.aura_score >= 68) {
-    return { archetype: 'core', label: 'Core Heavyweight' }
+  // 1. Consensus Anchor / Heavyweights: 4+ channels with top tier consensus
+  if (play.analyst_count >= 4 && play.agreement_pct >= 80) {
+    return { archetype: 'core', label: 'Consensus Anchor' }
   }
 
-  // 2. Value / Target Gap: Notable price target upside
-  if (play.avg_target_price !== null && play.avg_target_price > 0 && play.aura_score >= 60) {
+  // 2. Value / Target Gap: Notable price target upside recorded
+  if (play.avg_target_price !== null && play.avg_target_price > 0) {
     return { archetype: 'value', label: 'Target Upside' }
   }
 
-  // 3. Growth Momentum: Rapid buzz velocity or high conviction
-  if (conviction >= 65 || play.recent_mentions >= 3) {
-    return { archetype: 'growth', label: 'Growth Momentum' }
-  }
-
-  // Fallback defaults
-  if (play.analyst_count >= 3) {
-    return { archetype: 'core', label: 'Core Pillar' }
-  }
-  return { archetype: 'growth', label: 'Growth Momentum' }
+  // 3. Momentum Buy: High conviction or velocity
+  return { archetype: 'growth', label: 'Momentum Buy' }
 }
 
 /**
@@ -88,46 +86,29 @@ export function calculateAPM(play: Play): number {
 
 /**
  * Curated Alpha Gate & Ranking Engine.
- * Extracts the top 5 to 10 stocks to buy from the trailing 30-day window.
+ * Extracts strictly qualified high-conviction buy plays from the trailing 30-day window.
+ * Zero relaxation degradation, zero artificial quota-filling.
+ * Dynamic return size: 0 to maxLimit (default 10).
  */
 export function filterTopBuyPlays(
   plays: Play[],
-  limit = 10,
+  maxLimit = 10,
   archetypeFilter: InvestorArchetype = 'all'
 ): TopAlphaPlay[] {
   if (!plays || plays.length === 0) return []
 
-  // Direction: strictly BUY
-  const buyPlays = plays.filter((p) => p.direction === 'BUY')
-  if (buyPlays.length === 0) return []
+  // Strict Single-Tier Hard Gate
+  const qualified = plays.filter((p) => {
+    if (p.direction !== 'BUY') return false
+    if (p.analyst_count < ALPHA_GATE_CRITERIA.MIN_CHANNELS) return false
+    if (p.agreement_pct < ALPHA_GATE_CRITERIA.MIN_AGREEMENT_PCT) return false
+    if (normalizeAvgConviction100(p.avg_conviction) < ALPHA_GATE_CRITERIA.MIN_CONVICTION) return false
+    if (p.aura_score < ALPHA_GATE_CRITERIA.MIN_AURA_SCORE) return false
+    return true
+  })
 
-  // Stage 0: Strict Quality Gate
-  let candidates = buyPlays.filter(
-    (p) =>
-      p.analyst_count >= 3 &&
-      p.agreement_pct >= 80 &&
-      normalizeAvgConviction100(p.avg_conviction) >= 55.0 &&
-      p.aura_score >= 60
-  )
-
-  // Stage 1 Relaxation: If fewer candidates than needed, relax analyst count & aura
-  if (candidates.length < Math.min(5, limit)) {
-    candidates = buyPlays.filter(
-      (p) =>
-        p.analyst_count >= 2 &&
-        p.agreement_pct >= 75 &&
-        normalizeAvgConviction100(p.avg_conviction) >= 50.0 &&
-        p.aura_score >= 50
-    )
-  }
-
-  // Stage 2 Relaxation (Emergency/Market lull): Take top scoring plays
-  if (candidates.length < Math.min(5, limit)) {
-    candidates = buyPlays.filter((p) => p.aura_score >= 35)
-  }
-
-  // Sort candidates by APM and deterministic tie-breakers
-  const sorted = [...candidates].sort((a, b) => {
+  // Deterministic Ranking by APM
+  const sorted = [...qualified].sort((a, b) => {
     const apmA = calculateAPM(a)
     const apmB = calculateAPM(b)
     if (apmB !== apmA) return apmB - apmA
@@ -137,7 +118,7 @@ export function filterTopBuyPlays(
   })
 
   // Assemble enriched TopAlphaPlay objects
-  const enriched: TopAlphaPlay[] = sorted.slice(0, Math.max(10, limit)).map((p, index) => {
+  const enriched: TopAlphaPlay[] = sorted.map((p, index) => {
     const { archetype, label } = classifyArchetype(p)
     return {
       ...p,
@@ -151,12 +132,8 @@ export function filterTopBuyPlays(
 
   // Apply archetype filter if requested
   if (archetypeFilter !== 'all') {
-    const filtered = enriched.filter((p) => p.archetype === archetypeFilter)
-    if (filtered.length >= 2) {
-      return filtered.slice(0, limit)
-    }
-    // If not enough match specific archetype, return top unfiltered
+    return enriched.filter((p) => p.archetype === archetypeFilter).slice(0, maxLimit)
   }
 
-  return enriched.slice(0, limit)
+  return enriched.slice(0, maxLimit)
 }
