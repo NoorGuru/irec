@@ -34,12 +34,28 @@ export interface RadarTrendPoint {
   aura_score: number // 0–100
 }
 
-export interface PlayResponse {
+export interface VideoSummaryInfo {
+  youtube_video_id: string
+  channel_name: string
+  published_at: string
+}
+
+export interface CatalystOpinion {
+  channel_name: string
+  sentiment: number
+  conviction: number
+  notes: string
+  published_at: string
+  youtube_video_id: string
+}
+
+export interface Play {
   ticker: string
   stock_name: string
-  direction: string
+  direction: 'BUY' | 'SELL'
   aura_score: number // 0–100
   omni_score: number // 0–100
+  signal_tier: string
   action_label: string
   consensus_sentiment: number
   avg_conviction: number // 0-100
@@ -48,7 +64,36 @@ export interface PlayResponse {
   analyst_count: number
   agreement_pct: number
   top_catalyst: string
+  catalysts?: CatalystOpinion[]
+  why_bullets?: string[]
+  latest_video?: VideoSummaryInfo
 }
+
+export interface MarketMood {
+  buy_plays: number
+  sell_plays: number
+  overall: 'Bullish' | 'Bearish' | 'Neutral'
+}
+
+export interface TodayPlaysData {
+  generated_at: string
+  plays: Play[]
+  market_mood: MarketMood
+}
+
+export type InvestorArchetype = 'all' | 'core' | 'growth' | 'value'
+
+export interface TopAlphaPlay extends Play {
+  rank: number
+  apm_score: number
+  archetype: 'core' | 'growth' | 'value'
+  archetype_label: string
+  executive_thesis: string
+}
+
+export type PlayResponse = Play
+
+
 
 export interface RadarResponse {
   name: string

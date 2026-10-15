@@ -32,6 +32,11 @@
   - *JSX Link Nesting:* Never nest Next.js `<Link>` components within other `<Link>` tags in composite cards. Use a container `<div>` with navigation handlers and `e.stopPropagation()` on inner action buttons.
   - *Data Density & Screeners:* When screening data lists (e.g. `/explore`), provide slide-out peek drawers (desktop right-panel, mobile bottom-sheet) to inspect details without disrupting scroll position.
   - *Institutional Docks:* Avoid vertically stacking multiple heavy TradingView/financial widgets; consolidate them into tabbed consoles (`TickerAnalyticsDock`) that preserve DOM state.
+  - *Product Taxonomy & Executive Alpha Layer:*
+    - **Homepage (`/`):** Answers "What to buy now" above-the-fold via `<HomeTopAlpha />` (Top 5–10 curated high-conviction buys with 1-sentence theses).
+    - **Today (`/today`):** Trailing 30-day active video window with pinned `<TodayTopAlphaDossier />` (Executive Brief vs 30-Day Market Screener toggle).
+    - **Explorer (`/explore`):** All-time historical stock catalog and screener for all 500+ tracked tickers.
+    - **Shared SWR Caching:** Both Home and Today consume the shared hook `useTodayPlays` (`aura_today_plays_v3` in localStorage with ETag 304 revalidation) to ensure 0ms instant page transitions and zero duplicate network requests.
 - **Backend & Cloud Infrastructure:** FastAPI (Python 3.12+), Uvicorn, Supabase (PostgreSQL), Google Cloud Run.
   - *Cloud Storage & CLI Constraint:* Always use `gcloud storage` commands for any Google Cloud Storage operations. Never use legacy `gsutil` (deprecated by Google, removed from default CLI bundles after March 2027).
 

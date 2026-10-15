@@ -37,6 +37,9 @@ import { TVMiniChart } from '@/components/TVWidgets'
 import TodayAuraReactor from '@/components/today/TodayAuraReactor'
 import TodayEarlyRadar from '@/components/today/TodayEarlyRadar'
 import TodayTerminalList, { SortOption, sortLabel } from '@/components/today/TodayTerminalList'
+import TodayTopAlphaDossier from '@/components/today/TodayTopAlphaDossier'
+
+
 
 // --- Types ---
 
@@ -522,10 +525,16 @@ export default function TodayPlaysPage() {
   const [activeTab, setActiveTab] = useState<'BUY' | 'SELL'>('BUY')
   const [viewMode, setViewMode] = useState<'grid' | 'stream' | 'terminal'>('grid')
   const [tierFilter, setTierFilter] = useState<SignalTierFilter>('all')
+  const [alphaView, setAlphaView] = useState<'executive' | 'screener'>('executive')
   const [showExplainer, setShowExplainer] = useState(false)
   const [streamIndex, setStreamIndex] = useState(0)
   const [sessionRestored, setSessionRestored] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
+
+  const handleAlphaViewChange = (view: 'executive' | 'screener') => {
+    setAlphaView(view)
+    sessionStorage.setItem('today_alphaView', view)
+  }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const el = headerRef.current
@@ -553,6 +562,7 @@ export default function TodayPlaysPage() {
       sessionStorage.removeItem('today_activeTab')
       sessionStorage.removeItem('today_viewMode')
       sessionStorage.removeItem('today_streamIndex')
+      sessionStorage.removeItem('today_alphaView')
       savedViewMode = null
     }
 
@@ -568,9 +578,11 @@ export default function TodayPlaysPage() {
     const savedSortBy = sessionStorage.getItem('today_sortBy') as SortOption
     const savedActiveTab = sessionStorage.getItem('today_activeTab') as 'BUY' | 'SELL'
     const savedStreamIndex = sessionStorage.getItem('today_streamIndex')
+    const savedAlphaView = sessionStorage.getItem('today_alphaView') as 'executive' | 'screener' | null
 
     if (savedSortBy) setSortBy(savedSortBy)
     if (savedActiveTab) setActiveTab(savedActiveTab)
+    if (savedAlphaView) setAlphaView(savedAlphaView)
     if (savedStreamIndex) {
       const parsed = parseInt(savedStreamIndex, 10)
       if (!isNaN(parsed)) setStreamIndex(parsed)
@@ -984,9 +996,19 @@ export default function TodayPlaysPage() {
           </div>
         </section>
 
-        {/* HUD Sort Controls */}
+        {/* Pinned Executive Alpha Dossier & Mode Switcher */}
         {!loading && !error && data && (
+          <TodayTopAlphaDossier
+            plays={data.plays}
+            activeView={alphaView}
+            onViewChange={handleAlphaViewChange}
+          />
+        )}
+
+        {/* HUD Sort Controls (Visible only in Screener Mode) */}
+        {!loading && !error && data && alphaView === 'screener' && (
           <div className="hidden md:flex flex-col gap-3 mb-6">
+
 
             {/* Top Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 rounded-2xl border border-[#1E293B]/50 bg-[#0A0F1A]/50 backdrop-blur-md">
@@ -1471,7 +1493,7 @@ export default function TodayPlaysPage() {
       </div>
 
       {/* 📱 MOBILE FLOATING DOCK 📱 */}
-      {!loading && !error && data && (
+      {!loading && !error && data && alphaView === 'screener' && (
         <div className="md:hidden fixed bottom-16 left-4 right-4 z-30 bg-[#0A0F1A]/90 backdrop-blur-xl border border-[#1E293B] shadow-2xl rounded-2xl overflow-hidden select-none">
 
           {/* Top row: Stream navigation — only visible in stream mode */}
