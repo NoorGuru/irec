@@ -131,6 +131,45 @@ async def test_upsert_channel_raises_503_on_timeout(mock_client):
     with pytest.raises(HTTPException) as exc_info:
         await upsert_channel("TestChannel")
     assert exc_info.value.status_code == 503
+    assert "Database service temporarily unavailable" in exc_info.value.detail
+    assert "Timeout" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_upsert_channel_with_youtube_channel_id_matches_existing(mock_client):
+    """Upsert channel matches existing channel by youtube_channel_id and updates thumbnail."""
+    existing_id = str(uuid.uuid4())
+    mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{"channel_id": existing_id, "channel_name": "Old Channel Name"}]
+    )
+    mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{"channel_id": existing_id}]
+    )
+
+    result = await upsert_channel(
+        channel_name="New Channel Name",
+        youtube_channel_id="UC1234567890",
+        channel_thumbnail_url="https://example.com/thumb.jpg",
+    )
+    assert result == existing_id
+
+
+@pytest.mark.asyncio
+async def test_upsert_channel_resolves_unique_constraint_conflict(mock_client):
+    """When upsert hits unique constraint collision, it resolves by lookup."""
+    existing_id = str(uuid.uuid4())
+    mock_client.table.return_value.upsert.return_value.execute.side_effect = Exception(
+        "duplicate key value violates unique constraint idx_channels_youtube_channel_id"
+    )
+    mock_client.table.return_value.select.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{"channel_id": existing_id}]
+    )
+
+    result = await upsert_channel(
+        channel_name="Renamed Channel",
+        youtube_channel_id="UCconflict123",
+    )
+    assert result == existing_id
 
 
 # --- insert_video tests ---
