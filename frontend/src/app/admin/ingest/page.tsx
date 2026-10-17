@@ -801,9 +801,32 @@ function JobCard({
               </div>
               {step.detail && (
                 <div className="mt-1 ml-9">
-                  <p className={`text-[10px] font-[family-name:var(--font-geist-mono)] ${step.status === 'error' ? 'text-[#FF4D6A]/80' : 'text-[#8B95A8]/60 truncate'}`}>
-                    {step.detail}
-                  </p>
+                  {step.status === 'error' ? (
+                    <div className="rounded-lg border border-[#FF4D6A]/30 bg-[#FF4D6A]/10 p-2.5 mt-1 space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[11px] font-[family-name:var(--font-geist-mono)] text-[#FF4D6A] break-words whitespace-pre-wrap leading-relaxed select-text flex-1">
+                          {step.detail}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (navigator?.clipboard) {
+                              navigator.clipboard.writeText(step.detail || '')
+                            }
+                          }}
+                          className="shrink-0 text-[10px] font-mono text-[#8B95A8] hover:text-[#F1F5F9] px-2 py-0.5 rounded border border-[#1E293B] bg-[#0A0F1A]/80 transition-colors"
+                          title="Copy error"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className={`text-[10px] font-[family-name:var(--font-geist-mono)] ${step.status === 'retrying' ? 'text-[#F59E0B]' : 'text-[#8B95A8]/60 truncate'}`}>
+                      {step.detail}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1115,7 +1138,7 @@ function IngestContent() {
                         <p className="text-sm font-medium text-[#F1F5F9] truncate font-[family-name:var(--font-geist-mono)]">
                           {failed.url}
                         </p>
-                        <p className="text-xs text-[#FF4D6A]/80 mt-1 line-clamp-2">
+                        <p className="text-xs text-[#FF4D6A]/90 mt-1.5 font-[family-name:var(--font-geist-mono)] break-words leading-relaxed select-text">
                           {failed.error}
                         </p>
                       </div>

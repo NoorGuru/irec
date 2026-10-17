@@ -3,9 +3,11 @@
 Uses SUPABASE_SERVICE_KEY to bypass RLS for all write operations.
 """
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timezone
+from typing import Callable, TypeVar
 
 from fastapi import HTTPException
 from supabase import Client, create_client
@@ -36,6 +38,47 @@ def _get_client() -> Client:
             supabase_service_key,
         )
     return _client
+
+
+def _reset_client() -> None:
+    """Reset the global Supabase client instance (used on connection drop / retry)."""
+    global _client
+    _client = None
+
+
+T = TypeVar("T")
+
+
+async def _with_db_retry(fn: Callable[[], T], max_retries: int = 2, delay: float = 0.5) -> T:
+    """Execute a database operation with automatic retry on transient connection drops."""
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except HTTPException:
+            raise
+        except Exception as e:
+            err_str = str(e).lower()
+            err_type = type(e).__name__.lower()
+            is_transient = (
+                "timeout" in err_str
+                or "timeout" in err_type
+                or "connection" in err_str
+                or "connection" in err_type
+                or "remote" in err_type
+                or "disconnect" in err_str
+                or "reset" in err_str
+                or "closed" in err_str
+                or "broken pipe" in err_str
+            )
+            if is_transient and attempt < max_retries:
+                logger.warning(
+                    f"Transient database error on attempt {attempt + 1}/{max_retries + 1}: {e}. "
+                    f"Resetting client and retrying in {delay}s..."
+                )
+                _reset_client()
+                await asyncio.sleep(delay)
+                continue
+            raise
 
 
 async def save_llm_response(
@@ -70,13 +113,16 @@ async def check_duplicate(youtube_video_id: str) -> bool:
     Raises HTTPException(503) on timeout.
     """
     try:
-        client = _get_client()
-        response = (
-            client.table("videos")
-            .select("video_id, recommendations(ticker)")
-            .eq("youtube_video_id", youtube_video_id)
-            .execute()
-        )
+        def _query():
+            client = _get_client()
+            return (
+                client.table("videos")
+                .select("video_id, recommendations(ticker)")
+                .eq("youtube_video_id", youtube_video_id)
+                .execute()
+            )
+
+        response = await _with_db_retry(_query)
         if not response.data:
             return False
         # Only consider it a duplicate if it has recommendations (fully processed)
@@ -100,27 +146,30 @@ async def delete_existing_video(youtube_video_id: str) -> bool:
     Raises HTTPException(503) on database error.
     """
     try:
-        client = _get_client()
+        def _delete():
+            client = _get_client()
+            # Find the video
+            response = (
+                client.table("videos")
+                .select("video_id")
+                .eq("youtube_video_id", youtube_video_id)
+                .execute()
+            )
+            if not response.data:
+                return None
 
-        # Find the video
-        response = (
-            client.table("videos")
-            .select("video_id")
-            .eq("youtube_video_id", youtube_video_id)
-            .execute()
-        )
-        if not response.data:
+            video_id = response.data[0]["video_id"]
+            # Delete recommendations first (FK constraint)
+            client.table("recommendations").delete().eq("video_id", video_id).execute()
+            # Delete the video
+            client.table("videos").delete().eq("video_id", video_id).execute()
+            return video_id
+
+        deleted_id = await _with_db_retry(_delete)
+        if not deleted_id:
             return False
 
-        video_id = response.data[0]["video_id"]
-
-        # Delete recommendations first (FK constraint)
-        client.table("recommendations").delete().eq("video_id", video_id).execute()
-
-        # Delete the video
-        client.table("videos").delete().eq("video_id", video_id).execute()
-
-        logger.info(f"Force re-ingest: deleted existing video {youtube_video_id} (id: {video_id})")
+        logger.info(f"Force re-ingest: deleted existing video {youtube_video_id} (id: {deleted_id})")
         return True
     except HTTPException:
         raise
@@ -128,7 +177,7 @@ async def delete_existing_video(youtube_video_id: str) -> bool:
         logger.error(f"Database error during force delete: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=503,
-            detail="Database service temporarily unavailable",
+            detail=f"Database service temporarily unavailable: {type(e).__name__}: {e}",
         )
 
 
@@ -202,40 +251,95 @@ async def upsert_channel(
 ) -> str:
     """Upsert a channel and return the channel_id UUID.
 
-    Uses supabase-py's upsert which handles ON CONFLICT (channel_name)
-    DO UPDATE SET channel_name = EXCLUDED.channel_name, guaranteeing
-    the channel_id is always returned.
+    Intelligently checks existing channel by youtube_channel_id first to prevent
+    duplicate key collisions with idx_channels_youtube_channel_id when a channel
+    is renamed on YouTube.
 
-    Raises HTTPException(503) on timeout.
+    Raises HTTPException(503) on timeout or connection failure.
     """
+    clean_channel_name = channel_name.strip() if channel_name else ""
+    if not clean_channel_name:
+        clean_channel_name = channel_name or "Unknown Channel"
+
     try:
-        client = _get_client()
-        record: dict = {"channel_name": channel_name}
+        # Step 1: If youtube_channel_id is provided, check if the channel already exists by ID
+        if youtube_channel_id:
+            try:
+                def _find_by_yt_id():
+                    client = _get_client()
+                    return (
+                        client.table("channels")
+                        .select("channel_id, channel_name")
+                        .eq("youtube_channel_id", youtube_channel_id)
+                        .execute()
+                    )
+
+                res = await _with_db_retry(_find_by_yt_id)
+                if res.data and len(res.data) > 0:
+                    existing_id = res.data[0]["channel_id"]
+                    # Update thumbnail or channel name if needed
+                    update_record = {}
+                    if channel_thumbnail_url:
+                        update_record["channel_thumbnail_url"] = channel_thumbnail_url
+                    if update_record:
+                        try:
+                            def _update_channel():
+                                client = _get_client()
+                                return client.table("channels").update(update_record).eq("channel_id", existing_id).execute()
+                            await _with_db_retry(_update_channel)
+                        except Exception as e:
+                            logger.warning(f"Failed to update channel metadata for {existing_id}: {e}")
+                    return existing_id
+            except Exception as e:
+                logger.warning(f"Lookup by youtube_channel_id {youtube_channel_id} failed: {e}")
+
+        # Step 2: Fall back to upsert on channel_name
+        record: dict = {"channel_name": clean_channel_name}
         if youtube_channel_id:
             record["youtube_channel_id"] = youtube_channel_id
         if channel_thumbnail_url:
             record["channel_thumbnail_url"] = channel_thumbnail_url
-        response = (
-            client.table("channels")
-            .upsert(
-                record,
-                on_conflict="channel_name",
+
+        def _do_upsert():
+            client = _get_client()
+            return (
+                client.table("channels")
+                .upsert(
+                    record,
+                    on_conflict="channel_name",
+                )
+                .execute()
             )
-            .execute()
-        )
-        if not response.data:
-            raise HTTPException(
-                status_code=500,
-                detail="Internal error, please try again",
-            )
-        return response.data[0]["channel_id"]
+
+        try:
+            response = await _with_db_retry(_do_upsert)
+            if not response.data:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Internal error: channels table returned no data",
+                )
+            return response.data[0]["channel_id"]
+        except Exception as upsert_err:
+            err_msg = str(upsert_err).lower()
+            # If unique constraint conflict on youtube_channel_id or channel_name
+            if "youtube_channel_id" in err_msg or "23505" in err_msg or "unique" in err_msg:
+                logger.warning(f"Channel upsert hit unique conflict ({upsert_err}), resolving by lookup...")
+                if youtube_channel_id:
+                    res = _get_client().table("channels").select("channel_id").eq("youtube_channel_id", youtube_channel_id).execute()
+                    if res.data and len(res.data) > 0:
+                        return res.data[0]["channel_id"]
+                res = _get_client().table("channels").select("channel_id").eq("channel_name", clean_channel_name).execute()
+                if res.data and len(res.data) > 0:
+                    return res.data[0]["channel_id"]
+            raise upsert_err
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Database timeout/error during channel upsert: {e}")
+        logger.error(f"Database timeout/error during channel upsert: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=503,
-            detail="Database service temporarily unavailable",
+            detail=f"Database service temporarily unavailable: {type(e).__name__}: {e}",
         )
 
 
@@ -255,7 +359,6 @@ async def insert_video(
     Raises HTTPException(503) on timeout.
     """
     try:
-        client = _get_client()
         record: dict = {
             "youtube_video_id": youtube_video_id,
             "video_url": video_url,
@@ -270,24 +373,29 @@ async def insert_video(
             record["title"] = title
         if duration is not None:
             record["duration"] = duration
-        response = (
-            client.table("videos")
-            .insert(record)
-            .execute()
-        )
+
+        def _insert():
+            client = _get_client()
+            return (
+                client.table("videos")
+                .insert(record)
+                .execute()
+            )
+
+        response = await _with_db_retry(_insert)
         if not response.data:
             raise HTTPException(
                 status_code=500,
-                detail="Internal error, please try again",
+                detail="Internal error: videos table returned no data",
             )
         return response.data[0]["video_id"]
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Database error during video insert: {e}")
+        logger.error(f"Database error during video insert: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Internal error, please try again",
+            detail=f"Database error during video insert: {type(e).__name__}: {e}",
         )
 
 
@@ -412,10 +520,10 @@ async def replace_recommendations(
                 else:
                     raise
     except Exception as e:
-        logger.error(f"Database error during replace_recommendations: {e}")
+        logger.error(f"Database error during replace_recommendations: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Internal error, please try again",
+            detail=f"Database error during replace_recommendations: {type(e).__name__}: {e}",
         )
 
 
@@ -459,10 +567,10 @@ async def insert_recommendations(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Database error during recommendations insert: {e}")
+        logger.error(f"Database error during recommendations insert: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Internal error, please try again",
+            detail=f"Database error during recommendations insert: {type(e).__name__}: {e}",
         )
 
 
@@ -503,54 +611,64 @@ async def persist_extraction(
     # Step 2: Upsert video (may already exist from transcript cache)
     video_id: str | None = None
     try:
-        client = _get_client()
-        existing = (
-            client.table("videos")
-            .select("video_id")
-            .eq("youtube_video_id", youtube_video_id)
-            .execute()
-        )
+        def _upsert_video():
+            client = _get_client()
+            existing = (
+                client.table("videos")
+                .select("video_id")
+                .eq("youtube_video_id", youtube_video_id)
+                .execute()
+            )
 
-        record: dict = {
-            "youtube_video_id": youtube_video_id,
-            "video_url": video_url,
-            "channel_id": channel_id,
-            "published_at": published_at,
-        }
-        if transcript is not None:
-            record["transcript"] = transcript
-        if video_summary is not None:
-            record["video_summary"] = video_summary
-        if title is not None:
-            record["title"] = title
-        if duration is not None:
-            record["duration"] = duration
+            record: dict = {
+                "youtube_video_id": youtube_video_id,
+                "video_url": video_url,
+                "channel_id": channel_id,
+                "published_at": published_at,
+            }
+            if transcript is not None:
+                record["transcript"] = transcript
+            if video_summary is not None:
+                record["video_summary"] = video_summary
+            if title is not None:
+                record["title"] = title
+            if duration is not None:
+                record["duration"] = duration
 
-        if existing.data:
-            # Video exists (from transcript cache) — update it
-            video_id = existing.data[0]["video_id"]
-            client.table("videos").update(record).eq("video_id", video_id).execute()
-        else:
-            # New video — insert
-            response = client.table("videos").insert(record).execute()
-            if not response.data:
-                raise HTTPException(status_code=500, detail="Internal error, please try again")
-            video_id = response.data[0]["video_id"]
+            if existing.data:
+                # Video exists (from transcript cache) — update it
+                v_id = existing.data[0]["video_id"]
+                client.table("videos").update(record).eq("video_id", v_id).execute()
+                return v_id
+            else:
+                # New video — insert
+                response = client.table("videos").insert(record).execute()
+                if not response.data:
+                    raise HTTPException(status_code=500, detail="Database error: video insert returned no data")
+                return response.data[0]["video_id"]
+
+        video_id = await _with_db_retry(_upsert_video)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Database error during video upsert: {e}")
-        raise HTTPException(status_code=500, detail="Internal error, please try again")
+        logger.error(f"Database error during video upsert: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error during video upsert: {type(e).__name__}: {e}")
 
     # Step 3: Insert recommendations (skip if empty)
     try:
         await insert_recommendations(video_id, recommendations)
-    except HTTPException:
+    except HTTPException as e:
         # Recommendations failed — rollback the video (cascades to any partial recs)
         await _rollback_video(video_id)
         raise HTTPException(
+            status_code=e.status_code,
+            detail=f"Recommendations failed: {e.detail}",
+        )
+    except Exception as e:
+        await _rollback_video(video_id)
+        raise HTTPException(
             status_code=500,
-            detail="Internal error, please try again",
+            detail=f"Recommendations failed: {type(e).__name__}: {e}",
         )
 
     return {

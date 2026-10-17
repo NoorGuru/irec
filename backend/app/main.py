@@ -63,13 +63,14 @@ def _log_pipeline_error(
     Logs youtube_url, pipeline_stage, timestamp, and error_details as
     required by Requirement 11.6.
     """
+    error_msg = f"{type(error).__name__}: {error}"
     logger.error(
-        "Pipeline error",
+        f"Pipeline error [{pipeline_stage}] for {youtube_url}: {error_msg}",
         extra={
             "youtube_url": youtube_url,
             "pipeline_stage": pipeline_stage,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "error_details": str(error),
+            "error_details": error_msg,
         },
     )
 
@@ -251,7 +252,7 @@ async def extract(
         raise
     except Exception as e:
         _log_pipeline_error(youtube_url, "database_insert", e)
-        raise HTTPException(status_code=500, detail="Internal error, please try again")
+        raise HTTPException(status_code=500, detail=f"Database error during persistence: {type(e).__name__}: {e}")
 
     return ExtractionResponse(
         status="success",
@@ -387,7 +388,7 @@ async def extract_stream(
                 return
             except Exception as e:
                 _log_pipeline_error(youtube_url, "database_insert", e)
-                yield sse({"step": "database", "status": "error", "detail": "Internal error, please try again"})
+                yield sse({"step": "database", "status": "error", "detail": f"Database error: {type(e).__name__}: {e}"})
                 return
             yield sse({"step": "database", "status": "done", "detail": "Recommendations replaced"})
 
@@ -428,7 +429,7 @@ async def extract_stream(
             return
         except Exception as e:
             _log_pipeline_error(youtube_url, "duplicate_check", e)
-            yield sse({"step": "duplicate_check", "status": "error", "detail": "Database service temporarily unavailable"})
+            yield sse({"step": "duplicate_check", "status": "error", "detail": f"Database service temporarily unavailable: {type(e).__name__}: {e}"})
             return
 
         if force_reingest:
@@ -611,7 +612,7 @@ async def extract_stream(
             return
         except Exception as e:
             _log_pipeline_error(youtube_url, "database_insert", e)
-            yield sse({"step": "database", "status": "error", "detail": "Internal error, please try again"})
+            yield sse({"step": "database", "status": "error", "detail": f"Database error: {type(e).__name__}: {e}"})
             return
         yield sse({"step": "database", "status": "done", "detail": "Persisted successfully"})
 
